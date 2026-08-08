@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - ios
   workflow_dispatch:
 
 jobs:
@@ -17,23 +18,44 @@ jobs:
       - name: Select Xcode Version
         run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
 
-      - name: Build iOS Simulator App & Archive
+      - name: Build iOS App (.ipa) for Physical iPhones
+        run: |
+          cd gigi-ios
+          xcodebuild -project Gigi.xcodeproj \
+                     -scheme Gigi \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     -derivedDataPath build \
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGNING_ALLOWED=NO \
+                     clean build
+          cd build/Build/Products/Release-iphoneos
+          mkdir -p Payload
+          cp -r Gigi.app Payload/
+          zip -r Gigi.ipa Payload
+
+      - name: Build iOS Simulator App
         run: |
           cd gigi-ios
           xcodebuild -project Gigi.xcodeproj \
                      -scheme Gigi \
                      -sdk iphonesimulator \
                      -configuration Release \
-                     -derivedDataPath build \
+                     -derivedDataPath build_sim \
                      clean build
-
-      - name: Compress iOS Build Artifact
-        run: |
-          cd gigi-ios/build/Build/Products/Release-iphonesimulator
+          cd build_sim/Build/Products/Release-iphonesimulator
           zip -r Gigi-Simulator.zip Gigi.app
 
-      - name: Upload iOS App Artifact
+      - name: Upload iOS .ipa Artifact (for Sideloadly & iPhone)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gigi-iOS-IPA
+          path: gigi-ios/build/Build/Products/Release-iphoneos/Gigi.ipa
+
+      - name: Upload iOS Simulator Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Gigi-iOS-Simulator
-          path: gigi-ios/build/Build/Products/Release-iphonesimulator/Gigi-Simulator.zip
+          path: gigi-ios/build_sim/Build/Products/Release-iphonesimulator/Gigi-Simulator.zip
+
