@@ -16,6 +16,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color as AndroidColor
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.zIndex
 
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.animation.*
@@ -1210,13 +1211,15 @@ fun MusicScreen(
                     )
 
                     if (browserProgress < 0.08f || showDeckTools || isMusicSettingsOpen) {
-                        val isAnyToolVisible = showDeckTools || showThemeEditor || showAdvancedThemeEditor
+                        val isAnyToolVisible = showDeckTools || showThemeEditor || showAdvancedThemeEditor || isMusicSettingsOpen
                         BottomDeckToolStrip(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .fillMaxWidth()
+                                .zIndex(500f)
                                 .then(if (isAnyToolVisible) Modifier.fillMaxHeight() else Modifier.wrapContentHeight()),
                             visible = isAnyToolVisible,
+
                             onToggleVisibility = {
                                 val nextVisible = !showDeckTools
                                 showDeckTools = nextVisible

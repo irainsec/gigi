@@ -34,8 +34,9 @@ android {
         applicationId = "com.aman.gigi"
         minSdk = 26
         targetSdk = 35
-        versionCode = 31
-        versionName = "v1.7.1"
+        versionCode = 32
+        versionName = "v1.7.2"
+
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "SERVER_URL", "\"$configuredServerUrl\"")
