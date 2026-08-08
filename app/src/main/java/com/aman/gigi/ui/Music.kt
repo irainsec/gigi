@@ -1210,180 +1210,6 @@ fun MusicScreen(
                         onNext = { settleToSong(selectedIndex + 1) }
                     )
 
-                    if (browserProgress < 0.08f || showDeckTools || isMusicSettingsOpen) {
-                        val isAnyToolVisible = showDeckTools || showThemeEditor || showAdvancedThemeEditor || isMusicSettingsOpen
-                        BottomDeckToolStrip(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .zIndex(500f)
-                                .then(if (isAnyToolVisible) Modifier.fillMaxHeight() else Modifier.wrapContentHeight()),
-                            visible = isAnyToolVisible,
-
-                            onToggleVisibility = {
-                                val nextVisible = !showDeckTools
-                                showDeckTools = nextVisible
-                                viewModel.setMusicSettingsOpen(nextVisible)
-                                if (!nextVisible) {
-                                    showThemeEditor = false
-                                    showAdvancedThemeEditor = false
-                                }
-                            },
-                            onOpenThemeEditor = {
-                                showDeckTools = true
-                                showThemeEditor = true
-                                showAdvancedThemeEditor = false
-                                viewModel.setMusicSettingsOpen(true)
-                            },
-                            palette = activePalette,
-                            onOpenSleepTimer = { showSleepTimerSheet = true; showDeckTools = false; viewModel.setMusicSettingsOpen(false) },
-                            onOpenLyrics = { showLyricsOverlay = true; showDeckTools = false; viewModel.setMusicSettingsOpen(false) },
-                            onShare = {
-                                val shareIntent = android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(android.content.Intent.EXTRA_TEXT, "I'm listening to ${controlSong.title} by ${controlSong.artist} on Gigi!")
-                                }, "Share Song")
-                                context.startActivity(shareIntent)
-                                showDeckTools = false
-                                viewModel.setMusicSettingsOpen(false)
-                            },
-                            isHeartbeatActive = isHeartbeatActive,
-                            onToggleHeartbeat = { isHeartbeatActive = !isHeartbeatActive },
-                            onOpenLandscape = {
-                                showDeckTools = false
-                                viewModel.setMusicSettingsOpen(false)
-                                showThemeEditor = false
-                                showAdvancedThemeEditor = false
-                                if (!isLaunchingLandscape) {
-                                    isLaunchingLandscape = true
-                                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                                }
-                            }
-                        )
-                    }
-
-                    if ((showThemeEditor || showAdvancedThemeEditor) && browserProgress < 0.08f) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = if (showAdvancedThemeEditor) 0.14f else 0.08f))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) {
-                                    showThemeEditor = false
-                                    showAdvancedThemeEditor = false
-                                    showDeckTools = false
-                                }
-                        )
-                    }
-
-                    if (showThemeEditor && browserProgress < 0.08f) {
-                        VinylThemeEditorSheet(
-                            modifier = Modifier.align(Alignment.BottomCenter),
-                            palette = activePalette,
-                            config = themeConfig,
-                            onPresetSelected = {
-                                themePreset = it
-                                tonearmFinish = defaultTonearmFinishForPreset(it)
-                                labelTone = defaultLabelToneForPreset(it)
-                            },
-                            onRecordFinishSelected = { recordFinish = it },
-                            onOpenAdvancedEditor = {
-                                activeAdvancedTab = AdvancedEditorTab.VINYL
-                                showAdvancedThemeEditor = true
-                            },
-                            onDismiss = {
-                                showThemeEditor = false
-                                showAdvancedThemeEditor = false
-                                showDeckTools = false
-                            },
-                            
-                        )
-                    }
-
-                    if (showAdvancedThemeEditor && browserProgress < 0.08f) {
-                        VinylAdvancedEditorSheet(
-                            modifier = Modifier.align(Alignment.BottomCenter),
-                            activeTab = activeAdvancedTab,
-                            onTabSelected = { activeAdvancedTab = it },
-                            finish = recordFinish,
-                            onFinishChanged = { recordFinish = it },
-                            tonearmFinish = tonearmFinish,
-                            onTonearmFinishChanged = { tonearmFinish = it },
-                            glowAmount = glowAmount,
-                            onGlowAmountChanged = { glowAmount = it },
-                            shadowAmount = shadowAmount,
-                            onShadowAmountChanged = { shadowAmount = it },
-                            vinylTint = Color(vinylTintArgb),
-                            vinylTintAlpha = vinylTintAlpha,
-                            effectTint = Color(effectTintArgb),
-                            effectTintAlpha = effectTintAlpha,
-                            labelTint = Color(labelTintArgb),
-                            labelTintAlpha = labelTintAlpha,
-                            onVinylTintChanged = {
-                                vinylTintArgb = it.toArgb()
-                                if (vinylTintAlpha < 0.12f) vinylTintAlpha = 0.38f
-                            },
-                            onVinylTintAlphaChanged = { vinylTintAlpha = it },
-                            onEffectTintChanged = {
-                                effectTintArgb = it.toArgb()
-                                if (effectTintAlpha < 0.12f) effectTintAlpha = 0.44f
-                            },
-                            onEffectTintAlphaChanged = { effectTintAlpha = it },
-                            onLabelTintChanged = {
-                                labelTintArgb = it.toArgb()
-                                if (labelTintAlpha < 0.12f) labelTintAlpha = 0.72f
-                            },
-                            onLabelTintAlphaChanged = { labelTintAlpha = it },
-                            animateEffects = animateEffects,
-                            onAnimateEffectsChanged = { animateEffects = it },
-                            onDismiss = {
-                                showAdvancedThemeEditor = false
-                            },
-                            onDone = {
-                                showAdvancedThemeEditor = false
-                            },
-                            themeConfig = themeConfig
-                            
-                        )
-                    }
-
-                    if (showSleepTimerSheet && browserProgress < 0.08f) {
-                        SleepTimerSheet(
-                            modifier = Modifier.align(Alignment.BottomCenter),
-                            palette = activePalette,
-                            onDismiss = { showSleepTimerSheet = false },
-                            onSetTimer = { minutes ->
-                                viewModel.setSleepTimer(minutes)
-                                showSleepTimerSheet = false
-                            },
-                            onCancelTimer = {
-                                viewModel.cancelSleepTimer()
-                                showSleepTimerSheet = false
-                            }
-                        )
-                    }
-
-                    if (showLyricsOverlay && browserProgress < 0.08f) {
-                        LyricsOverlay(
-                            lyrics = "Lyrics for ${controlSong.title}\n\n(Not available offline yet!)",
-                            currentProgressMs = 0L,
-                            onDismiss = { showLyricsOverlay = false },
-                            onShareLyrics = { 
-                                showLyricsOverlay = false
-                                showLyricsPostcard = true
-                            }
-                        )
-                    }
-                    
-                    if (showLyricsPostcard && browserProgress < 0.08f) {
-                        LyricsPostcardEditor(
-                            lyrics = "Lyrics for ${controlSong.title}\n\n(Not available offline yet!)",
-                            palette = activePalette,
-                            onDismiss = { showLyricsPostcard = false }
-                        )
-                    }
 
                     if (browserProgress > 0.01f) {
                         AlbumBrowserOverlay(
@@ -1479,7 +1305,180 @@ fun MusicScreen(
                             onExpand = { animateBrowser(false) }
                         )
                     }
+
+                    // Top-level sheets rendered at top of Box layout stack (zIndex 999f)
+                    val isAnyToolVisible = showDeckTools || showThemeEditor || showAdvancedThemeEditor || isMusicSettingsOpen
+                    BottomDeckToolStrip(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .zIndex(999f)
+                            .then(if (isAnyToolVisible) Modifier.fillMaxHeight() else Modifier.wrapContentHeight()),
+                        visible = isAnyToolVisible,
+                        onToggleVisibility = {
+                            val nextVisible = !showDeckTools
+                            showDeckTools = nextVisible
+                            viewModel.setMusicSettingsOpen(nextVisible)
+                            if (!nextVisible) {
+                                showThemeEditor = false
+                                showAdvancedThemeEditor = false
+                            }
+                        },
+                        onOpenThemeEditor = {
+                            showDeckTools = true
+                            showThemeEditor = true
+                            showAdvancedThemeEditor = false
+                            viewModel.setMusicSettingsOpen(true)
+                        },
+                        palette = activePalette,
+                        onOpenSleepTimer = { showSleepTimerSheet = true; showDeckTools = false; viewModel.setMusicSettingsOpen(false) },
+                        onOpenLyrics = { showLyricsOverlay = true; showDeckTools = false; viewModel.setMusicSettingsOpen(false) },
+                        onShare = {
+                            val shareIntent = android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_TEXT, "I'm listening to ${controlSong.title} by ${controlSong.artist} on Gigi!")
+                            }, "Share Song")
+                            context.startActivity(shareIntent)
+                            showDeckTools = false
+                            viewModel.setMusicSettingsOpen(false)
+                        },
+                        isHeartbeatActive = isHeartbeatActive,
+                        onToggleHeartbeat = { isHeartbeatActive = !isHeartbeatActive },
+                        onOpenLandscape = {
+                            showDeckTools = false
+                            viewModel.setMusicSettingsOpen(false)
+                            showThemeEditor = false
+                            showAdvancedThemeEditor = false
+                            if (!isLaunchingLandscape) {
+                                isLaunchingLandscape = true
+                                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                            }
+                        }
+                    )
+
+                    if (showThemeEditor || showAdvancedThemeEditor) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .zIndex(1000f)
+                                .background(Color.Black.copy(alpha = if (showAdvancedThemeEditor) 0.14f else 0.08f))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    showThemeEditor = false
+                                    showAdvancedThemeEditor = false
+                                    showDeckTools = false
+                                }
+                        )
+                    }
+
+                    if (showThemeEditor) {
+                        VinylThemeEditorSheet(
+                            modifier = Modifier.align(Alignment.BottomCenter).zIndex(1001f),
+                            palette = activePalette,
+                            config = themeConfig,
+                            onPresetSelected = {
+                                themePreset = it
+                                tonearmFinish = defaultTonearmFinishForPreset(it)
+                                labelTone = defaultLabelToneForPreset(it)
+                            },
+                            onRecordFinishSelected = { recordFinish = it },
+                            onOpenAdvancedEditor = {
+                                activeAdvancedTab = AdvancedEditorTab.VINYL
+                                showAdvancedThemeEditor = true
+                            },
+                            onDismiss = {
+                                showThemeEditor = false
+                                showAdvancedThemeEditor = false
+                                showDeckTools = false
+                            }
+                        )
+                    }
+
+                    if (showAdvancedThemeEditor) {
+                        VinylAdvancedEditorSheet(
+                            modifier = Modifier.align(Alignment.BottomCenter).zIndex(1002f),
+                            activeTab = activeAdvancedTab,
+                            onTabSelected = { activeAdvancedTab = it },
+                            finish = recordFinish,
+                            onFinishChanged = { recordFinish = it },
+                            tonearmFinish = tonearmFinish,
+                            onTonearmFinishChanged = { tonearmFinish = it },
+                            glowAmount = glowAmount,
+                            onGlowAmountChanged = { glowAmount = it },
+                            shadowAmount = shadowAmount,
+                            onShadowAmountChanged = { shadowAmount = it },
+                            vinylTint = Color(vinylTintArgb),
+                            vinylTintAlpha = vinylTintAlpha,
+                            effectTint = Color(effectTintArgb),
+                            effectTintAlpha = effectTintAlpha,
+                            labelTint = Color(labelTintArgb),
+                            labelTintAlpha = labelTintAlpha,
+                            onVinylTintChanged = {
+                                vinylTintArgb = it.toArgb()
+                                if (vinylTintAlpha < 0.12f) vinylTintAlpha = 0.38f
+                            },
+                            onVinylTintAlphaChanged = { vinylTintAlpha = it },
+                            onEffectTintChanged = {
+                                effectTintArgb = it.toArgb()
+                                if (effectTintAlpha < 0.12f) effectTintAlpha = 0.44f
+                            },
+                            onEffectTintAlphaChanged = { effectTintAlpha = it },
+                            onLabelTintChanged = {
+                                labelTintArgb = it.toArgb()
+                                if (labelTintAlpha < 0.12f) labelTintAlpha = 0.72f
+                            },
+                            onLabelTintAlphaChanged = { labelTintAlpha = it },
+                            animateEffects = animateEffects,
+                            onAnimateEffectsChanged = { animateEffects = it },
+                            onDismiss = {
+                                showAdvancedThemeEditor = false
+                            },
+                            onDone = {
+                                showAdvancedThemeEditor = false
+                            },
+                            themeConfig = themeConfig
+                        )
+                    }
+
+                    if (showSleepTimerSheet) {
+                        SleepTimerSheet(
+                            modifier = Modifier.align(Alignment.BottomCenter).zIndex(1003f),
+                            palette = activePalette,
+                            onDismiss = { showSleepTimerSheet = false },
+                            onSetTimer = { minutes ->
+                                viewModel.setSleepTimer(minutes)
+                                showSleepTimerSheet = false
+                            },
+                            onCancelTimer = {
+                                viewModel.cancelSleepTimer()
+                                showSleepTimerSheet = false
+                            }
+                        )
+                    }
+
+                    if (showLyricsOverlay) {
+                        LyricsOverlay(
+                            lyrics = "Lyrics for ${controlSong.title}\n\n(Not available offline yet!)",
+                            currentProgressMs = 0L,
+                            onDismiss = { showLyricsOverlay = false },
+                            onShareLyrics = { 
+                                showLyricsOverlay = false
+                                showLyricsPostcard = true
+                            }
+                        )
+                    }
+
+                    if (showLyricsPostcard) {
+                        LyricsPostcardEditor(
+                            lyrics = "Lyrics for ${controlSong.title}\n\n(Not available offline yet!)",
+                            palette = activePalette,
+                            onDismiss = { showLyricsPostcard = false }
+                        )
+                    }
                 }
+
 
                 uiState.errorMessage?.let { message ->
                     Surface(
