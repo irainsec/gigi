@@ -1284,7 +1284,9 @@ fun MusicScreen(
                         )
                     }
 
-                    if (browserProgress > 0.08f) {
+                    val isAnyToolVisible = showDeckTools || showThemeEditor || showAdvancedThemeEditor || isMusicSettingsOpen
+
+                    if (browserProgress > 0.08f && !isAnyToolVisible) {
                         val nowPlayingBottomPadding = lerpValue(30f, 96f, browserProgress).dp
                         CollapsedNowPlayingBar(
                             modifier = Modifier
@@ -1306,9 +1308,27 @@ fun MusicScreen(
                         )
                     }
 
+                    if (isAnyToolVisible) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .zIndex(998f)
+                                .background(Color.Black.copy(alpha = 0.55f))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    showDeckTools = false
+                                    showThemeEditor = false
+                                    showAdvancedThemeEditor = false
+                                    viewModel.setMusicSettingsOpen(false)
+                                }
+                        )
+                    }
+
                     // Top-level sheets rendered at top of Box layout stack (zIndex 999f)
-                    val isAnyToolVisible = showDeckTools || showThemeEditor || showAdvancedThemeEditor || isMusicSettingsOpen
                     BottomDeckToolStrip(
+
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .fillMaxWidth()

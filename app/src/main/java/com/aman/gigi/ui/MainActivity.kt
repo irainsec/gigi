@@ -441,7 +441,9 @@ fun Home(
                 !isViewingNotifications &&
                 !isTrackingLocation &&
                 !isMusicLandscape &&
+                !(selectedNavIndex == musicTabIndex && isMusicSettingsOpen) &&
                 (selectedNavIndex != musicTabIndex || isMusicBottomNavVisible)
+
 
 
 

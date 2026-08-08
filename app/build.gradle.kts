@@ -34,8 +34,9 @@ android {
         applicationId = "com.aman.gigi"
         minSdk = 26
         targetSdk = 35
-        versionCode = 33
-        versionName = "v1.7.3"
+        versionCode = 34
+        versionName = "v1.7.4"
+
 
 
 
