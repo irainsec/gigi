@@ -1,0 +1,16 @@
+python -c "
+import json
+transcript_path = r'C:\Users\ATPL-ADMIN\.gemini\antigravity\brain\d0e44c4a-45ea-4017-b247-a264c16623a0\.system_generated\logs\transcript_full.jsonl'
+with open(transcript_path, 'r', encoding='utf-8') as f:
+    for line in f:
+        try:
+            data = json.loads(line)
+            if data.get('type') == 'PLANNER_RESPONSE' and 'tool_calls' in data:
+                for call in data['tool_calls']:
+                    if call.get('name') == 'run_command':
+                        cmd = call.get('args', {}).get('CommandLine', '')
+                        if 'fix_galaxy_final.py' in cmd and 'import sys' in cmd:
+                            print(cmd)
+        except:
+            pass
+"

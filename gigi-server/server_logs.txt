@@ -1,0 +1,50 @@
+[FCM] Sending push to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6 for event scribble
+{"timestamp":"2026-04-04T19:16:07.926Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"2g3d8ksk"}
+≡ƒôñ Relayed scribble: 212 bytes (Captured: no)
+[FCM] Sending push to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6 for event scribble
+[FCM] Push delivered to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6
+{"timestamp":"2026-04-04T19:16:07.994Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"z3whd933"}
+[FCM] Sending push to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6 for event scribble
+[FCM] Push delivered to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6
+[FCM] Push delivered to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6
+[FCM] Push delivered to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6
+{"timestamp":"2026-04-04T19:16:08.184Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"2g3d8ksk"}
+≡ƒôñ Relayed scribble: 211 bytes (Captured: no)
+[FCM] Sending push to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6 for event scribble
+[FCM] Push delivered to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6
+{"timestamp":"2026-04-04T19:16:08.626Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"z3whd933"}
+[FCM] Sending push to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6 for event scribble
+{"timestamp":"2026-04-04T19:16:08.674Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"2g3d8ksk"}
+≡ƒôñ Relayed scribble: 210 bytes (Captured: no)
+[FCM] Sending push to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6 for event scribble
+[FCM] Push delivered to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6
+{"timestamp":"2026-04-04T19:16:08.861Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"2g3d8ksk"}
+[FCM] Push delivered to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6
+{"timestamp":"2026-04-04T19:16:14.741Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"2g3d8ksk"}
+≡ƒôñ Relayed scribble: 211 bytes (Captured: no)
+[FCM] Sending push to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6 for event scribble
+{"timestamp":"2026-04-04T19:16:14.795Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"z3whd933"}
+[FCM] Sending push to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6 for event scribble
+{"timestamp":"2026-04-04T19:16:15.018Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"2g3d8ksk"}
+{"timestamp":"2026-04-04T19:16:15.021Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"2g3d8ksk"}
+{"timestamp":"2026-04-04T19:16:15.078Z","level":"info","event":"presence.snapshot.sent","connectionCode":"2g3d8ksk","requesterDeviceId":"df799a995730ecc8"}
+{"timestamp":"2026-04-04T19:16:15.136Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"z3whd933"}
+{"timestamp":"2026-04-04T19:16:15.137Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"z3whd933"}
+{"timestamp":"2026-04-04T19:16:15.172Z","level":"info","event":"presence.snapshot.sent","connectionCode":"z3whd933","requesterDeviceId":"df799a995730ecc8"}
+[FCM] Push delivered to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6
+[FCM] Push delivered to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6
+{"timestamp":"2026-04-04T19:16:15.643Z","level":"info","event":"presence.updated","deviceId":"df799a995730ecc8","isOnline":true,"activeSessionCount":2,"connectionCode":"2g3d8ksk"}
+≡ƒôñ Relayed scribble: 212 bytes (Captured: no)
+[FCM] Sending push to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6 for event scribble
+[FCM] Push delivered to eae3be5f-91d8-4e41-ad5b-8a639e5dadc6
+{"timestamp":"2026-04-04T19:16:15.929Z","level":"info","event":"presence.updated","deviceId":"f27a9bd7d24dee27","isOnline":true,"activeSessionCount":1,"connectionCode":"2g3d8ksk"}
+≡ƒôñ Relayed scribble: 182 bytes (Captured: no)
+{"timestamp":"2026-04-04T19:16:15.933Z","level":"info","event":"presence.updated","deviceId":"f27a9bd7d24dee27","isOnline":true,"activeSessionCount":1,"connectionCode":"2g3d8ksk"}
+{"timestamp":"2026-04-04T19:16:15.933Z","level":"info","event":"presence.updated","deviceId":"f27a9bd7d24dee27","isOnline":true,"activeSessionCount":1,"connectionCode":"2g3d8ksk"}
+[FCM] Sending push to f537000d-fea0-41b4-90bc-e50e52832ae2 for event scribble
+{"timestamp":"2026-04-04T19:16:15.989Z","level":"info","event":"presence.snapshot.sent","connectionCode":"2g3d8ksk","requesterDeviceId":"f27a9bd7d24dee27"}
+{"timestamp":"2026-04-04T19:16:16.181Z","level":"info","event":"presence.updated","deviceId":"f27a9bd7d24dee27","isOnline":true,"activeSessionCount":1,"connectionCode":"2g3d8ksk"}
+≡ƒôñ Relayed scribble: 183 bytes (Captured: no)
+[FCM] Sending push to f537000d-fea0-41b4-90bc-e50e52832ae2 for event scribble
+[FCM] Push delivered to f537000d-fea0-41b4-90bc-e50e52832ae2
+[FCM] Push delivered to f537000d-fea0-41b4-90bc-e50e52832ae2

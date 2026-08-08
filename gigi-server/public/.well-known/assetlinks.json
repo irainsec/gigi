@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.aman.gigi",
+      "sha256_cert_fingerprints": [
+        "97:7C:57:01:D2:1A:50:5F:3B:11:67:7F:6D:20:88:25:89:23:00:AF:D9:4A:00:73:80:51:92:0D:FC:A6:39:B9"
+      ]
+    }
+  }
+]

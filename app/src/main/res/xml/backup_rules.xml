@@ -1,0 +1,9 @@
+<full-backup-content>
+    <include domain="file" path="datastore/gigi_identity.preferences_pb"/>
+    <include domain="database" path="screensaver_database"/>
+    <include domain="database" path="screensaver_database-shm"/>
+    <include domain="database" path="screensaver_database-wal"/>
+    <include domain="database" path="reminder_items"/>
+    <include domain="database" path="reminder_items-shm"/>
+    <include domain="database" path="reminder_items-wal"/>
+</full-backup-content>

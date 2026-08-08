@@ -1,0 +1,101 @@
+﻿Cleaning Project...
+> Task :app:clean FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/build/reports/problems/problems-report.html
+powershell : 
+At line:1 char:1
++ powershell -ExecutionPolicy Bypass -File rebuild_and_install_on_all.p ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:clean'.
+> java.io.IOException: Unable to delete directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\build'
+    Failed to delete some children. This might happen because a process has files open or has its working directory 
+set in the target directory.
+    - C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\migrated-jars\andro
+idx.compose.runtime.lint.RuntimeIssueRegistry-398cfe4c3e0a311f..jar
+    - C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\migrated-jars\andro
+idx.compose.ui.lint.UiIssueRegistry-15f668e0aab039cc..jar
+    - C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\migrated-jars\andro
+idx.lifecycle.lint.LiveDataCoreIssueRegistry-32b654e6cacc2c23..jar
+    - C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\migrated-jars
+    - C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease
+    - C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\intermediates\lint-cache
+    - C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\intermediates
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 12s
+1 actionable task: 1 executed
+Building Release APK...
+> Task :app:buildKotlinToolingMetadata
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:generateReleaseBuildConfig FROM-CACHE
+> Task :app:generateReleaseResValues FROM-CACHE
+> Task :app:processReleaseGoogleServices FROM-CACHE
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseResources FROM-CACHE
+> Task :app:checkReleaseAarMetadata
+> Task :app:mergeReleaseResources FROM-CACHE
+> Task :app:packageReleaseResources FROM-CACHE
+> Task :app:parseReleaseLocalResources FROM-CACHE
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksRelease FROM-CACHE
+> Task :app:processReleaseMainManifest FROM-CACHE
+> Task :app:processReleaseManifest FROM-CACHE
+> Task :app:processReleaseManifestForPackage FROM-CACHE
+> Task :app:processReleaseResources FROM-CACHE
+> Task :app:kspReleaseKotlin FROM-CACHE
+> Task :app:compileReleaseKotlin FROM-CACHE
+> Task :app:javaPreCompileRelease FROM-CACHE
+> Task :app:compileReleaseJavaWithJavac FROM-CACHE
+> Task :app:extractProguardFiles
+> Task :app:hiltAggregateDepsRelease FROM-CACHE
+> Task :app:hiltJavaCompileRelease FROM-CACHE
+> Task :app:generateReleaseLintVitalReportModel
+> Task :app:lintVitalAnalyzeRelease FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:lintVitalAnalyzeRelease'.
+> java.nio.file.FileSystemException: C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\intermediates\lint-cache\lintVitalAna
+lyzeRelease\migrated-jars\androidx.compose.runtime.lint.RuntimeIssueRegistry-398cfe4c3e0a311f..jar: The process cannot 
+access the file because it is being used by another process
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 16s
+25 actionable tasks: 7 executed, 18 from cache
+C:\Users\ATPL-ADMIN\Downloads\gigi\rebuild_and_install_on_all.ps1 : Build Failed.
+    + CategoryInfo          : NotSpecified: (:) [Write-Error], WriteErrorException
+    + FullyQualifiedErrorId : Microsoft.PowerShell.Commands.WriteErrorException,rebuild_and_install_on_all.ps1
+ 

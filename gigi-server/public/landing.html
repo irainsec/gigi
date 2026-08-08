@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gigi — A tiny galaxy for the people you love 🌌</title>
+<meta name="description" content="Gigi is a private little space for two: doodles that land on their screen, sparkles, tea breaks, live music sync, and a galaxy where the people you love orbit you." />
+<meta property="og:title" content="Gigi 💜 A tiny private galaxy" />
+<meta property="og:description" content="Doodles, instant tea breaks, live music sync, and custom Twigi pixel twins for you and your loved ones." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0D081D;
+    --purple-primary: #8B5CF6;
+    --purple-light: #A78BFA;
+    --purple-glow: rgba(139, 92, 246, 0.4);
+    --pink-accent: #EC4899;
+    --card-bg: rgba(255, 255, 255, 0.05);
+    --card-border: rgba(255, 255, 255, 0.1);
+    --text-main: #FFFFFF;
+    --text-sub: #C4B5FD;
+    --text-muted: #8B7AA8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(1400px 900px at 50% -10%, #3B1F70 0%, #1B1035 50%, #0D081D 100%);
+    color: var(--text-main);
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.5;
+  }
+  .stars-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+  
+  /* Top Navbar */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 0;
+    margin-bottom: 40px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: #fff;
+  }
+  .brand-logo {
+    font-size: 32px;
+    filter: drop-shadow(0 0 12px var(--purple-glow));
+    animation: float 4s ease-in-out infinite;
+  }
+  .brand-title {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #FFF, #C4B5FD);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .nav-link {
+    color: var(--text-sub);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+  .nav-link:hover { color: #fff; }
+  .admin-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 9px 18px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+  }
+  .admin-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: var(--purple-light);
+    transform: translateY(-1px);
+  }
+
+  /* Hero Section */
+  .hero {
+    text-align: center;
+    padding: 40px 0 60px;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(167, 139, 250, 0.3);
+    color: #DDD6FE;
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 13.5px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    backdrop-filter: blur(8px);
+  }
+  h1 {
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
+    margin-bottom: 20px;
+    background: linear-gradient(180deg, #FFFFFF 0%, #E9D5FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    font-size: clamp(16px, 2.5vw, 20px);
+    color: var(--text-sub);
+    max-width: 680px;
+    margin: 0 auto 36px;
+    line-height: 1.6;
+    font-weight: 400;
+  }
+
+  /* CTA Buttons */
+  .cta-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+    color: #FFF;
+    padding: 18px 36px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: 700;
+    box-shadow: 0 12px 36px var(--purple-glow), 0 0 0 1.5px rgba(255,255,255,0.2) inset;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .download-btn:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 18px 45px rgba(139, 92, 246, 0.55), 0 0 0 2px rgba(255,255,255,0.3) inset;
+  }
+  .download-btn .icon { font-size: 22px; }
+  
+  .version-info {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .version-info span { color: var(--purple-light); font-weight: 600; }
+
+  /* App Preview Showcases */
+  .showcase {
+    margin: 60px 0;
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+  .mockup-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 32px;
+    padding: 32px;
+    backdrop-filter: blur(16px);
+    max-width: 800px;
+    width: 100%;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    text-align: left;
+  }
+  .preview-pill {
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid rgba(167, 139, 250, 0.2);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .preview-pill .emoji { font-size: 32px; }
+  .preview-pill h4 { font-size: 17px; font-weight: 700; color: #fff; }
+  .preview-pill p { font-size: 13.5px; color: var(--text-sub); line-height: 1.5; }
+
+  /* Feature Grid */
+  .section-title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 800;
+    margin: 80px 0 40px;
+    letter-spacing: -0.5px;
+  }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+  }
+  .feature-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 28px;
+    padding: 32px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(12px);
+  }
+  .feature-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(167, 139, 250, 0.4);
+    box-shadow: 0 16px 40px rgba(139, 92, 246, 0.2);
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .feature-icon {
+    font-size: 42px;
+    margin-bottom: 16px;
+    display: inline-block;
+  }
+  .feature-card h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #FFF;
+  }
+  .feature-card p {
+    font-size: 15px;
+    color: var(--text-sub);
+    line-height: 1.6;
+  }
+
+  /* Installation Guide */
+  .install-box {
+    margin: 80px 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(236, 72, 153, 0.08) 100%);
+    border: 1px solid rgba(167, 139, 250, 0.25);
+    border-radius: 32px;
+    padding: 40px;
+    backdrop-filter: blur(16px);
+  }
+  .install-box h2 {
+    font-size: 26px;
+    font-weight: 800;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  .steps-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+  }
+  .step-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .step-num {
+    width: 36px;
+    height: 36px;
+    background: var(--purple-primary);
+    color: #fff;
+    font-weight: 800;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .step-item h4 { font-size: 17px; font-weight: 700; }
+  .step-item p { font-size: 14px; color: var(--text-sub); line-height: 1.5; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 40px 0;
+    margin-top: 60px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .footer-links a {
+    color: var(--text-sub);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: #fff; }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+</style>
+</head>
+<body>
+<canvas class="stars-canvas" id="stars"></canvas>
+
+<div class="container">
+  <!-- Navbar -->
+  <nav>
+    <a href="/" class="brand">
+      <span class="brand-logo">🌌</span>
+      <span class="brand-title">Gigi</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#install" class="nav-link">Installation</a>
+      <a href="/admin" class="admin-btn">
+        <span>🔐</span>
+        <span>Admin Login</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="badge">✨ Instant Private Galaxy for Loved Ones</div>
+    <h1>A tiny private galaxy for<br />the people you love</h1>
+    <p class="subtitle">
+      Doodles that land directly on their screen, instant tea breaks, live music sync, and custom pixel-art Twigi avatars that orbit your universe.
+    </p>
+
+    <div class="cta-group">
+      <a class="download-btn" href="/download/gigi-latest.apk" download>
+        <span class="icon">⬇️</span>
+        <span>Download Android APK</span>
+      </a>
+      <a class="admin-btn" href="/admin" style="padding: 18px 28px; font-size: 16px;">
+        <span>🔐 Admin Portal</span>
+      </a>
+    </div>
+
+    <p class="version-info" id="verInfo">
+      Loading latest APK version details...
+    </p>
+  </header>
+
+  <!-- Visual Showcase Mockup -->
+  <div class="showcase">
+    <div class="mockup-card">
+      <div class="preview-pill">
+        <span class="emoji">🌌</span>
+        <h4>Orbit Galaxy</h4>
+        <p>You are the sun. Everyone you love orbits you with custom distance rings.</p>
+      </div>
+      <div class="preview-pill">
+        <span class="emoji">🎨</span>
+        <h4>Stroke Doodles</h4>
+        <p>Draw on your phone and watch it animate live on your partner's lock screen.</p>
+      </div>
+      <div class="preview-pill">
+        <span class="emoji">🧙</span>
+        <h4>Twigi Pixel Twins</h4>
+        <p>Build an animated pixel avatar with 5,000+ hats, clothes, and weapons.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features Grid -->
+  <h2 class="section-title" id="features">Everything you need to stay close</h2>
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">🌌</span>
+      <h3>Personal Galaxy Orbits</h3>
+      <p>You are the sun. Your partner, best friends, and family orbit your sun in custom concentric distance rings.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🎨</span>
+      <h3>Live Screen Doodles</h3>
+      <p>Draw something silly on your screen — it animates stroke-by-stroke directly on your loved one's phone screen.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🫖</span>
+      <h3>Instant Tea Breaks</h3>
+      <p>Call a break with one tap. Everyone gets a full-screen notification invite to join in and catch up.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🧙</span>
+      <h3>Twigi Studio (LPC)</h3>
+      <p>Customize over 5,000+ hairstyles, armors, hats, and weapons into a live walking 2D pixel twin avatar.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🎵</span>
+      <h3>Real-time Music Sync</h3>
+      <p>See what your person is listening to right now, synced automatically from Spotify, Apple Music, or YouTube.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">💬</span>
+      <h3>Micro-Moments & Sparkles</h3>
+      <p>End-to-end encrypted notes, photo moments, animated stickers, and instant heart sparkles.</p>
+    </div>
+  </div>
+
+  <!-- Installation Steps -->
+  <div class="install-box" id="install">
+    <h2>How to Install Directly from Web</h2>
+    <div class="steps-list">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <h4>Download APK</h4>
+        <p>Click the <strong>Download Android APK</strong> button above to download the latest `.apk` package file.</p>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <h4>Allow Install</h4>
+        <p>If prompted by Android, tap <strong>Settings</strong> and allow <em>"Install unknown apps"</em> for your browser.</p>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <h4>Open & Orbit</h4>
+        <p>Open Gigi, set up your animated avatar, and send an invite link to your favorite person! 💜</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-links">
+      <a href="/admin">🔐 Admin Console</a>
+      <a href="/privacy-policy.html">Privacy Policy</a>
+      <a href="/delete-account.html">Delete Account</a>
+      <a href="/download/gigi-latest.apk">Direct APK Download</a>
+    </div>
+    <p>Made with 💜 for loved ones &nbsp;·&nbsp; Server status: <span style="color:#34D399; font-weight:600;">Online</span></p>
+  </footer>
+</div>
+
+<script>
+  // Dynamic Starfield background animation
+  const canvas = document.getElementById('stars');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+
+  function initStars() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    stars = [];
+    for (let i = 0; i < 180; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: Math.random() * 1.5,
+        alpha: Math.random(),
+        speed: 0.005 + Math.random() * 0.015,
+        color: ['#FFFFFF', '#C4B5FD', '#F472B6', '#A78BFA'][Math.floor(Math.random() * 4)]
+      });
+    }
+  }
+
+  function animateStars() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(star => {
+      star.alpha += star.speed;
+      if (star.alpha > 1 || star.alpha < 0.2) star.speed = -star.speed;
+      ctx.globalAlpha = Math.abs(star.alpha);
+      ctx.fillStyle = star.color;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    requestAnimationFrame(animateStars);
+  }
+
+  initStars();
+  animateStars();
+  window.addEventListener('resize', initStars);
+
+  // Fetch dynamic version metadata from server
+  fetch('/download/latest.json')
+    .then(res => res.json())
+    .then(data => {
+      const infoEl = document.getElementById('verInfo');
+      if (data && data.version) {
+        infoEl.innerHTML = `Latest Version: <span>${data.version}</span> · Size: <span>${data.sizeMb} MB</span> · Updated: <span>${(data.updatedAt || '').slice(0, 10)}</span><br><small style="color:var(--text-muted)">Requires Android 8.0+ · Direct Web Build</small>`;
+      } else {
+        infoEl.innerHTML = `Direct APK Build · Ready for Android download`;
+      }
+    })
+    .catch(() => {
+      document.getElementById('verInfo').innerHTML = `Direct APK Build · Ready for Android download`;
+    });
+</script>
+</body>
+</html>

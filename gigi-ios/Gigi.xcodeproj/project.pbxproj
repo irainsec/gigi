@@ -1,0 +1,213 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000012C10000100000001 /* GigiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000012C10000100000001 /* GigiApp.swift */; };
+		A10000022C10000100000001 /* PairingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000022C10000100000001 /* PairingModels.swift */; };
+		A10000032C10000100000001 /* LoveCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000032C10000100000001 /* LoveCard.swift */; };
+		A10000042C10000100000001 /* ReminderItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000042C10000100000001 /* ReminderItem.swift */; };
+		A10000052C10000100000001 /* SongItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000052C10000100000001 /* SongItem.swift */; };
+		A10000062C10000100000001 /* WebSocketManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000062C10000100000001 /* WebSocketManager.swift */; };
+		A10000072C10000100000001 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000072C10000100000001 /* APIClient.swift */; };
+		A10000082C10000100000001 /* MainViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000082C10000100000001 /* MainViewModel.swift */; };
+		A10000092C10000100000001 /* MusicViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000092C10000100000001 /* MusicViewModel.swift */; };
+		A100000A2C10000100000001 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000A2C10000100000001 /* MainView.swift */; };
+		A100000B2C10000100000001 /* SweetCornerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000B2C10000100000001 /* SweetCornerView.swift */; };
+		A100000C2C10000100000001 /* RemindersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000C2C10000100000001 /* RemindersView.swift */; };
+		A100000D2C10000100000001 /* MusicView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000D2C10000100000001 /* MusicView.swift */; };
+		A100000E2C10000100000001 /* GlassBottomNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000E2C10000100000001 /* GlassBottomNavigation.swift */; };
+		A100000F2C10000100000001 /* DynamicIslandMiniPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000F2C10000100000001 /* DynamicIslandMiniPlayer.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A20000002C10000100000001 /* Gigi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Gigi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000012C10000100000001 /* GigiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GigiApp.swift; sourceTree = "<group>"; };
+		A20000022C10000100000001 /* PairingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/PairingModels.swift; sourceTree = "<group>"; };
+		A20000032C10000100000001 /* LoveCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/LoveCard.swift; sourceTree = "<group>"; };
+		A20000042C10000100000001 /* ReminderItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/ReminderItem.swift; sourceTree = "<group>"; };
+		A20000052C10000100000001 /* SongItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/SongItem.swift; sourceTree = "<group>"; };
+		A20000062C10000100000001 /* WebSocketManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Network/WebSocketManager.swift; sourceTree = "<group>"; };
+		A20000072C10000100000001 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Network/APIClient.swift; sourceTree = "<group>"; };
+		A20000082C10000100000001 /* MainViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/MainViewModel.swift; sourceTree = "<group>"; };
+		A20000092C10000100000001 /* MusicViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/MusicViewModel.swift; sourceTree = "<group>"; };
+		A200000A2C10000100000001 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/MainView.swift; sourceTree = "<group>"; };
+		A200000B2C10000100000001 /* SweetCornerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/SweetCornerView.swift; sourceTree = "<group>"; };
+		A200000C2C10000100000001 /* RemindersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/RemindersView.swift; sourceTree = "<group>"; };
+		A200000D2C10000100000001 /* MusicView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/MusicView.swift; sourceTree = "<group>"; };
+		A200000E2C10000100000001 /* GlassBottomNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Components/GlassBottomNavigation.swift; sourceTree = "<group>"; };
+		A200000F2C10000100000001 /* DynamicIslandMiniPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Components/DynamicIslandMiniPlayer.swift; sourceTree = "<group>"; };
+		A20000102C10000100000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		A30000002C10000100000001 = {
+			isa = PBXGroup;
+			children = (
+				A30000012C10000100000001 /* Gigi */,
+				A20000002C10000100000001 /* Gigi.app */,
+			);
+			sourceTree = "<group>";
+		};
+		A30000012C10000100000001 /* Gigi */ = {
+			isa = PBXGroup;
+			children = (
+				A20000012C10000100000001 /* GigiApp.swift */,
+				A20000022C10000100000001 /* PairingModels.swift */,
+				A20000032C10000100000001 /* LoveCard.swift */,
+				A20000042C10000100000001 /* ReminderItem.swift */,
+				A20000052C10000100000001 /* SongItem.swift */,
+				A20000062C10000100000001 /* WebSocketManager.swift */,
+				A20000072C10000100000001 /* APIClient.swift */,
+				A20000082C10000100000001 /* MainViewModel.swift */,
+				A20000092C10000100000001 /* MusicViewModel.swift */,
+				A200000A2C10000100000001 /* MainView.swift */,
+				A200000B2C10000100000001 /* SweetCornerView.swift */,
+				A200000C2C10000100000001 /* RemindersView.swift */,
+				A200000D2C10000100000001 /* MusicView.swift */,
+				A200000E2C10000100000001 /* GlassBottomNavigation.swift */,
+				A200000F2C10000100000001 /* DynamicIslandMiniPlayer.swift */,
+				A20000102C10000100000001 /* Info.plist */,
+			);
+			path = Gigi;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A40000002C10000100000001 /* Gigi */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A50000002C10000100000001 /* Build configuration list for PBXNativeTarget "Gigi" */;
+			buildPhases = (
+				A60000002C10000100000001 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Gigi;
+			productName = Gigi;
+			productReference = A20000002C10000100000001 /* Gigi.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A70000002C10000100000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = A80000002C10000100000001 /* Build configuration list for PBXProject "Gigi" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A30000002C10000100000001;
+			productRefGroup = A30000002C10000100000001;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A40000002C10000100000001 /* Gigi */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A60000002C10000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000012C10000100000001 /* GigiApp.swift in Sources */,
+				A10000022C10000100000001 /* PairingModels.swift in Sources */,
+				A10000032C10000100000001 /* LoveCard.swift in Sources */,
+				A10000042C10000100000001 /* ReminderItem.swift in Sources */,
+				A10000052C10000100000001 /* SongItem.swift in Sources */,
+				A10000062C10000100000001 /* WebSocketManager.swift in Sources */,
+				A10000072C10000100000001 /* APIClient.swift in Sources */,
+				A10000082C10000100000001 /* MainViewModel.swift in Sources */,
+				A10000092C10000100000001 /* MusicViewModel.swift in Sources */,
+				A100000A2C10000100000001 /* MainView.swift in Sources */,
+				A100000B2C10000100000001 /* SweetCornerView.swift in Sources */,
+				A100000C2C10000100000001 /* RemindersView.swift in Sources */,
+				A100000D2C10000100000001 /* MusicView.swift in Sources */,
+				A100000E2C10000100000001 /* GlassBottomNavigation.swift in Sources */,
+				A100000F2C10000100000001 /* DynamicIslandMiniPlayer.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A90000012C10000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 31;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Gigi/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.7.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.amanraj.gigi;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A90000022C10000100000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 31;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Gigi/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.7.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.amanraj.gigi;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A50000002C10000100000001 /* Build configuration list for PBXNativeTarget "Gigi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A90000012C10000100000001 /* Debug */,
+				A90000022C10000100000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A80000002C10000100000001 /* Build configuration list for PBXProject "Gigi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A90000012C10000100000001 /* Debug */,
+				A90000022C10000100000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A70000002C10000100000001 /* Project object */;
+}

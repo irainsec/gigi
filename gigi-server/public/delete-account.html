@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Gigi Account</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 600px; margin: 0 auto; color: #333; }
+        h1 { color: #d32f2f; }
+        .warning { background-color: #ffebee; border-left: 4px solid #f44336; padding: 10px 15px; margin-bottom: 20px; }
+        .tip { background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 10px 15px; margin-bottom: 20px; }
+        .btn { display: inline-block; background-color: #d32f2f; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold; border: none; cursor: pointer; }
+        .btn:disabled { background-color: #aaa; cursor: not-allowed; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
+        .hidden { display: none; }
+        #message { margin-top: 20px; font-weight: bold; }
+        .error { color: #d32f2f; }
+        .success { color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <h1>Delete Your Gigi Account</h1>
+
+    <div class="tip">
+        <p><strong>Fastest way:</strong> if you can still sign in, open the Gigi app →
+        Profile → <em>Delete Account</em>. Deletion there is immediate.</p>
+    </div>
+
+    <div class="warning">
+        <p><strong>Warning:</strong> Deleting your account is permanent. This will erase:</p>
+        <ul>
+            <li>Your profile and login information</li>
+            <li>All your active connections with your partner(s)</li>
+            <li>Your shared scribbles, notes, and photos</li>
+            <li>Your love card decks</li>
+        </ul>
+        <p>This data cannot be recovered once deleted.</p>
+    </div>
+
+    <p>If you can't access the app, request deletion here. Enter the phone number or
+    Google email registered with your account; your account and all associated data
+    are permanently deleted within <strong>7 days</strong>.</p>
+
+    <form id="deleteForm">
+        <div class="form-group">
+            <label for="contact">Registered phone number (with country code) or Google email:</label>
+            <input type="text" id="contact" placeholder="+1234567890 or you@gmail.com" required>
+        </div>
+        <div class="form-group">
+            <label for="note">Anything we should know? (optional)</label>
+            <textarea id="note" rows="2" maxlength="500"></textarea>
+        </div>
+        <button type="submit" class="btn" id="submitBtn">Request Permanent Deletion</button>
+    </form>
+
+    <div id="message" class="hidden"></div>
+
+    <p style="margin-top:30px; color:#777; font-size:0.9em;">Questions? Contact
+    <a href="mailto:support@gigi.iamanraj.com">support@gigi.iamanraj.com</a>.</p>
+
+    <script>
+        document.getElementById('deleteForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const messageDiv = document.getElementById('message');
+            const btn = document.getElementById('submitBtn');
+            if (!confirm('Request permanent deletion of your account and all shared data?')) return;
+            btn.disabled = true;
+            try {
+                const resp = await fetch('/api/auth/request-account-deletion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contact: document.getElementById('contact').value.trim(),
+                        note: document.getElementById('note').value.trim()
+                    })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) throw new Error(data.error || 'Could not submit the request.');
+                this.classList.add('hidden');
+                messageDiv.textContent = data.message;
+                messageDiv.className = 'success';
+            } catch (err) {
+                messageDiv.textContent = err.message;
+                messageDiv.className = 'error';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

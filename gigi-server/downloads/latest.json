@@ -1,0 +1,9 @@
+{
+  "updatedAt": "2026-08-08T03:08:47Z",
+  "versionCode": 31,
+  "versionName": "v1.7.1",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
+  "iosDownloadUrl": "itms-services://?action=download-manifest&url=https://gigi.iamanraj.com/downloads/manifest.plist",
+  "releaseNotes": "Bug fixes, notification improvements, Bestie theme, storybook onboarding & stability updates.",
+  "sizeMb": 93.2
+}

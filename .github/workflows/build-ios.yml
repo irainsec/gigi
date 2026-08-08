@@ -1,0 +1,39 @@
+name: Build & Publish iOS App
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-14
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+
+      - name: Build iOS Simulator App & Archive
+        run: |
+          cd gigi-ios
+          xcodebuild -project Gigi.xcodeproj \
+                     -scheme Gigi \
+                     -sdk iphonesimulator \
+                     -configuration Release \
+                     -derivedDataPath build \
+                     clean build
+
+      - name: Compress iOS Build Artifact
+        run: |
+          cd gigi-ios/build/Build/Products/Release-iphonesimulator
+          zip -r Gigi-Simulator.zip Gigi.app
+
+      - name: Upload iOS App Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gigi-iOS-Simulator
+          path: gigi-ios/build/Build/Products/Release-iphonesimulator/Gigi-Simulator.zip

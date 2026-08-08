@@ -1,0 +1,20 @@
+﻿> Task :app:writeReleaseAppMetadata UP-TO-DATE
+> Task :app:writeReleaseSigningConfigVersions UP-TO-DATE
+> Task :app:kspReleaseKotlin
+
+> Task :app:compileReleaseKotlin
+w: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/data/sync/ScribbleSyncManager.kt:1760:63 Java type mismatch: inferred type is 'kotlin.Nothing?', but 'kotlin.String' was expected.
+w: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/data/sync/ScribbleSyncManager.kt:1761:59 Java type mismatch: inferred type is 'kotlin.Nothing?', but 'kotlin.String' was expected.
+w: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/data/sync/ScribbleSyncManager.kt:2833:22 'fun setTargetAspectRatio(p0: Int): ImageCapture.Builder' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/data/sync/ScribbleSyncManager.kt:2935:22 'fun setTargetResolution(p0: Size): ImageAnalysis.Builder' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/data/sync/ScribbleSyncManager.kt:3136:31 'constructor(): MediaRecorder' is deprecated. Deprecated in Java.
+
+> Task :app:compileReleaseJavaWithJavac
+> Task :app:hiltAggregateDepsRelease UP-TO-DATE
+> Task :app:hiltJavaCompileRelease
+> Task :app:processReleaseJavaRes UP-TO-DATE
+> Task :app:mergeReleaseJavaResource UP-TO-DATE
+> Task :app:transformReleaseClassesWithAsm
+> Task :app:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :app:expandReleaseArtProfileWildcards
+> Task :app:minifyReleaseWithR8

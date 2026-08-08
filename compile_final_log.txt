@@ -1,0 +1,262 @@
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/C:/Users/ATPL-ADMIN/.gradle/wrapper/dists/gradle-9.1.0-bin/9agqghryom9wkf8r80qlhnts3/gradle-9.1.0/lib/native-platform-0.22-milestone-28.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Initialized native services in: C:\Users\ATPL-ADMIN\.gradle\native
+Initialized jansi services in: C:\Users\ATPL-ADMIN\.gradle\native
+The client will now receive all logging from the daemon (pid: 3708). The daemon log file: C:\Users\ATPL-ADMIN\.gradle\daemon\9.1.0\daemon-3708.out.log
+Starting 60th build in daemon [uptime: 4 hrs 52 mins 10.089 secs, performance: 100%, GC rate: 0.00/s, heap usage: 1% of 4 GiB]
+Using 8 worker leases.
+Now considering [C:\Users\ATPL-ADMIN\Downloads\gigi] as hierarchies to watch
+Watching the file system is configured to be enabled
+File system watching is active
+Starting Build
+Settings evaluated using settings file 'C:\Users\ATPL-ADMIN\Downloads\gigi\settings.gradle.kts'.
+Using local directory build cache for the root build (location = C:\Users\ATPL-ADMIN\.gradle\caches\build-cache-1, remove unused entries = after 7 days).
+Projects loaded. Root project using build file 'C:\Users\ATPL-ADMIN\Downloads\gigi\build.gradle.kts'.
+Included projects: [root project 'Remind Me!', project ':app']
+
+> Configure project :
+Evaluating root project 'Remind Me!' using build file 'C:\Users\ATPL-ADMIN\Downloads\gigi\build.gradle.kts'.
+Resolved plugin [id: 'com.android.application', version: '8.7.3', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.android', version: '2.0.21', apply: false]
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.compose', version: '2.0.21', apply: false]
+Resolved plugin [id: 'com.google.dagger.hilt.android', version: '2.52', apply: false]
+Resolved plugin [id: 'com.google.devtools.ksp', version: '2.0.21-1.0.25', apply: false]
+
+> Configure project :app
+Evaluating project ':app' using build file 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\build.gradle.kts'.
+Resolved plugin [id: 'com.android.application', version: '8.7.3']
+Resolved plugin [id: 'org.jetbrains.kotlin.android', version: '2.0.21']
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.compose', version: '2.0.21']
+Resolved plugin [id: 'com.google.devtools.ksp', version: '2.0.21-1.0.25']
+Resolved plugin [id: 'com.google.dagger.hilt.android', version: '2.52']
+Resolved plugin [id: 'kotlin-parcelize']
+Using default execution profile
+Using Kotlin Gradle Plugin gradle85 variant
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+All projects evaluated.
+Task path ':app:compileDebugKotlin' matched project ':app'
+Task name matched 'compileDebugKotlin'
+Selected primary task 'compileDebugKotlin' from project :app
+Tasks to be executed: [task ':app:checkKotlinGradlePluginConfigurationErrors', task ':app:preBuild', task ':app:preDebugBuild', task ':app:generateDebugBuildConfig', task ':app:checkDebugAarMetadata', task ':app:generateDebugResValues', task ':app:mapDebugSourceSetPaths', task ':app:generateDebugResources', task ':app:mergeDebugResources', task ':app:packageDebugResources', task ':app:parseDebugLocalResources', task ':app:createDebugCompatibleScreenManifests', task ':app:extractDeepLinksDebug', task ':app:processDebugMainManifest', task ':app:processDebugManifest', task ':app:processDebugManifestForPackage', task ':app:processDebugResources', task ':app:kspDebugKotlin', task ':app:compileDebugKotlin']
+Tasks that were excluded: []
+Resolve mutations for :app:checkKotlinGradlePluginConfigurationErrors (Thread[#3999,Execution worker,5,main]) started.
+:app:checkKotlinGradlePluginConfigurationErrors (Thread[#3999,Execution worker,5,main]) started.
+
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':app:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :app:preBuild (Thread[#3999,Execution worker,5,main]) started.
+:app:preBuild (Thread[#3999,Execution worker,5,main]) started.
+
+> Task :app:preBuild UP-TO-DATE
+Skipping task ':app:preBuild' as it has no actions.
+Resolve mutations for :app:preDebugBuild (Thread[#3999,Execution worker,5,main]) started.
+:app:preDebugBuild (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:preDebugBuild UP-TO-DATE
+Skipping task ':app:preDebugBuild' as it has no actions.
+Resolve mutations for :app:generateDebugBuildConfig (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:generateDebugBuildConfig (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+Build cache key for task ':app:generateDebugBuildConfig' is ef955f7e7c3b0eaca21fe42dd8a22604
+Skipping task ':app:generateDebugBuildConfig' as it is up-to-date.
+Resolve mutations for :app:checkDebugAarMetadata (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:checkDebugAarMetadata (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+Caching disabled for task ':app:checkDebugAarMetadata' because:
+  Caching has been disabled for the task
+Skipping task ':app:checkDebugAarMetadata' as it is up-to-date.
+Resolve mutations for :app:generateDebugResValues (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:generateDebugResValues (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:generateDebugResValues UP-TO-DATE
+Build cache key for task ':app:generateDebugResValues' is f41ab0820235a2b641ebe3a2247c436e
+Skipping task ':app:generateDebugResValues' as it is up-to-date.
+Resolve mutations for :app:mapDebugSourceSetPaths (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:mapDebugSourceSetPaths (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+Caching disabled for task ':app:mapDebugSourceSetPaths' because:
+  Caching has been disabled for the task
+Skipping task ':app:mapDebugSourceSetPaths' as it is up-to-date.
+Resolve mutations for :app:generateDebugResources (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:generateDebugResources (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:generateDebugResources UP-TO-DATE
+Build cache key for task ':app:generateDebugResources' is 3cb6d0ac4164a439323ecb4a98b97b27
+Skipping task ':app:generateDebugResources' as it is up-to-date.
+Resolve mutations for :app:mergeDebugResources (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:mergeDebugResources (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:mergeDebugResources UP-TO-DATE
+Build cache key for task ':app:mergeDebugResources' is de35034122ea9b4e5f899d199e4103dd
+Skipping task ':app:mergeDebugResources' as it is up-to-date.
+Resolve mutations for :app:packageDebugResources (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:packageDebugResources (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:packageDebugResources UP-TO-DATE
+Build cache key for task ':app:packageDebugResources' is 011832155b638b8228ee2038db6c0624
+Skipping task ':app:packageDebugResources' as it is up-to-date.
+Resolve mutations for :app:parseDebugLocalResources (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:parseDebugLocalResources (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:parseDebugLocalResources UP-TO-DATE
+Build cache key for task ':app:parseDebugLocalResources' is 7d4659c85f22230f0c6c1a59d0538152
+Skipping task ':app:parseDebugLocalResources' as it is up-to-date.
+Resolve mutations for :app:createDebugCompatibleScreenManifests (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:createDebugCompatibleScreenManifests (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+Caching disabled for task ':app:createDebugCompatibleScreenManifests' because:
+  Caching has been disabled for the task
+Skipping task ':app:createDebugCompatibleScreenManifests' as it is up-to-date.
+Resolve mutations for :app:extractDeepLinksDebug (Thread[#4002,Execution worker Thread 4,5,main]) started.
+:app:extractDeepLinksDebug (Thread[#4002,Execution worker Thread 4,5,main]) started.
+
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+Build cache key for task ':app:extractDeepLinksDebug' is 95145abf5af68583bc061b128ab0884d
+Skipping task ':app:extractDeepLinksDebug' as it is up-to-date.
+Resolve mutations for :app:processDebugMainManifest (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:processDebugMainManifest (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:processDebugMainManifest UP-TO-DATE
+Build cache key for task ':app:processDebugMainManifest' is de6a998152db62a8b2e28c5a1f89677d
+Skipping task ':app:processDebugMainManifest' as it is up-to-date.
+Resolve mutations for :app:processDebugManifest (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:processDebugManifest (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:processDebugManifest UP-TO-DATE
+Build cache key for task ':app:processDebugManifest' is 29a91bcf237e2aa24a8a0e24a19e1db0
+Skipping task ':app:processDebugManifest' as it is up-to-date.
+Resolve mutations for :app:processDebugManifestForPackage (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:processDebugManifestForPackage (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+Custom actions are attached to task ':app:processDebugManifestForPackage'.
+Build cache key for task ':app:processDebugManifestForPackage' is 4673a9b515d917f37f472818168d2bea
+Skipping task ':app:processDebugManifestForPackage' as it is up-to-date.
+Resolve mutations for :app:processDebugResources (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:processDebugResources (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:processDebugResources UP-TO-DATE
+Build cache key for task ':app:processDebugResources' is 8bbea01428d7b138e2981c2585e81dcd
+Skipping task ':app:processDebugResources' as it is up-to-date.
+Resolve mutations for :app:kspDebugKotlin (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:kspDebugKotlin (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:kspDebugKotlin UP-TO-DATE
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+Build cache key for task ':app:kspDebugKotlin' is 428464cab17511c57a61e01d1075b6b0
+Skipping task ':app:kspDebugKotlin' as it is up-to-date.
+Resolve mutations for :app:compileDebugKotlin (Thread[#4005,Execution worker Thread 7,5,main]) started.
+:app:compileDebugKotlin (Thread[#4005,Execution worker Thread 7,5,main]) started.
+
+> Task :app:compileDebugKotlin
+Build cache key for task ':app:compileDebugKotlin' is 697f1bef4a30c50e0df66d8cac5cb719
+Task ':app:compileDebugKotlin' is not up-to-date because:
+  Task has failed previously.
+The input changes require a full rebuild for incremental task ':app:compileDebugKotlin'.
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\kotlin', not found
+file or directory 'C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\debug\java', not found
+Kotlin source files: C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\alarm\AlarmReceiver.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\alarm\AlarmUtils.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\alarm\BootReceiver.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\data\client\ClientIdentityStore.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\data\client\ConnectionBootstrapManager.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\data\location\LocationProvider.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\data\sync\ScribbleSerializer.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\data\sync\ScribbleSyncManager.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\data\sync\SyncProtocol.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\db\ConnectionDao.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\db\Converters.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\db\LoveCardDao.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\db\OutboundActionDao.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\db\RecentlySentGif.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\db\ReminderDAO.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\db\ReminderDatabase.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\db\ReminderRepository.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\db\ScreensaverDatabase.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\db\ScribbleDao.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\db\SharedAlarmDao.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\engine\BrushEngine.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\engine\EffectsEngine.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\engine\ScribbleEngine.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\hilt\AppModule.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\hilt\DatabaseModule.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\hilt\NetworkModule.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\Connection.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\LoveCardModels.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\OutboundAction.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\RecurrencePattern.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\RecurrencePatternConverter.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\Reminder.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\RemoteFile.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\RemoteNotification.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\RemotePhoto.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\Scribble.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\ScribbleSummary.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\model\SharedAlarmMirror.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\network\HttpUploader.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\network\WebSocketClient.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\RemindMe.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\repository\ConnectionRepository.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\repository\GifRepository.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\repository\LoveCardRepository.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\repository\OutboundActionRepository.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\repository\ScribbleRepository.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\repository\SharedAlarmRepository.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\service\AlarmForegroundService.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\service\BackgroundReceiver.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\service\GigiNotificationListenerService.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\service\ScreensaverManager.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\service\ScreensaverSyncService.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\service\ScribbleSyncService.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\service\ThemeSongPlayer.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\AlarmActivity.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\components\GlassBottomNavigation.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\components\RomanceAmbientDecor.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\Developer.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\LoveCardDeckActivity.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\LoveCardsSection.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\MainActivity.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\MirrorRequestActivity.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\OnboardingGate.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\Reminders.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\RemoteFileExplorer.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\components\GifPickerTray.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\components\SafeGlassBox.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\components\ScribblePlaybackComponent.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\connection\ConnectingScreen.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\connection\ConnectionListScreen.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\connection\CreateConnectionScreen.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\connection\JoinConnectionScreen.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\connection\NamingScreen.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\connection\NotConnectedScreen.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\connection\NotificationListView.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\drawing\DrawingCanvas.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\drawing\DrawingScreen.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\drawing\DrawingTools.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\history\CuteHistoryItem.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\history\HistoryDrawer.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\LockscreenScribbleActivity.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\MirrorViewer.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\playback\ScribblePlayback.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\screensaver\playback\StrokeAnimator.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\Screensaver.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\settings\ConnectionInfoCard.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\settings\ScreensaverSettingsScreen.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\sparkle\SparkleCameraScreen.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\sparkle\SparkleEffectsEngine.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\sparkle\SparkleRevealActivity.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\theme\Color.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\theme\Theme.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\ui\theme\Type.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\CameraUtils.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\CompressionUtil.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\ConnectionCodeGenerator.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\Constants.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\FileScanner.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\GalleryScanner.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\LocationUtils.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\NetworkMonitor.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\QRCodeGenerator.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\ScreenMirrorManager.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\StrokeSmoothing.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\utils\Utils.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\viewmodel\DrawingViewModel.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\viewmodel\PlaybackViewModel.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\viewmodel\ScreensaverViewModel.kt, C:\Users\ATPL-ADMIN\Downloads\gigi\app\src\main\java\com\aman\gigi\viewmodel\SettingsViewModel.kt
+Java source files: C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\alarm\BootReceiver_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\alarm\BootReceiver_MembersInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\alarm\Hilt_BootReceiver.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\data\client\ClientIdentityStore_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\data\client\ConnectionBootstrapManager_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\data\location\LocationProvider_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\data\sync\ScribbleSyncManager_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\db\ConnectionDao_Impl.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\db\LoveCardDao_Impl.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\db\OutboundActionDao_Impl.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\db\RecentlySentGifDao_Impl.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\db\ReminderDAO_Impl.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\db\ReminderDatabase_Impl.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\db\ReminderRepository_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\db\ScreensaverDatabase_Impl.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\db\ScribbleDao_Impl.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\db\SharedAlarmDao_Impl.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\AppModule_ProvideContextFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\AppModule_ProvideDatabaseFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\AppModule_ProvideNetworkMonitorFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\AppModule_ProvideNoteDaoFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\AppModule_ProvideRecentlySentGifDaoFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\AppModule_ProvideSharedAlarmDaoFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\DatabaseModule_ProvideConnectionDaoFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\DatabaseModule_ProvideLoveCardDaoFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\DatabaseModule_ProvideOutboundActionDaoFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\DatabaseModule_ProvideScreensaverDatabaseFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\DatabaseModule_ProvideScribbleDaoFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\NetworkModule_ProvideHttpUploaderFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\NetworkModule_ProvideScribbleSyncManagerFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\hilt\NetworkModule_ProvideWebSocketClientFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\network\HttpUploader_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\network\WebSocketClient_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\RemindMe_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\RemindMe_MembersInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\repository\ConnectionRepository_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\repository\GifRepository_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\repository\LoveCardRepository_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\repository\OutboundActionRepository_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\repository\ScribbleRepository_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\repository\SharedAlarmRepository_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\service\GigiNotificationListenerService_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\service\GigiNotificationListenerService_MembersInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\service\Hilt_GigiNotificationListenerService.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\service\Hilt_ScreensaverSyncService.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\service\Hilt_ScribbleSyncService.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\service\ScreensaverManager_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\service\ScreensaverSyncService_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\service\ScreensaverSyncService_MembersInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\service\ScribbleSyncService_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\service\ScribbleSyncService_MembersInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\service\ThemeSongPlayer_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\Hilt_LoveCardDeckActivity.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\Hilt_MainActivity.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\Hilt_MirrorRequestActivity.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\LoveCardDeckActivity_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\MainActivity_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\MainActivity_MembersInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\MainViewModel_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\MainViewModel_HiltModules.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\MainViewModel_HiltModules_KeyModule_ProvideFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\MirrorRequestActivity_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\screensaver\Hilt_LockscreenScribbleActivity.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\screensaver\LockscreenScribbleActivity_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\screensaver\LockscreenScribbleActivity_MembersInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\sparkle\Hilt_SparkleRevealActivity.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\sparkle\SparkleRevealActivity_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\ui\sparkle\SparkleRevealActivity_MembersInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\utils\FileScanner_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\utils\GalleryScanner_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\utils\ScreenMirrorManager_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\DrawingViewModel_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\DrawingViewModel_HiltModules.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\DrawingViewModel_HiltModules_KeyModule_ProvideFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\PlaybackViewModel_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\PlaybackViewModel_HiltModules.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\PlaybackViewModel_HiltModules_KeyModule_ProvideFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\ScreensaverViewModel_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\ScreensaverViewModel_HiltModules.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\ScreensaverViewModel_HiltModules_KeyModule_ProvideFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\ScreensaverViewModel_MembersInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\SettingsViewModel_Factory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\SettingsViewModel_HiltModules.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\com\aman\gigi\viewmodel\SettingsViewModel_HiltModules_KeyModule_ProvideFactory.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\dagger\hilt\internal\aggregatedroot\codegen\_com_aman_gigi_RemindMe.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_alarm_BootReceiver_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_hilt_AppModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_hilt_DatabaseModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_hilt_NetworkModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_RemindMe_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_service_GigiNotificationListenerService_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_service_ScreensaverSyncService_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_service_ScribbleSyncService_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_ui_LoveCardDeckActivity_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_ui_MainActivity_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_ui_MainViewModel_HiltModules_BindsModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_ui_MainViewModel_HiltModules_KeyModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_ui_MirrorRequestActivity_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_ui_screensaver_LockscreenScribbleActivity_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_ui_sparkle_SparkleRevealActivity_GeneratedInjector.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_viewmodel_DrawingViewModel_HiltModules_BindsModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_viewmodel_DrawingViewModel_HiltModules_KeyModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_viewmodel_PlaybackViewModel_HiltModules_BindsModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_viewmodel_PlaybackViewModel_HiltModules_KeyModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_viewmodel_ScreensaverViewModel_HiltModules_BindsModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_viewmodel_ScreensaverViewModel_HiltModules_KeyModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_viewmodel_SettingsViewModel_HiltModules_BindsModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\ksp\debug\java\hilt_aggregated_deps\_com_aman_gigi_viewmodel_SettingsViewModel_HiltModules_KeyModule.java, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\generated\source\buildConfig\debug\com\aman\gigi\BuildConfig.java
+Script source files: 
+Script file extensions: 
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: null
+Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0, 3], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[]), areFileChangesKnown=false, modifiedFiles=null, deletedFiles=null, classpathChanges=NotAvailableForNonIncrementalRun, workingDir=C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\kotlin\compileDebugKotlin\cacheable, multiModuleICSettings=MultiModuleICSettings(buildHistoryFile=C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\kotlin\compileDebugKotlin\local-state\build-history.bin, useModuleDetection=true), usePreciseJavaTracking=true, icFeatures=IncrementalCompilationFeatures(withAbiSnapshot=false, preciseCompilationResultsBackup=true, keepIncrementalCompilationCachesInMemory=true, enableUnsafeIncrementalCompilationForMultiplatform=false), outputFiles=[C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\tmp\kotlin-classes\debug, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\kotlin\compileDebugKotlin\cacheable, C:\Users\ATPL-ADMIN\Downloads\gigi\app\build\kotlin\compileDebugKotlin\local-state])
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:1607:17 No value passed for parameter 'selectedStickerId'.
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:1607:17 No value passed for parameter 'onSelectSticker'.
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:1607:17 No value passed for parameter 'onMoveSticker'.
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:1607:17 No value passed for parameter 'onPromptChange'.
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:1638:17 No value passed for parameter 'selectedStickerId'.
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:1638:17 No value passed for parameter 'onSelectSticker'.
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:1638:17 No value passed for parameter 'onMoveSticker'.
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:1638:17 No value passed for parameter 'onPromptChange'.
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:2506:13 No value passed for parameter 'selectedStickerId'.
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:2506:13 No value passed for parameter 'onSelectSticker'.
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:2506:13 No value passed for parameter 'onMoveSticker'.
+e: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/app/src/main/java/com/aman/gigi/ui/LoveCardsSection.kt:2506:13 No value passed for parameter 'onPromptChange'.
+Finished executing kotlin compiler using DAEMON strategy
+
+> Task :app:compileDebugKotlin FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/ATPL-ADMIN/Downloads/gigi/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+16 actionable tasks: 1 executed, 15 up-to-date
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 51s
+Watched directory hierarchies: [C:\Users\ATPL-ADMIN\Downloads\gigi]

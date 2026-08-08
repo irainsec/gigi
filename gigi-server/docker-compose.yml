@@ -1,0 +1,126 @@
+services:
+  gigi-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # ─── Multi-stage build ───────────────────────────────────────────────────
+      # Stage 1 (cs-builder): clones M3-org/CharacterStudio, runs `npm install`
+      #   + `npm run get-assets` + `npm run build`.  Output: /cs-build/dist/
+      # Stage 2 (this image): copies dist/ → /app/public/character-studio/
+      #   The editor is then served at  https://<your-domain>/character-studio/
+      # ─────────────────────────────────────────────────────────────────────────
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: gigi-server
+    ports:
+      - "2803:2803"
+    environment:
+      - NODE_ENV=production
+      - PORT=2803
+      - MONGO_BASE_URL=mongodb://gigi-db:27017
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-admin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-password123}
+      - OTP_DEV_MODE=${OTP_DEV_MODE:-false}
+      # Full URL where CharacterStudio is served — used by the Android app.
+      # Default: served from the same server under /character-studio/
+      # Override in .env if you self-host it elsewhere.
+      - CHARACTER_STUDIO_URL=${CHARACTER_STUDIO_URL:-/character-studio/}
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:2803/healthz', (r)=>{process.exit(r.statusCode===200?0:1)})" ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    volumes:
+      - ./captures:/app/captures
+      - ./twigi_assets:/app/twigi_assets
+      - ./downloads:/app/downloads
+      # ⚠️  We do NOT bind-mount ./public here.
+      #    The CharacterStudio built assets live INSIDE the image at
+      #    /app/public/character-studio/ (copied by the Dockerfile).
+      #    Bind-mounting ./public would shadow them with the host folder.
+      #    Instead, only specific sub-paths that need runtime persistence
+      #    are mounted.  Add more specific mounts below if needed.
+      #
+      - ./server.js:/app/server.js
+      - ./public/landing.html:/app/public/landing.html
+      - ./public/index.html:/app/public/index.html
+      - ./public/privacy-policy.html:/app/public/privacy-policy.html
+      - ./public/delete-account.html:/app/public/delete-account.html
+      #
+      # If you want to update CharacterStudio assets without a full image
+      # rebuild, build locally and mount:
+      #   - ./public/character-studio:/app/public/character-studio
+    networks:
+      - screensaver-network
+    depends_on:
+      - gigi-db
+
+  gigi-db:
+    image: mongo:latest
+    container_name: gigi-db
+    ports:
+      # Loopback only — raw MongoDB must not be reachable from the LAN
+      - "127.0.0.1:6970:27017"
+    volumes:
+      - gigi-db-data:/data/db
+    restart: unless-stopped
+    networks:
+      - screensaver-network
+
+  gigi-db-ui:
+    image: mongo-express:latest
+    container_name: gigi-db-ui
+    restart: unless-stopped
+    ports:
+      # Loopback only — mongo-express has weak basic-auth defaults
+      - "127.0.0.1:6971:8081"
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://gigi-db:27017/
+      - ME_CONFIG_MONGODB_SERVER=gigi-db
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=${MONGO_EXPRESS_USERNAME:-admin}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${MONGO_EXPRESS_PASSWORD:-pass}
+    depends_on:
+      - gigi-db
+    networks:
+      - screensaver-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    ports:
+      # Loopback only — the app reaches MinIO over the docker network
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-password123}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - screensaver-network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: screensaver-tunnel
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    restart: unless-stopped
+    depends_on:
+      - gigi-server
+    networks:
+      - screensaver-network
+
+networks:
+  screensaver-network:
+    driver: bridge
+
+volumes:
+  gigi-db-data:
+  minio-data:

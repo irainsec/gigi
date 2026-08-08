@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gigi Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0D0F1A;
+  --surface: #161927;
+  --surface2: #1E2235;
+  --border: #2A2D40;
+  --primary: #8455FF;
+  --primary-dim: #8455FF22;
+  --pink: #FF699E;
+  --pink-dim: #FF699E22;
+  --green: #00D68F;
+  --orange: #FF9F43;
+  --red: #FF4D4D;
+  --red-dim: #FF4D4D18;
+  --text: #E8EAFF;
+  --text-muted: #7880A0;
+  --text-dim: #4A4F6A;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 4px 24px #00000055;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+/* ─── Login ─────────────────────────────────────────────── */
+#login-screen {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 30% 40%, #8455FF18 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 60%, #FF699E12 0%, transparent 60%), var(--bg);
+}
+.login-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 24px;
+  padding: 48px 40px; width: 100%; max-width: 400px; box-shadow: var(--shadow);
+}
+.login-logo { font-size: 48px; text-align: center; margin-bottom: 8px; }
+.login-title { font-size: 28px; font-weight: 700; text-align: center; margin-bottom: 4px;
+  background: linear-gradient(135deg, var(--primary), var(--pink));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.login-sub { color: var(--text-muted); text-align: center; font-size: 14px; margin-bottom: 32px; }
+.form-group { margin-bottom: 18px; }
+.form-label { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: .5px; display: block; margin-bottom: 8px; }
+.form-input {
+  width: 100%; padding: 14px 16px; background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 15px;
+  transition: border-color .2s;
+}
+.form-input:focus { outline: none; border-color: var(--primary); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 20px; border-radius: var(--radius-sm); font-family: inherit;
+  font-size: 15px; font-weight: 600; cursor: pointer; border: none; transition: all .2s;
+}
+.btn-primary { background: var(--primary); color: #fff; width: 100%; }
+.btn-primary:hover { background: #9b6fff; transform: translateY(-1px); }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { background: #ff6666; }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 7px 14px; font-size: 13px; border-radius: 8px; }
+.btn-icon { width: 34px; height: 34px; padding: 0; border-radius: 8px; }
+.login-error { background: var(--red-dim); border: 1px solid var(--red); color: var(--red);
+  padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: none; }
+
+/* ─── App Shell ──────────────────────────────────────────── */
+#app { display: none; height: 100vh; overflow: hidden; }
+.shell { display: flex; height: 100%; }
+
+/* ─── Sidebar ────────────────────────────────────────────── */
+.sidebar {
+  width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0;
+}
+.sidebar-logo { padding: 0 20px 28px; border-bottom: 1px solid var(--border); }
+.sidebar-logo-text { font-size: 22px; font-weight: 700;
+  background: linear-gradient(135deg, var(--primary), var(--pink));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.sidebar-logo-sub { font-size: 11px; color: var(--text-dim); font-weight: 500; letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
+.sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-muted); transition: all .15s;
+  border: none; background: none; width: 100%; text-align: left;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--primary-dim); color: var(--primary); font-weight: 600; }
+.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.sidebar-footer { padding: 16px 12px; border-top: 1px solid var(--border); }
+.user-chip { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border-radius: var(--radius-sm); background: var(--surface2); }
+.user-avatar { width: 32px; height: 32px; background: var(--primary); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.user-name { font-size: 13px; font-weight: 600; flex: 1; }
+.logout-btn { background: none; border: none; cursor: pointer; color: var(--text-dim);
+  font-size: 16px; padding: 4px; border-radius: 6px; transition: color .15s; }
+.logout-btn:hover { color: var(--red); }
+
+/* ─── Main Content ───────────────────────────────────────── */
+.main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+.topbar {
+  padding: 20px 32px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px; background: var(--surface); position: sticky; top: 0; z-index: 10;
+}
+.topbar-title { font-size: 20px; font-weight: 700; flex: 1; }
+.content { padding: 32px; flex: 1; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ─── Stats Grid ─────────────────────────────────────────── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px 24px; transition: border-color .2s;
+}
+.stat-card:hover { border-color: var(--primary); }
+.stat-icon { font-size: 24px; margin-bottom: 10px; }
+.stat-value { font-size: 32px; font-weight: 700; line-height: 1; }
+.stat-label { font-size: 13px; color: var(--text-muted); margin-top: 6px; font-weight: 500; }
+.stat-live { color: var(--green); }
+.stat-pink { color: var(--pink); }
+.stat-purple { color: var(--primary); }
+.stat-orange { color: var(--orange); }
+
+/* ─── Section Headers ────────────────────────────────────── */
+.section-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.section-title { font-size: 18px; font-weight: 700; flex: 1; }
+.search-input {
+  padding: 9px 14px; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 14px;
+  width: 220px; transition: border-color .2s;
+}
+.search-input:focus { outline: none; border-color: var(--primary); }
+
+/* ─── Table ──────────────────────────────────────────────── */
+.table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+thead { background: var(--surface2); }
+th { padding: 13px 18px; text-align: left; font-size: 12px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+td { padding: 14px 18px; font-size: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: var(--surface2); }
+
+/* ─── Badges ─────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px;
+  border-radius: 20px; font-size: 12px; font-weight: 600;
+}
+.badge-green { background: #00D68F18; color: var(--green); }
+.badge-red { background: var(--red-dim); color: var(--red); }
+.badge-purple { background: var(--primary-dim); color: var(--primary); }
+.badge-orange { background: #FF9F4318; color: var(--orange); }
+.badge-gray { background: var(--surface2); color: var(--text-muted); }
+.badge-tier-free { background: var(--surface2); color: var(--text-muted); }
+.badge-tier-plus { background: #6366F122; color: #818CF8; }
+.badge-tier-pro { background: linear-gradient(135deg,#F59E0B22,#EC489922); color: #FBBF24; }
+/* ── Plans page ── */
+.plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.plan-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
+.plan-card.tier-pro { border-color: #F59E0B55; }
+.plan-card.tier-plus { border-color: #6366F155; }
+.plan-card-head { display:flex; align-items:center; gap:8px; font-size:16px; font-weight:700; margin-bottom:14px; text-transform:capitalize; }
+.plan-field-label { font-size: 12px; color: var(--text-muted); font-weight: 600; display:block; }
+.plan-num-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0; }
+.plan-num-row input { width: 86px; padding: 6px 8px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); text-align:right; }
+.plan-feat-row { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text); margin:6px 0; }
+.plan-feature-label { font-size: 12px; color: var(--text-muted); font-weight: 700; margin: 10px 0 6px; }
+.plan-override-grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+.plan-override-grid .plan-num-row { margin:0; }
+.plan-feature-grid { display:grid; grid-template-columns: 1fr 1fr; gap:6px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.dot-green { background: var(--green); }
+.dot-red { background: var(--red); }
+.dot-gray { background: var(--text-dim); }
+
+/* ─── Avatar ─────────────────────────────────────────────── */
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--primary-dim);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 15px;
+  font-weight: 700; color: var(--primary); flex-shrink: 0; overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.member-cell { display: flex; align-items: center; gap: 12px; }
+.member-info .name { font-weight: 600; font-size: 14px; }
+.member-info .sub { font-size: 12px; color: var(--text-muted); }
+
+/* ─── Pagination ─────────────────────────────────────────── */
+.pagination { display: flex; align-items: center; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+.page-btn { padding: 7px 13px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: inherit; font-size: 13px; cursor: pointer; transition: all .15s; }
+.page-btn:hover { border-color: var(--primary); color: var(--primary); }
+.page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+.page-btn:disabled { opacity: .4; cursor: not-allowed; }
+.page-info { font-size: 13px; color: var(--text-muted); }
+
+/* ─── Empty State ────────────────────────────────────────── */
+.empty { padding: 60px 20px; text-align: center; color: var(--text-muted); }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-text { font-size: 15px; font-weight: 500; }
+.empty-sub { font-size: 13px; margin-top: 6px; color: var(--text-dim); }
+
+/* ─── Modal ──────────────────────────────────────────────── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: #00000088;
+  align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  padding: 32px; max-width: 420px; width: 90%; box-shadow: var(--shadow);
+}
+.modal-title { font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+.modal-body { color: var(--text-muted); font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+.modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+
+/* ─── Connection Detail Modal ──────────────────────────────── */
+.conn-detail-modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  padding: 28px 32px; max-width: 600px; width: 94%; max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow);
+}
+.conn-detail-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; gap: 12px; }
+.conn-detail-code { font-family: monospace; font-size: 22px; font-weight: 700; letter-spacing: 1px;
+  background: var(--surface2); padding: 6px 16px; border-radius: 10px; color: var(--primary); }
+.conn-detail-meta { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+.conn-section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-dim); margin-bottom: 12px; margin-top: 20px; }
+.participant-card {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 10px;
+}
+.participant-card:last-child { margin-bottom: 0; }
+.participant-info { flex: 1; min-width: 0; }
+.participant-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.participant-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.participant-badges { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.conn-actions-row { display: flex; gap: 10px; margin-top: 22px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ─── Connections search bar ──────────────────────────────── */
+.conn-search-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+.conn-search-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 10px; padding: 8px 14px; font-size: 14px; font-family: inherit; }
+.conn-search-row input:focus { outline: none; border-color: var(--primary); }
+
+/* ─── Clickable table rows ────────────────────────────────── */
+tr.clickable-row { cursor: pointer; }
+tr.clickable-row:hover td { background: var(--surface2); }
+
+/* ─── Reset Page ─────────────────────────────────────────── */
+.danger-card {
+  background: var(--red-dim); border: 1.5px solid var(--red); border-radius: var(--radius);
+  padding: 28px 32px; max-width: 600px;
+}
+.danger-title { font-size: 18px; font-weight: 700; color: var(--red); display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.danger-desc { color: var(--text-muted); font-size: 14px; line-height: 1.7; margin-bottom: 20px; }
+.danger-list { list-style: none; margin-bottom: 24px; }
+.danger-list li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-muted); margin-bottom: 8px; }
+.danger-list li::before { content: '✕'; color: var(--red); font-size: 12px; font-weight: 700; }
+
+/* ─── Toast ──────────────────────────────────────────────── */
+.toast { position: fixed; bottom: 28px; right: 28px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 12px; padding: 12px 20px; font-size: 14px;
+  font-weight: 500; display: none; align-items: center; gap: 10px; z-index: 2000;
+  box-shadow: var(--shadow); animation: slideUp .2s ease; }
+.toast.show { display: flex; }
+.toast-success { border-color: var(--green); color: var(--green); }
+.toast-error { border-color: var(--red); color: var(--red); }
+@keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* ─── Loading ────────────────────────────────────────────── */
+.spinner { width: 20px; height: 20px; border: 2.5px solid var(--border); border-top-color: var(--primary);
+  border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-row td { text-align: center; padding: 40px; }
+</style>
+</head>
+<body>
+
+<!-- ─── Login Screen ─────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">💌</div>
+    <div class="login-title">Gigi Admin</div>
+    <div class="login-sub">Sign in to manage your server</div>
+    <div class="login-error" id="login-error"></div>
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" class="form-input" id="login-user" placeholder="admin" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ─── App Shell ─────────────────────────────────────────── -->
+<div id="app">
+  <div class="shell">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-text">💌 Gigi</div>
+        <div class="sidebar-logo-sub">Admin Panel</div>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard', this)">
+          <span class="nav-icon">🏠</span> Dashboard
+        </button>
+        <button class="nav-item" data-page="members" onclick="showPage('members', this)">
+          <span class="nav-icon">👥</span> Members
+        </button>
+        <button class="nav-item" data-page="connections" onclick="showPage('connections', this)">
+          <span class="nav-icon">🔗</span> Connections
+        </button>
+        <button class="nav-item" data-page="plans" onclick="showPage('plans', this)">
+          <span class="nav-icon">💎</span> Plans
+        </button>
+        <button class="nav-item" data-page="reset" onclick="showPage('reset', this)">
+          <span class="nav-icon">🔴</span> Reset
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="user-avatar">A</div>
+          <div class="user-name" id="sidebar-user">Admin</div>
+          <button class="logout-btn" onclick="doLogout()" title="Sign out">⏏</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="topbar">
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+        <button class="btn btn-ghost btn-sm" onclick="refreshPage()">↻ Refresh</button>
+      </div>
+      <div class="content">
+
+        <!-- Dashboard Page -->
+        <div class="page active" id="page-dashboard">
+          <div class="stats-grid" id="stats-grid">
+            <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value stat-purple" id="s-members">—</div><div class="stat-label">Total Members</div></div>
+            <div class="stat-card"><div class="stat-icon">🔗</div><div class="stat-value stat-pink" id="s-sessions">—</div><div class="stat-label">Total Connections</div></div>
+            <div class="stat-card"><div class="stat-icon">🟢</div><div class="stat-value stat-live" id="s-online">—</div><div class="stat-label">Online Devices</div></div>
+            <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-value stat-orange" id="s-live">—</div><div class="stat-label">Live WS Clients</div></div>
+            <div class="stat-card"><div class="stat-icon">💌</div><div class="stat-value stat-purple" id="s-cards">—</div><div class="stat-label">Love Card Stacks</div></div>
+            <div class="stat-card"><div class="stat-icon">⏰</div><div class="stat-value stat-orange" id="s-alarms">—</div><div class="stat-label">Active Alarms</div></div>
+          </div>
+          <div class="section-header" style="margin-top:8px">
+            <div class="section-title">Recent Members</div>
+          </div>
+          <div class="table-wrap" id="dash-members-table">
+            <div class="loading-row"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- Members Page -->
+        <div class="page" id="page-members">
+          <div class="section-header">
+            <div class="section-title">Members</div>
+            <input type="text" class="search-input" id="member-search" placeholder="Search name or phone…" oninput="searchMembers()">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Member</th><th>Phone / Email</th><th>Device</th><th>Connections</th><th>Plan</th><th>Status</th><th>Joined</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="members-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="members-pagination"></div>
+        </div>
+
+        <!-- Connections Page -->
+        <div class="page" id="page-connections">
+          <div class="section-header">
+            <div class="section-title">Connections</div>
+            <button class="btn btn-ghost btn-sm" onclick="loadConnections(1)">↺ Refresh</button>
+          </div>
+          <div class="conn-search-row">
+            <input type="text" id="conn-search-input" placeholder="Search by connection code…" oninput="connectionsSearchDebounce()" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Code</th><th>Participants</th><th>Type</th><th>Status</th><th>Created</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="connections-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="connections-pagination"></div>
+        </div>
+
+        <!-- Plans Page -->
+        <div class="page" id="page-plans">
+          <div class="section-header">
+            <div class="section-title">Plan Tiers &amp; Limits</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary btn-sm" onclick="openCreatePlanModal()">✨ + Create Custom Plan</button>
+              <button class="btn btn-primary btn-sm" onclick="savePlanConfig()">💾 Save Changes</button>
+            </div>
+          </div>
+          <div style="color:var(--text-muted);font-size:13px;margin:-4px 0 16px">
+            These are the default limits for each tier. You can create custom tiers, customize limits & features, or delete unused plans. A limit of <strong>0</strong> means unlimited.
+          </div>
+          <div id="plans-grid" class="plans-grid">
+            <div class="loading-row"><div class="spinner"></div></div>
+          </div>
+          <div class="card" style="margin-top:18px;padding:16px">
+            <label class="plan-field-label">Upgrade URL (opened by the app's upgrade button)</label>
+            <input type="text" class="form-input" id="plan-upgrade-url" placeholder="https://…" style="margin-top:6px">
+          </div>
+        </div>
+
+<!-- Create Custom Plan Modal -->
+<div class="modal-overlay" id="create-plan-modal" onclick="if(event.target===this)closeCreatePlanModal()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title">✨ Create Custom Plan Tier</div>
+    <div class="modal-body">
+      <label class="plan-field-label">Plan ID / Slug (lowercase, e.g. vip, gold, ultra)</label>
+      <input type="text" class="form-input" id="new-plan-id" placeholder="vip" style="margin:6px 0 14px">
+      
+      <label class="plan-field-label">Start From Template</label>
+      <select class="form-input" id="new-plan-template" style="margin:6px 0 14px">
+        <option value="plus">Plus Tier Defaults</option>
+        <option value="pro">Pro Tier Defaults</option>
+        <option value="free">Free Tier Defaults</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeCreatePlanModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="submitCreatePlan()">Create Plan</button>
+    </div>
+  </div>
+</div>
+
+        <!-- Reset Page -->
+        <div class="page" id="page-reset">
+          <div class="danger-card">
+            <div class="danger-title">⚠️ Danger Zone — Full Server Reset</div>
+            <div class="danger-desc">
+              This will permanently erase <strong>all data</strong> from the server and force every device to show the login screen.
+              There is no undo.
+            </div>
+            <ul class="danger-list">
+              <li>All member accounts and phone numbers deleted</li>
+              <li>All connection codes and partnerships deleted</li>
+              <li>All love cards, alarms, and scribble history deleted</li>
+              <li>All session tokens invalidated — every device must re-register</li>
+              <li>Every currently-connected device receives a force-logout signal</li>
+            </ul>
+            <button class="btn btn-danger" onclick="openResetModal()">🔴 Reset Everything</button>
+          </div>
+        </div>
+
+      </div><!-- /content -->
+    </div><!-- /main -->
+  </div><!-- /shell -->
+</div><!-- /app -->
+
+<!-- ─── Connection Detail Modal ───────────────────────────── -->
+<div class="modal-overlay" id="conn-detail-modal" onclick="if(event.target===this)closeConnDetail()">
+  <div class="conn-detail-modal">
+    <div class="conn-detail-header">
+      <div>
+        <div id="conn-detail-code" class="conn-detail-code">——</div>
+        <div id="conn-detail-meta" class="conn-detail-meta"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="closeConnDetail()">✕ Close</button>
+    </div>
+    <div class="conn-section-label">Participants</div>
+    <div id="conn-detail-participants"></div>
+    <div class="conn-actions-row">
+      <button class="btn btn-danger btn-sm" id="conn-detail-delete-btn">🗑 Delete Connection</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Confirm Delete Modal ───────────────────────────────── -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <div class="modal-title" id="confirm-title">Confirm</div>
+    <div class="modal-body" id="confirm-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="confirm-ok-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Member Plan Modal ──────────────────────────────────── -->
+<div class="modal-overlay" id="member-plan-modal" onclick="if(event.target===this)closeMemberPlan()">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title" id="member-plan-title">Plan &amp; Limits</div>
+    <div class="modal-body">
+      <label class="plan-field-label">Tier</label>
+      <select class="form-input" id="member-plan-tier" onchange="renderMemberOverrideHints()" style="margin:6px 0 14px">
+        <option value="free">Free</option>
+        <option value="plus">Plus</option>
+        <option value="pro">Pro</option>
+      </select>
+      <div style="color:var(--text-muted);font-size:12.5px;margin-bottom:12px">
+        Leave an override blank to use the tier default (shown as placeholder). Filled values win over the tier.
+      </div>
+      <div id="member-override-fields" class="plan-override-grid"></div>
+      <div class="plan-feature-label" style="margin-top:14px">Feature overrides</div>
+      <div id="member-override-features" class="plan-feature-grid"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeMemberPlan()">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="member-plan-save-btn" onclick="saveMemberPlan()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Member Detail Modal ──────────────────────────────────── -->
+<div class="modal-overlay" id="member-detail-modal" onclick="if(event.target===this)closeMemberDetail()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title">👤 Member Details</div>
+    <div class="modal-body">
+      <!-- Profile preview -->
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding:16px;background:var(--bg-card);border-radius:12px">
+        <div id="md-emoji-preview" style="width:64px;height:64px;border-radius:50%;background:#f3edff;display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden;flex-shrink:0">?</div>
+        <div>
+          <div id="md-name-preview" style="font-weight:700;font-size:18px">Loading...</div>
+          <div id="md-email-preview" style="color:var(--text-muted);font-size:13px"></div>
+          <div id="md-status-preview" style="margin-top:4px"></div>
+        </div>
+      </div>
+
+      <!-- Editable fields -->
+      <div style="display:grid;gap:12px">
+        <div>
+          <label class="plan-field-label">Display Name</label>
+          <input class="form-input" id="md-displayName" placeholder="Display name" style="margin-top:4px" />
+        </div>
+        <div>
+          <label class="plan-field-label">Animated Emoji URL (profileEmojiUrl)</label>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+            <input class="form-input" id="md-profileEmojiUrl" placeholder="https://...emoji.gif" style="flex:1" oninput="previewMdEmoji(this.value)" />
+            <div id="md-emoji-mini" style="width:36px;height:36px;border-radius:50%;background:#f3edff;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;overflow:hidden">?</div>
+          </div>
+          <div style="color:var(--text-muted);font-size:11.5px;margin-top:4px">This is what shows in the galaxy for all connected partners. Paste any animated GIF/WebP URL.</div>
+        </div>
+        <div>
+          <label class="plan-field-label">Gender / Greeting Style</label>
+          <select class="form-input" id="md-gender" style="margin-top:4px">
+            <option value="HER">Her (default)</option>
+            <option value="HIM">Him</option>
+            <option value="ROMANTIC">Romantic</option>
+          </select>
+        </div>
+        <div>
+          <label class="plan-field-label">Member ID</label>
+          <input class="form-input" id="md-memberId-display" readonly style="margin-top:4px;color:var(--text-muted);font-size:12px" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeMemberDetail()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveMemberDetail()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal">
+    <div class="modal-title">🔴 Confirm Full Reset</div>
+    <div class="modal-body">
+      Type <strong style="color:var(--red)">RESET</strong> below to confirm. This will delete all data and cannot be undone.
+      <input type="text" class="form-input" id="reset-confirm-input" placeholder="Type RESET to confirm" style="margin-top:16px">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeResetModal()">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="reset-ok-btn" onclick="doReset()">Reset Server</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Toast ──────────────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let TOKEN = localStorage.getItem('gigi_admin_token') || '';
+let currentPage = 'dashboard';
+let membersPage = 1, connectionsPage = 1;
+let memberSearch = '';
+let confirmCallback = null;
+let PLAN_CONFIG = null;          // cached /admin/data/plan-config
+let MEMBER_CACHE = {};           // memberId -> member row (for the plan editor)
+let editingMemberId = null;
+const PLAN_NUM_KEYS = ['maxConnections','maxGroupMembers','maxStrokes','maxReminders','maxCardsPerStack','historyDays'];
+const PLAN_FEAT_KEYS = ['gifPicker','premiumBrushes','timeCapsule','animatedCards','groupConnections','customTheme','allThemes','recurringAlarms'];
+const PLAN_NUM_LABELS = { maxConnections:'Max connections', maxGroupMembers:'Max group members', maxStrokes:'Max strokes', maxReminders:'Max reminders', maxCardsPerStack:'Cards / stack', historyDays:'History (days)' };
+const PLAN_FEAT_LABELS = { gifPicker:'GIF picker', premiumBrushes:'Premium brushes', timeCapsule:'Time capsule', animatedCards:'Animated cards', groupConnections:'Group connections', customTheme:'Custom theme', allThemes:'All themes', recurringAlarms:'Recurring alarms' };
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+window.onload = () => {
+  if (TOKEN) { showApp(); }
+  document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+};
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  err.style.display = 'none';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const r = await fetch('/admin/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Login failed');
+    TOKEN = d.token;
+    localStorage.setItem('gigi_admin_token', TOKEN);
+    showApp();
+  } catch (e) {
+    err.textContent = e.message; err.style.display = 'block';
+  } finally { btn.disabled = false; btn.textContent = 'Sign In'; }
+}
+
+async function doLogout() {
+  try { await api('POST', '/admin/logout'); } catch (_) {}
+  TOKEN = ''; localStorage.removeItem('gigi_admin_token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-pass').value = '';
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadDashboard();
+}
+
+// ─── API Helper ───────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Token': TOKEN }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  if (r.status === 401) { doLogout(); throw new Error('Session expired'); }
+  return r.json();
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  el.classList.add('active');
+  currentPage = name;
+  const titles = { dashboard: 'Dashboard', members: 'Members', connections: 'Connections', plans: 'Plan Tiers & Limits', reset: 'Danger Zone' };
+  document.getElementById('topbar-title').textContent = titles[name] || name;
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'members') loadMembers();
+  if (name === 'connections') loadConnections();
+  if (name === 'plans') loadPlans();
+}
+
+function refreshPage() {
+  if (currentPage === 'dashboard') loadDashboard();
+  if (currentPage === 'members') loadMembers();
+  if (currentPage === 'connections') loadConnections();
+  if (currentPage === 'plans') loadPlans();
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const s = await api('GET', '/admin/data/stats');
+    document.getElementById('s-members').textContent = fmt(s.totalMembers);
+    document.getElementById('s-sessions').textContent = fmt(s.totalSessions);
+    document.getElementById('s-online').textContent = fmt(s.onlineDevices);
+    document.getElementById('s-live').textContent = fmt(s.liveWebSocketClients);
+    document.getElementById('s-cards').textContent = fmt(s.totalCards);
+    document.getElementById('s-alarms').textContent = fmt(s.activeAlarms);
+  } catch (_) {}
+  try {
+    const d = await api('GET', '/admin/data/members?limit=8');
+    renderDashMembers(d.members || []);
+  } catch (_) {}
+}
+
+function renderDashMembers(members) {
+  const el = document.getElementById('dash-members-table');
+  if (!members.length) { el.innerHTML = emptyState('No members yet', 'Members will appear here once users register.'); return; }
+  el.innerHTML = `<table><thead><tr><th>Member</th><th>Connections</th><th>Status</th><th>Registered</th></tr></thead>
+    <tbody>${members.map(m => `<tr>
+      <td><div class="member-cell">${avatarEl(m)}<div class="member-info"><div class="name">${esc(m.displayName || m.deviceName || 'Unnamed')}</div><div class="sub">${m.email ? '🔵 ' + esc(m.email) : m.phoneNumber ? '📱 ' + esc(m.phoneNumber) : (m._isLegacyDevice ? esc(m.deviceName || 'Legacy device') : esc(m.memberId.slice(0,14)+'…'))}</div></div></div></td>
+      <td><span class="badge badge-purple">${m.connectionCount || 0} links</span></td>
+      <td>${m.isOnline ? badge('green','● Online') : badge('gray','○ Offline')}</td>
+      <td style="color:var(--text-muted);font-size:13px">${fmtDate(m.createdAt)}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+// ─── Members ──────────────────────────────────────────────────────────────────
+async function loadMembers(page = membersPage) {
+  membersPage = page;
+  const tbody = document.getElementById('members-tbody');
+  tbody.innerHTML = `<tr class="loading-row"><td colspan="8"><div class="spinner"></div></td></tr>`;
+  try {
+    const d = await api('GET', `/admin/data/members?page=${page}&limit=20&search=${encodeURIComponent(memberSearch)}`);
+    tbody.innerHTML = '';
+    if (!d.members || !d.members.length) {
+      tbody.innerHTML = `<tr><td colspan="8">${emptyState('No members found', 'Try a different search.')}</td></tr>`; return;
+    }
+    MEMBER_CACHE = {};
+    d.members.forEach(m => {
+      MEMBER_CACHE[m.memberId] = m;
+      const tier = m.tier || 'free';
+      const maxc = m.resolvedPlan ? m.resolvedPlan.maxConnections : null;
+      const limitText = maxc === 0 ? '∞' : (maxc != null ? maxc : '—');
+      const hasOverride = m.planOverrides && Object.keys(m.planOverrides).length > 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><div class="member-cell" style="cursor:pointer" onclick="openMemberDetail('${m.memberId}')" title="Click to view & edit details">${avatarEl(m)}<div class="member-info"><div class="name">${esc(m.displayName || m.deviceName || 'Unnamed')}</div><div class="sub">${m.email ? '🔵 ' + esc(m.email) : m.phoneNumber ? '📱 ' + esc(m.phoneNumber) : (m._isLegacyDevice ? `📱 ${esc(m.deviceName || m.primaryDeviceId?.slice(0,10)+'…')}` : esc(m.memberId.slice(0,16)+'…'))}</div></div></div></td>
+        <td style="font-size:13px;color:var(--text-muted)">${m.email ? `<span title="Google account">🔵 ${esc(m.email)}</span>` : esc(m.phoneNumber || '—')}</td>
+        <td style="font-size:12px;color:var(--text-dim)">${esc(m.deviceName || '—')}</td>
+        <td><span class="badge badge-purple">${m.creatorConnectionCount != null ? m.creatorConnectionCount : (m.connectionCount || 0)}${maxc ? '/'+maxc : ''}</span></td>
+        <td><span class="badge badge-tier-${tier}" style="text-transform:capitalize">${tier}${hasOverride ? ' ✎' : ''}</span> <span style="color:var(--text-dim);font-size:11px">${limitText} links</span></td>
+        <td>${m.isOnline ? badge('green','● Online') : badge('gray','○ Offline')}</td>
+        <td style="font-size:13px;color:var(--text-muted)">${fmtDate(m.createdAt)}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-ghost btn-icon btn-sm" title="View &amp; edit member details" onclick="openMemberDetail('${m.memberId}')">👤</button>
+          <button class="btn btn-ghost btn-icon btn-sm" title="Edit plan &amp; limits" onclick="openMemberPlan('${m.memberId}')">💎</button>
+          <button class="btn btn-ghost btn-icon btn-sm" title="Delete member" onclick="confirmDeleteMember('${m.memberId}', '${esc(m.displayName || 'this member')}')">🗑</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    renderPagination('members-pagination', page, d.pages, p => loadMembers(p));
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+let memberSearchTimer;
+function searchMembers() {
+  memberSearch = document.getElementById('member-search').value;
+  clearTimeout(memberSearchTimer);
+  memberSearchTimer = setTimeout(() => loadMembers(1), 350);
+}
+
+function confirmDeleteMember(memberId, name) {
+  openConfirm(`Delete Member`, `Are you sure you want to permanently delete <strong>${esc(name)}</strong>? This will also remove their sessions and auth tokens. The device will be forced to the login screen.`, async () => {
+    try {
+      await api('DELETE', `/admin/data/members/${memberId}`);
+      toast('Member deleted', 'success');
+      loadMembers(membersPage);
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  });
+}
+
+// ─── Plans (tier defaults & custom tiers) ────────────────────────────────────────
+async function loadPlans() {
+  const grid = document.getElementById('plans-grid');
+  grid.innerHTML = `<div class="loading-row"><div class="spinner"></div></div>`;
+  try {
+    PLAN_CONFIG = await api('GET', '/admin/data/plan-config');
+    document.getElementById('plan-upgrade-url').value = PLAN_CONFIG.upgradeUrl || '';
+    const order = PLAN_CONFIG.tiers_order || Object.keys(PLAN_CONFIG.tiers || {});
+    grid.innerHTML = order.map(tier => {
+      const p = PLAN_CONFIG.tiers[tier] || {};
+      const isFree = tier === 'free';
+      const nums = PLAN_NUM_KEYS.map(k => `
+        <div class="plan-num-row">
+          <span class="plan-field-label">${PLAN_NUM_LABELS[k]}</span>
+          <input type="number" min="0" id="plan-${tier}-${k}" value="${p[k] != null ? p[k] : 0}">
+        </div>`).join('');
+      const feats = PLAN_FEAT_KEYS.map(k => `
+        <label class="plan-feat-row"><input type="checkbox" id="plan-${tier}-feat-${k}" ${p.features && p.features[k] ? 'checked' : ''}> ${PLAN_FEAT_LABELS[k]}</label>`).join('');
+      
+      const badgeEmoji = tier === 'pro' ? '👑' : tier === 'plus' ? '💎' : tier === 'free' ? '🌱' : '⭐';
+      const deleteBtn = !isFree ? `<button class="btn btn-ghost btn-sm" style="color:#F43F5E" onclick="deleteCustomPlan('${tier}')">🗑️ Delete</button>` : '';
+
+      return `<div class="plan-card tier-${tier}">
+        <div class="plan-card-head" style="display:flex;justify-content:space-between;align-items:center">
+          <span>${badgeEmoji} ${tier}</span>
+          ${deleteBtn}
+        </div>
+        ${nums}
+        <div class="plan-feature-label">Features</div>
+        ${feats}
+      </div>`;
+    }).join('');
+  } catch (e) { grid.innerHTML = emptyState('Failed to load', e.message); }
+}
+
+function openCreatePlanModal() {
+  document.getElementById('new-plan-id').value = '';
+  document.getElementById('create-plan-modal').classList.add('open');
+}
+
+function closeCreatePlanModal() {
+  document.getElementById('create-plan-modal').classList.remove('open');
+}
+
+async function submitCreatePlan() {
+  const rawId = document.getElementById('new-plan-id').value.trim();
+  const templateId = document.getElementById('new-plan-template').value;
+  if (!rawId) { toast('Please enter a Plan ID', 'error'); return; }
+  
+  const cleanId = rawId.toLowerCase().replace(/[^a-z0-9_]/g, '');
+  if (!cleanId) { toast('Invalid Plan ID', 'error'); return; }
+
+  const templatePlan = (PLAN_CONFIG && PLAN_CONFIG.tiers && PLAN_CONFIG.tiers[templateId]) ? PLAN_CONFIG.tiers[templateId] : {};
+
+  try {
+    await api('POST', '/admin/data/plans', {
+      tierId: cleanId,
+      limits: templatePlan,
+      features: templatePlan.features || {}
+    });
+    toast(`Custom plan "${cleanId}" created! ✨`, 'success');
+    closeCreatePlanModal();
+    loadPlans();
+  } catch (e) { toast('Error creating plan: ' + e.message, 'error'); }
+}
+
+async function deleteCustomPlan(tierId) {
+  openConfirm(`Delete Plan "${tierId}"`, `Are you sure you want to delete the plan <strong>${tierId}</strong>? Members currently on this plan will automatically be downgraded to "free".`, async () => {
+    try {
+      await api('DELETE', `/admin/data/plans/${tierId}`);
+      toast(`Plan "${tierId}" deleted`, 'success');
+      loadPlans();
+    } catch (e) { toast('Error deleting plan: ' + e.message, 'error'); }
+  });
+}
+
+async function savePlanConfig() {
+  if (!PLAN_CONFIG) return;
+  const order = PLAN_CONFIG.tiers_order || Object.keys(PLAN_CONFIG.tiers || {});
+  const tiers = {};
+  order.forEach(tier => {
+    const t = { features: {} };
+    PLAN_NUM_KEYS.forEach(k => {
+      const el = document.getElementById(`plan-${tier}-${k}`);
+      if (el) t[k] = Number(el.value) || 0;
+    });
+    PLAN_FEAT_KEYS.forEach(k => {
+      const el = document.getElementById(`plan-${tier}-feat-${k}`);
+      if (el) t.features[k] = el.checked;
+    });
+    tiers[tier] = t;
+  });
+  const upgradeUrl = document.getElementById('plan-upgrade-url').value.trim();
+  try {
+    await api('PUT', '/admin/data/plan-config', { tiers, upgradeUrl });
+    toast('Plan tiers saved & synced live! 🚀', 'success');
+    loadPlans();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// ─── Per-member plan overrides ────────────────────────────────────────────────
+async function openMemberPlan(memberId) {
+  editingMemberId = memberId;
+  const m = MEMBER_CACHE[memberId];
+  if (!m) return;
+  if (!PLAN_CONFIG) { try { PLAN_CONFIG = await api('GET', '/admin/data/plan-config'); } catch (_) {} }
+  document.getElementById('member-plan-title').textContent = `Plan — ${m.displayName || m.deviceName || memberId.slice(0,12)}`;
+  
+  // Dynamically populate tier dropdown options
+  const tierSelect = document.getElementById('member-plan-tier');
+  const availableTiers = PLAN_CONFIG?.tiers ? Object.keys(PLAN_CONFIG.tiers) : ['free', 'plus', 'pro'];
+  tierSelect.innerHTML = availableTiers.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
+  
+  tierSelect.value = m.tier || 'free';
+  renderMemberOverrideHints();
+  document.getElementById('member-plan-modal').classList.add('open');
+}
+
+function renderMemberOverrideHints() {
+  const m = MEMBER_CACHE[editingMemberId] || {};
+  const ov = m.planOverrides || {};
+  const tier = document.getElementById('member-plan-tier').value;
+  const tierDefaults = (PLAN_CONFIG && PLAN_CONFIG.tiers[tier]) || {};
+  document.getElementById('member-override-fields').innerHTML = PLAN_NUM_KEYS.map(k => `
+    <div class="plan-num-row">
+      <span class="plan-field-label">${PLAN_NUM_LABELS[k]}</span>
+      <input type="number" min="0" id="ov-${k}" value="${ov[k] != null ? ov[k] : ''}" placeholder="${tierDefaults[k] != null ? tierDefaults[k] : 0}">
+    </div>`).join('');
+  document.getElementById('member-override-features').innerHTML = PLAN_FEAT_KEYS.map(k => {
+    const cur = ov.features && typeof ov.features[k] === 'boolean' ? (ov.features[k] ? 'on' : 'off') : 'default';
+    return `<div class="plan-feat-row"><span class="plan-field-label" style="flex:1">${PLAN_FEAT_LABELS[k]}</span>
+      <select id="ovf-${k}" class="form-input" style="width:96px;padding:4px 6px">
+        <option value="default" ${cur==='default'?'selected':''}>Default</option>
+        <option value="on" ${cur==='on'?'selected':''}>On</option>
+        <option value="off" ${cur==='off'?'selected':''}>Off</option>
+      </select></div>`;
+  }).join('');
+}
+
+async function saveMemberPlan() {
+  if (!editingMemberId) return;
+  const tier = document.getElementById('member-plan-tier').value;
+  const planOverrides = {};
+  PLAN_NUM_KEYS.forEach(k => {
+    const v = document.getElementById(`ov-${k}`).value;
+    if (v !== '' && v != null) { const n = Number(v); if (Number.isFinite(n)) planOverrides[k] = n; }
+  });
+  const features = {};
+  PLAN_FEAT_KEYS.forEach(k => {
+    const v = document.getElementById(`ovf-${k}`).value;
+    if (v === 'on') features[k] = true; else if (v === 'off') features[k] = false;
+  });
+  if (Object.keys(features).length) planOverrides.features = features;
+  const btn = document.getElementById('member-plan-save-btn');
+  btn.disabled = true;
+  try {
+    await api('PUT', `/admin/data/members/${editingMemberId}`, { tier, planOverrides });
+    toast('Member plan updated', 'success');
+    closeMemberPlan();
+    loadMembers(membersPage);
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+  finally { btn.disabled = false; }
+}
+
+function closeMemberPlan() {
+  document.getElementById('member-plan-modal').classList.remove('open');
+  editingMemberId = null;
+}
+
+// ─── Member Detail Modal ───────────────────────────────────────────────────────
+let editingDetailMemberId = null;
+
+async function openMemberDetail(memberId) {
+  const m = MEMBER_CACHE[memberId];
+  if (!m) { toast('Member not found in cache. Reload the page.', 'error'); return; }
+  editingDetailMemberId = memberId;
+
+  // Populate preview
+  document.getElementById('md-name-preview').textContent = m.displayName || m.deviceName || 'Unnamed';
+  document.getElementById('md-email-preview').textContent = m.googleEmail || m.phoneNumber || m.memberId?.slice(0,20)+'…';
+  document.getElementById('md-status-preview').innerHTML = m.isOnline
+    ? '<span style="color:#4caf50;font-size:12px">● Online</span>'
+    : '<span style="color:#9e9e9e;font-size:12px">○ Offline</span>';
+
+  // Populate emoji preview
+  const emojiUrl = m.profileEmojiUrl || '';
+  previewMdEmoji(emojiUrl, true);
+
+  // Populate fields
+  document.getElementById('md-displayName').value = m.displayName || '';
+  document.getElementById('md-profileEmojiUrl').value = emojiUrl;
+  document.getElementById('md-gender').value = (m.gender || 'HER').toUpperCase();
+  document.getElementById('md-memberId-display').value = m.memberId || '';
+
+  document.getElementById('member-detail-modal').classList.add('open');
+}
+
+function previewMdEmoji(url, updateBig = false) {
+  const mini = document.getElementById('md-emoji-mini');
+  const big = document.getElementById('md-emoji-preview');
+  if (url && url.startsWith('http')) {
+    mini.innerHTML = `<img src="${esc(url)}" style="width:100%;height:100%;object-fit:contain;border-radius:50%" onerror="this.parentElement.textContent='?'" />`;
+    if (updateBig) big.innerHTML = `<img src="${esc(url)}" style="width:100%;height:100%;object-fit:contain;border-radius:50%" onerror="this.parentElement.textContent='?'" />`;
+  } else {
+    mini.textContent = '?';
+    if (updateBig) big.textContent = '?';
+  }
+}
+
+async function saveMemberDetail() {
+  if (!editingDetailMemberId) return;
+  const body = {
+    displayName: document.getElementById('md-displayName').value.trim(),
+    profileEmojiUrl: document.getElementById('md-profileEmojiUrl').value.trim() || null,
+    gender: document.getElementById('md-gender').value
+  };
+  try {
+    const res = await api('PUT', `/admin/data/members/${editingDetailMemberId}`, body);
+    if (res.member) {
+      // Update cache
+      MEMBER_CACHE[editingDetailMemberId] = { ...MEMBER_CACHE[editingDetailMemberId], ...res.member };
+      toast('Member updated! Changes will sync to device on next bootstrap.', 'success');
+      closeMemberDetail();
+      loadMembers();
+    } else {
+      toast('Save failed: ' + (res.error || 'Unknown error'), 'error');
+    }
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+function closeMemberDetail() {
+  document.getElementById('member-detail-modal').classList.remove('open');
+  editingDetailMemberId = null;
+}
+
+// ─── Connections ──────────────────────────────────────────────────────────────
+let connSearch = '';
+let connSearchTimer = null;
+function connectionsSearchDebounce() {
+  clearTimeout(connSearchTimer);
+  connSearchTimer = setTimeout(() => {
+    connSearch = document.getElementById('conn-search-input')?.value.trim() || '';
+    loadConnections(1);
+  }, 350);
+}
+
+async function loadConnections(page = connectionsPage) {
+  connectionsPage = page;
+  const tbody = document.getElementById('connections-tbody');
+  tbody.innerHTML = `<tr class="loading-row"><td colspan="6"><div class="spinner"></div></td></tr>`;
+  try {
+    const qs = `/admin/data/connections?page=${page}&limit=20${connSearch ? '&search='+encodeURIComponent(connSearch) : ''}`;
+    const d = await api('GET', qs);
+    tbody.innerHTML = '';
+    if (!d.connections || !d.connections.length) {
+      tbody.innerHTML = `<tr><td colspan="6">${emptyState('No connections yet', 'Connections appear when users pair up.')}</td></tr>`; return;
+    }
+    d.connections.forEach(c => {
+      const members = c.members || [];
+      // Build avatar pills for participants
+      const participantPills = members.slice(0, 3).map(m => {
+        const initial = (m.displayName || '?')[0].toUpperCase();
+        const online = m.isOnline;
+        return `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px 3px 4px;font-size:12px;max-width:160px;overflow:hidden;">
+          <span style="width:22px;height:22px;border-radius:50%;background:${online?'var(--primary)':'var(--border)'};display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${initial}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.displayName || 'Unknown')}</span>
+          ${online ? '<span style="color:var(--green);font-size:10px">●</span>' : ''}
+        </span>`;
+      }).join(' ');
+      const extraCount = members.length > 3 ? `<span style="font-size:12px;color:var(--text-muted)">+${members.length-3} more</span>` : '';
+      const displayLabel = c.groupName ? `<strong>${esc(c.groupName)}</strong> ` : '';
+
+      const tr = document.createElement('tr');
+      tr.className = 'clickable-row';
+      tr.title = 'Click to view details';
+      tr.innerHTML = `
+        <td><code style="font-size:13px;background:var(--surface2);padding:4px 10px;border-radius:8px;letter-spacing:.5px">${esc(c.connectionCode)}</code></td>
+        <td style="max-width:260px"><div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">${displayLabel}${participantPills}${extraCount}</div></td>
+        <td>${c.isGroup ? badge('orange','👥 Group') : badge('pink','💑 Pair')}</td>
+        <td>${c.isLive ? badge('green',`● Live (${c.liveClients})`) : badge('gray','○ Offline')}</td>
+        <td style="font-size:13px;color:var(--text-muted)">${fmtDate(c.createdAt)}</td>
+        <td onclick="event.stopPropagation()">
+          <button class="btn btn-ghost btn-icon btn-sm" title="Delete connection" onclick="confirmDeleteConnection('${esc(c.connectionCode)}')">🗑</button>
+        </td>`;
+      tr.addEventListener('click', () => openConnDetail(c));
+      tbody.appendChild(tr);
+    });
+    renderPagination('connections-pagination', page, d.pages, p => loadConnections(p));
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+// ─── Connection Detail Modal ──────────────────────────────────────────────────
+function openConnDetail(conn) {
+  const modal = document.getElementById('conn-detail-modal');
+  document.getElementById('conn-detail-code').textContent = conn.connectionCode;
+
+  // Meta line
+  const liveText = conn.isLive ? `● Live — ${conn.liveClients} device(s) online` : '○ Offline';
+  const typeText = conn.isGroup ? '👥 Group' : '💑 Pair';
+  const dateText = conn.createdAt ? fmtDate(conn.createdAt) : '—';
+  document.getElementById('conn-detail-meta').innerHTML =
+    `${typeText} &nbsp;·&nbsp; ${liveText} &nbsp;·&nbsp; Created ${dateText}`;
+
+  // Participants list
+  const members = conn.members || [];
+  const container = document.getElementById('conn-detail-participants');
+  if (!members.length) {
+    container.innerHTML = `<div style="color:var(--text-muted);font-size:14px;padding:12px 0">No participant data available.</div>`;
+  } else {
+    container.innerHTML = members.map(m => {
+      const initial = (m.displayName || '?')[0].toUpperCase();
+      const roleLabel = m.role === 'CREATOR' ? '👑 Creator' : '🤝 Partner';
+      const onlineDot = m.isOnline
+        ? `<span style="color:var(--green);font-size:12px">● Online</span>`
+        : `<span style="color:var(--text-dim);font-size:12px">○ Offline</span>`;
+      const emailLine = m.email ? `<div class="participant-sub">${m.email.includes('@') ? '🔵' : '📱'} ${esc(m.email)}</div>` : '';
+      const deviceLine = m.deviceName ? `<div class="participant-sub" style="font-size:11px">📱 ${esc(m.deviceName)}</div>` : '';
+      return `
+        <div class="participant-card">
+          <div style="width:44px;height:44px;border-radius:50%;background:${m.isOnline?'var(--primary)':'var(--surface)'};border:2px solid ${m.isOnline?'var(--primary)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0">${initial}</div>
+          <div class="participant-info">
+            <div class="participant-name">${esc(m.displayName || 'Unknown')}</div>
+            ${emailLine}${deviceLine}
+            <div class="participant-badges">
+              <span class="badge badge-${m.role==='CREATOR'?'purple':'pink'}" style="font-size:11px">${roleLabel}</span>
+              ${onlineDot}
+            </div>
+          </div>
+          <button class="btn btn-danger btn-sm" style="flex-shrink:0;font-size:12px;padding:6px 12px"
+            onclick="kickParticipant('${esc(conn.connectionCode)}', '${esc(m.memberId)}', '${esc(m.displayName || 'this user')}')">
+            Remove
+          </button>
+        </div>`;
+    }).join('');
+  }
+
+  // Delete whole connection
+  const deleteBtn = document.getElementById('conn-detail-delete-btn');
+  deleteBtn.onclick = () => {
+    closeConnDetail();
+    confirmDeleteConnection(conn.connectionCode);
+  };
+
+  modal.classList.add('open');
+}
+
+function closeConnDetail() {
+  document.getElementById('conn-detail-modal').classList.remove('open');
+}
+
+async function kickParticipant(connectionCode, memberId, displayName) {
+  openConfirm(
+    'Remove Participant',
+    `Remove <strong>${esc(displayName)}</strong> from connection <strong>${esc(connectionCode)}</strong>?<br><br>They will be disconnected and lose access to this pairing. Their account is <em>not</em> deleted.`,
+    async () => {
+      try {
+        await api('DELETE', `/admin/data/connections/${encodeURIComponent(connectionCode)}/members/${encodeURIComponent(memberId)}`);
+        toast(`${displayName} removed from connection`, 'success');
+        closeConnDetail();
+        loadConnections(connectionsPage);
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+  );
+}
+
+function confirmDeleteConnection(code) {
+  openConfirm('Delete Connection', `Permanently delete connection <strong>${esc(code)}</strong>?<br><br>All love cards, alarms and history for this pairing will be erased. All connected devices will receive a logout signal.`, async () => {
+    try {
+      await api('DELETE', `/admin/data/connections/${encodeURIComponent(code)}`);
+      toast('Connection deleted', 'success');
+      loadConnections(connectionsPage);
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  });
+}
+
+// ─── Reset ────────────────────────────────────────────────────────────────────
+function openResetModal() { document.getElementById('reset-modal').classList.add('open'); document.getElementById('reset-confirm-input').value = ''; }
+function closeResetModal() { document.getElementById('reset-modal').classList.remove('open'); }
+
+async function doReset() {
+  const val = document.getElementById('reset-confirm-input').value.trim();
+  if (val !== 'RESET') { toast('Type RESET to confirm', 'error'); return; }
+  const btn = document.getElementById('reset-ok-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const d = await api('POST', '/admin/reset');
+    closeResetModal();
+    toast(`✅ Reset complete — ${d.notifiedClients} client(s) notified`, 'success');
+    setTimeout(() => loadDashboard(), 1000);
+  } catch (e) { toast('Reset failed: ' + e.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Reset Server'; }
+}
+
+// ─── Confirm Modal ────────────────────────────────────────────────────────────
+function openConfirm(title, body, cb) {
+  confirmCallback = cb;
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-body').innerHTML = body;
+  document.getElementById('confirm-ok-btn').onclick = async () => { closeModal(); await cb(); };
+  document.getElementById('confirm-modal').classList.add('open');
+}
+function closeModal() { document.getElementById('confirm-modal').classList.remove('open'); confirmCallback = null; }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function fmt(n) { return n == null ? '—' : Number(n).toLocaleString(); }
+function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function badge(type, text) { return `<span class="badge badge-${type}">${text}</span>`; }
+function fmtDate(d) { if (!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+function avatarEl(m) {
+  const name = m.displayName || '?';
+  const initial = name.charAt(0).toUpperCase();
+  if (m.avatarUrl) return `<div class="avatar"><img src="${esc(m.avatarUrl)}" onerror="this.parentNode.textContent='${esc(initial)}'"></div>`;
+  return `<div class="avatar">${esc(initial)}</div>`;
+}
+function emptyState(text, sub) {
+  return `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">${esc(text)}</div><div class="empty-sub">${esc(sub)}</div></div>`;
+}
+function renderPagination(id, current, total, cb) {
+  const el = document.getElementById(id);
+  if (total <= 1) { el.innerHTML = ''; return; }
+  let html = `<span class="page-info">Page ${current} of ${total}</span>`;
+  html += `<button class="page-btn" onclick="(${cb})(${current-1})" ${current<=1?'disabled':''}>←</button>`;
+  const start = Math.max(1, current-2), end = Math.min(total, start+4);
+  for (let i=start;i<=end;i++) html += `<button class="page-btn ${i===current?'active':''}" onclick="(${cb})(${i})">${i}</button>`;
+  html += `<button class="page-btn" onclick="(${cb})(${current+1})" ${current>=total?'disabled':''}>→</button>`;
+  el.innerHTML = html;
+}
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.className = `toast toast-${type} show`;
+  el.textContent = msg;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
