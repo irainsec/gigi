@@ -38,6 +38,8 @@ const crypto = require('crypto');
 
 const PORT = process.env.PORT || 6969;
 const MONGO_BASE_URL = process.env.MONGO_BASE_URL || 'mongodb://127.0.0.1:6970';
+const DOWNLOADS_DIR = path.join(__dirname, 'downloads');
+
 const SCREENSAVER_DB_URL = `${MONGO_BASE_URL}/screensaver`;
 const GIGI_DB_URL = `${MONGO_BASE_URL}/gigi`;
 const PROTOCOL_VERSION = 2;
@@ -180,17 +182,18 @@ app.get(['/download', '/downloads'], (req, res) => {
 });
 
 app.get(['/download/gigi-latest.apk', '/downloads/gigi-latest.apk'], (req, res) => {
-    const apk = path.join(DOWNLOADS_DIR, 'gigi-latest.apk');
+    const apk = path.resolve(path.join(DOWNLOADS_DIR, 'gigi-latest.apk'));
     if (!fs.existsSync(apk)) return res.status(404).send('No build published yet.');
     res.setHeader('Content-Type', 'application/vnd.android.package-archive');
     res.setHeader('Content-Disposition', 'attachment; filename="gigi.apk"');
     res.sendFile(apk);
 });
 app.get(['/download/latest.json', '/downloads/latest.json'], (req, res) => {
-    const meta = path.join(DOWNLOADS_DIR, 'latest.json');
+    const meta = path.resolve(path.join(DOWNLOADS_DIR, 'latest.json'));
     if (!fs.existsSync(meta)) return res.json({});
     res.type('application/json').sendFile(meta);
 });
+
 
 // Invite links: /join?code=XXXXXXXX — verified app-links open Gigi directly; this page
 // is the fallback for browsers / people who don't have the app yet.
