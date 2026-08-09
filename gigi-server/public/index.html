@@ -600,9 +600,10 @@ let PLAN_CONFIG = null;          // cached /admin/data/plan-config
 let MEMBER_CACHE = {};           // memberId -> member row (for the plan editor)
 let editingMemberId = null;
 const PLAN_NUM_KEYS = ['maxConnections','maxGroupMembers','maxStrokes','maxReminders','maxCardsPerStack','historyDays'];
-const PLAN_FEAT_KEYS = ['gifPicker','premiumBrushes','timeCapsule','animatedCards','groupConnections','customTheme','allThemes','recurringAlarms'];
+const PLAN_FEAT_KEYS = ['gifPicker','premiumBrushes','timeCapsule','animatedCards','groupConnections','customTheme','allThemes','recurringAlarms','tabReminders','tabLive','tabSweetCorner','tabMusic'];
 const PLAN_NUM_LABELS = { maxConnections:'Max connections', maxGroupMembers:'Max group members', maxStrokes:'Max strokes', maxReminders:'Max reminders', maxCardsPerStack:'Cards / stack', historyDays:'History (days)' };
-const PLAN_FEAT_LABELS = { gifPicker:'GIF picker', premiumBrushes:'Premium brushes', timeCapsule:'Time capsule', animatedCards:'Animated cards', groupConnections:'Group connections', customTheme:'Custom theme', allThemes:'All themes', recurringAlarms:'Recurring alarms' };
+const PLAN_FEAT_LABELS = { gifPicker:'GIF picker', premiumBrushes:'Premium brushes', timeCapsule:'Time capsule', animatedCards:'Animated cards', groupConnections:'Group connections', customTheme:'Custom theme', allThemes:'All themes', recurringAlarms:'Recurring alarms', tabReminders:'🔔 Reminders tab', tabLive:'📍 Live Location tab', tabSweetCorner:'💖 Sweet Corner tab', tabMusic:'🎵 Music Player tab' };
+
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 window.onload = () => {
@@ -773,7 +774,8 @@ async function loadPlans() {
   try {
     PLAN_CONFIG = await api('GET', '/admin/data/plan-config');
     document.getElementById('plan-upgrade-url').value = PLAN_CONFIG.upgradeUrl || '';
-    const order = PLAN_CONFIG.tiers_order || Object.keys(PLAN_CONFIG.tiers || {});
+    const rawOrder = PLAN_CONFIG.tiers_order || Object.keys(PLAN_CONFIG.tiers || {});
+    const order = rawOrder.filter(t => PLAN_CONFIG.tiers && PLAN_CONFIG.tiers[t]);
     grid.innerHTML = order.map(tier => {
       const p = PLAN_CONFIG.tiers[tier] || {};
       const isFree = tier === 'free';
@@ -782,9 +784,18 @@ async function loadPlans() {
           <span class="plan-field-label">${PLAN_NUM_LABELS[k]}</span>
           <input type="number" min="0" id="plan-${tier}-${k}" value="${p[k] != null ? p[k] : 0}">
         </div>`).join('');
-      const feats = PLAN_FEAT_KEYS.map(k => `
-        <label class="plan-feat-row"><input type="checkbox" id="plan-${tier}-feat-${k}" ${p.features && p.features[k] ? 'checked' : ''}> ${PLAN_FEAT_LABELS[k]}</label>`).join('');
       
+      const regularFeatKeys = PLAN_FEAT_KEYS.filter(k => !k.startsWith('tab'));
+      const tabFeatKeys = PLAN_FEAT_KEYS.filter(k => k.startsWith('tab'));
+
+      const feats = regularFeatKeys.map(k => `
+        <label class="plan-feat-row"><input type="checkbox" id="plan-${tier}-feat-${k}" ${p.features && p.features[k] ? 'checked' : ''}> ${PLAN_FEAT_LABELS[k]}</label>`).join('');
+
+      const tabs = tabFeatKeys.map(k => {
+        const isChecked = !p.features || p.features[k] !== false; // Default allowed (true) if unspecified
+        return `<label class="plan-feat-row"><input type="checkbox" id="plan-${tier}-feat-${k}" ${isChecked ? 'checked' : ''}> ${PLAN_FEAT_LABELS[k]}</label>`;
+      }).join('');
+
       const badgeEmoji = tier === 'pro' ? '👑' : tier === 'plus' ? '💎' : tier === 'free' ? '🌱' : '⭐';
       const deleteBtn = !isFree ? `<button class="btn btn-ghost btn-sm" style="color:#F43F5E" onclick="deleteCustomPlan('${tier}')">🗑️ Delete</button>` : '';
 
@@ -796,8 +807,11 @@ async function loadPlans() {
         ${nums}
         <div class="plan-feature-label">Features</div>
         ${feats}
+        <div class="plan-feature-label" style="margin-top:12px;color:#A855F7">Allowed Navigation Tabs</div>
+        ${tabs}
       </div>`;
     }).join('');
+
   } catch (e) { grid.innerHTML = emptyState('Failed to load', e.message); }
 }
 

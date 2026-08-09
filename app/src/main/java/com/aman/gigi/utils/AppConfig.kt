@@ -12,7 +12,11 @@ data class PlanFeatures(
     val groupConnections: Boolean = false,
     val customTheme: Boolean = false,
     val allThemes: Boolean = false,
-    val recurringAlarms: Boolean = false
+    val recurringAlarms: Boolean = false,
+    val tabReminders: Boolean = true,
+    val tabLive: Boolean = true,
+    val tabSweetCorner: Boolean = true,
+    val tabMusic: Boolean = true
 )
 
 data class UserPlan(
@@ -74,10 +78,15 @@ object AppConfig {
                     groupConnections = f?.optBoolean("groupConnections", false) ?: false,
                     customTheme = f?.optBoolean("customTheme", false) ?: false,
                     allThemes = f?.optBoolean("allThemes", false) ?: false,
-                    recurringAlarms = f?.optBoolean("recurringAlarms", false) ?: false
+                    recurringAlarms = f?.optBoolean("recurringAlarms", false) ?: false,
+                    tabReminders = f?.optBoolean("tabReminders", true) ?: true,
+                    tabLive = f?.optBoolean("tabLive", true) ?: true,
+                    tabSweetCorner = f?.optBoolean("tabSweetCorner", true) ?: true,
+                    tabMusic = f?.optBoolean("tabMusic", true) ?: true
                 )
             )
         }
         applyServerConfig(giphyKey, plan, url)
     }
 }
+

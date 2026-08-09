@@ -29,6 +29,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.LocationOn
+import com.aman.gigi.ui.live.LiveMapScreen
+import com.aman.gigi.ui.live.LiveScreen
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Notifications
@@ -112,6 +115,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Bottom-nav tab order. Named because the pill's order is a product decision that
+ * changes; the indices were previously bare literals scattered across the file.
+ * Changing the order means editing `navItems` and these four values together.
+ */
+private const val REMINDERS_TAB_INDEX = 0
+private const val LIVE_TAB_INDEX = 1
+private const val SWEET_CORNER_TAB_INDEX = 2
+private const val MUSIC_TAB_INDEX = 3
+
 @Composable
 fun Home(
     intent: android.content.Intent?,
@@ -120,7 +133,7 @@ fun Home(
     screensaverViewModel: ScreensaverViewModel = hiltViewModel(),
     musicViewModel: com.aman.gigi.viewmodel.MusicViewModel = hiltViewModel()
 ) {
-    var selectedNavIndex by rememberSaveable { mutableIntStateOf(1) }
+    var selectedNavIndex by rememberSaveable { mutableIntStateOf(SWEET_CORNER_TAB_INDEX) }
     var isMusicBottomNavVisible by rememberSaveable { mutableStateOf(true) }
     val isAlbumBrowserOpen by musicViewModel.isAlbumBrowserOpen.collectAsStateWithLifecycle()
     val isMusicSettingsOpen by musicViewModel.isMusicSettingsOpen.collectAsStateWithLifecycle()
@@ -142,14 +155,15 @@ fun Home(
     val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
 
-    BackHandler(enabled = !requiresOnboarding && selectedNavIndex != 1 && !isDrawingMode) {
-        selectedNavIndex = 1 // Return to the default Sweet Corner tab
+    BackHandler(enabled = !requiresOnboarding && selectedNavIndex != SWEET_CORNER_TAB_INDEX && !isDrawingMode) {
+        selectedNavIndex = SWEET_CORNER_TAB_INDEX // Return to the default Sweet Corner tab
     }
 
     // Moonlight is no longer a tab — its flows (doodle/sparkle/create) launch as a
     // full-screen overlay from the Sweet Corner constellation.
     val navItems = listOf(
         NavigationItem("Reminders", Icons.Default.Notifications),
+        NavigationItem("Live", Icons.Default.LocationOn),
         NavigationItem("Sweet Corner", Icons.Default.Favorite),
         NavigationItem("Music", Icons.Default.LibraryMusic)
     )
@@ -159,13 +173,13 @@ fun Home(
         NavigationItem("Player", Icons.Default.PlayArrow),
         NavigationItem("Settings", Icons.Default.Settings)
     )
-    val musicTabIndex = 2
+    val musicTabIndex = MUSIC_TAB_INDEX
 
     // Handle Intent-based navigation (e.g., Reply with Sparkle)
     LaunchedEffect(intent) {
         val action = intent?.action
         if (action == "ACTION_OPEN_SWEET_CORNER" || action == "ACTION_VIEW_LOVE_CARDS") {
-            selectedNavIndex = 1
+            selectedNavIndex = SWEET_CORNER_TAB_INDEX
             intent.action = null
         } else if (action == "ACTION_OPEN_MUSIC_PLAYER") {
             selectedNavIndex = musicTabIndex
@@ -181,14 +195,14 @@ fun Home(
                 com.aman.gigi.utils.ConnectionCodeGenerator.isValidCode(code)
             ) {
                 android.util.Log.i("MainActivity", "🔗 Invite link → joining $code")
-                selectedNavIndex = 1
+                selectedNavIndex = SWEET_CORNER_TAB_INDEX
                 screensaverViewModel.joinConnection(code)
             }
             intent.action = null
         } else if (action == "ACTION_OPEN_CHAT") {
             val connectionId = intent.getStringExtra("connection_id")
             if (connectionId != null) {
-                selectedNavIndex = 1 // Sweet Corner
+                selectedNavIndex = SWEET_CORNER_TAB_INDEX // Sweet Corner
                 screensaverViewModel.openChat(connectionId)
             }
             intent.action = null
@@ -196,7 +210,7 @@ fun Home(
             val connectionId = intent.getStringExtra("connection_id")
             if (connectionId != null) {
                 android.util.Log.i("MainActivity", "🎯 Handling Reply ($action) for $connectionId")
-                selectedNavIndex = 1 // Sweet Corner — the screensaver flow shows as an overlay
+                selectedNavIndex = SWEET_CORNER_TAB_INDEX // Sweet Corner — the screensaver flow shows as an overlay
                 screensaverViewModel.navigateTo(
                     com.aman.gigi.viewmodel.ScreensaverViewModel.ScreensaverScreen.PARTNER_SESSIONS,
                     connectionId
@@ -235,7 +249,7 @@ fun Home(
 
     LaunchedEffect(activeLoveCardDeck?.stack?.stackId) {
         if (activeLoveCardDeck != null && !requiresOnboarding) {
-            selectedNavIndex = 1
+            selectedNavIndex = SWEET_CORNER_TAB_INDEX
         }
     }
 
@@ -371,9 +385,19 @@ fun Home(
                     contentAlignment = Alignment.Center
                 ) {
                     when (targetIndex) {
-                        0 -> Reminders(viewModel = viewModel)
-                        1 -> Developer(viewModel = screensaverViewModel)
-                        2 -> MusicScreen(
+                        REMINDERS_TAB_INDEX -> Reminders(viewModel = viewModel)
+                        LIVE_TAB_INDEX -> {
+                            // Live keeps its own tiny back-stack: feed ⇄ meet-up map.
+                            var openMapPostId by rememberSaveable { mutableStateOf<String?>(null) }
+                            val current = openMapPostId
+                            if (current == null) {
+                                LiveScreen(onOpenMap = { openMapPostId = it })
+                            } else {
+                                LiveMapScreen(postId = current, onBack = { openMapPostId = null })
+                            }
+                        }
+                        SWEET_CORNER_TAB_INDEX -> Developer(viewModel = screensaverViewModel)
+                        MUSIC_TAB_INDEX -> MusicScreen(
                             onBottomNavVisibilityChanged = { isMusicBottomNavVisible = it }
                         )
                     }
@@ -472,6 +496,16 @@ fun Home(
                 }
             }
 
+            var lockedTabFeatureName by remember { mutableStateOf<String?>(null) }
+
+            if (lockedTabFeatureName != null) {
+                com.aman.gigi.ui.components.UpgradeSheet(
+                    featureName = lockedTabFeatureName!!,
+                    featureDescription = "Access to the ${lockedTabFeatureName!!} is locked on your current plan (${com.aman.gigi.utils.AppConfig.userPlan.tier.uppercase()}). Upgrade your subscription to unlock it!",
+                    onDismiss = { lockedTabFeatureName = null }
+                )
+            }
+
             androidx.compose.animation.AnimatedVisibility(
                 visible = isNavVisible,
                 enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
@@ -506,14 +540,33 @@ fun Home(
                                 }
                             }
                         } else {
-                            // Re-tapping Sweet Corner opens the connections sheet.
-                            if (index == 1 && selectedNavIndex == 1) {
-                                screensaverViewModel.openConnectionsSheet()
+                            val planFeatures = com.aman.gigi.utils.AppConfig.userPlan.features
+                            val isAllowed = when (index) {
+                                0 -> planFeatures.tabReminders
+                                1 -> planFeatures.tabLive
+                                2 -> planFeatures.tabSweetCorner
+                                3 -> planFeatures.tabMusic
+                                else -> true
+                            }
+                            if (!isAllowed) {
+                                lockedTabFeatureName = when (index) {
+                                    0 -> "Reminders Tab"
+                                    1 -> "Live Location Tab"
+                                    2 -> "Sweet Corner Tab"
+                                    3 -> "Music Player Tab"
+                                    else -> "Navigation Tab"
+                                }
                             } else {
-                                selectedNavIndex = index
+                                // Re-tapping Sweet Corner opens the connections sheet.
+                                if (index == SWEET_CORNER_TAB_INDEX && selectedNavIndex == SWEET_CORNER_TAB_INDEX) {
+                                    screensaverViewModel.openConnectionsSheet()
+                                } else {
+                                    selectedNavIndex = index
+                                }
                             }
                         }
                     },
+
                     onSwipe = { delta ->
                         if (inMusicTab) {
                             val currentSub = when {
@@ -530,7 +583,7 @@ fun Home(
                                     // From Player or Library -> Direct 1-swipe back to Sweet Corner
                                     musicViewModel.setMusicSettingsOpen(false)
                                     musicViewModel.setAlbumBrowserOpen(false)
-                                    selectedNavIndex = 1
+                                    selectedNavIndex = SWEET_CORNER_TAB_INDEX
                                 }
                             } else if (delta > 0) { // Swiping LEFT (towards next screen)
                                 if (currentSub == 0) {
@@ -544,7 +597,7 @@ fun Home(
                                     // From Settings -> Sweet Corner
                                     musicViewModel.setMusicSettingsOpen(false)
                                     musicViewModel.setAlbumBrowserOpen(false)
-                                    selectedNavIndex = 1
+                                    selectedNavIndex = SWEET_CORNER_TAB_INDEX
                                 }
                             }
                         } else {

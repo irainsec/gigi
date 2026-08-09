@@ -13,6 +13,10 @@ val configuredServerUrl = (findProperty("GIGI_SERVER_URL") as String?)
     ?: System.getenv("GIGI_SERVER_URL")
     ?: "wss://gigi.iamanraj.com"
 
+val mapsApiKey = (findProperty("GIGI_MAPS_API_KEY") as String?)
+    ?: System.getenv("GIGI_MAPS_API_KEY")
+    ?: ""
+
 val releaseStoreFilePath = (findProperty("GIGI_RELEASE_STORE_FILE") as String?)
     ?: System.getenv("GIGI_RELEASE_STORE_FILE")
 val releaseStorePassword = (findProperty("GIGI_RELEASE_STORE_PASSWORD") as String?)
@@ -34,14 +38,19 @@ android {
         applicationId = "com.aman.gigi"
         minSdk = 26
         targetSdk = 35
-        versionCode = 34
-        versionName = "v1.7.4"
+        versionCode = 35
+        versionName = "v1.7.5"
+
 
 
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "SERVER_URL", "\"$configuredServerUrl\"")
+        // Maps key is injected, never committed. Set GIGI_MAPS_API_KEY in local.properties
+        // or the environment; Live falls back to a list-only view when it is blank.
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
     }
 
     signingConfigs {
@@ -170,6 +179,10 @@ dependencies {
 
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:21.3.0")
+    // Live: nearby posts + meet-up map
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("com.google.maps.android:maps-compose:6.4.1")
+    implementation("com.google.android.gms:play-services-maps:19.0.0")
 
     // Glance Widgets
     implementation("androidx.glance:glance-appwidget:1.0.0")

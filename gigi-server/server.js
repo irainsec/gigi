@@ -2594,7 +2594,7 @@ const DeletionRequest = gigiConn.model('DeletionRequest', DeletionRequestSchema)
 // MONETIZATION: plan tiers + per-member limits (admin-controlled)
 // ─────────────────────────────────────────────────────────────────────────────
 const PLAN_NUMERIC_KEYS = ['maxConnections', 'maxGroupMembers', 'maxStrokes', 'maxReminders', 'maxCardsPerStack', 'historyDays'];
-const PLAN_FEATURE_KEYS = ['gifPicker', 'premiumBrushes', 'timeCapsule', 'animatedCards', 'groupConnections', 'customTheme', 'allThemes', 'recurringAlarms'];
+const PLAN_FEATURE_KEYS = ['gifPicker', 'premiumBrushes', 'timeCapsule', 'animatedCards', 'groupConnections', 'customTheme', 'allThemes', 'recurringAlarms', 'tabReminders', 'tabLive', 'tabSweetCorner', 'tabMusic'];
 const PLAN_TIERS = ['free', 'plus', 'pro'];
 const DEFAULT_TIER_PLANS_UPGRADE_URL = 'https://gigi.iamanraj.com/upgrade';
 
@@ -2603,21 +2603,22 @@ const DEFAULT_TIER_PLANS_UPGRADE_URL = 'https://gigi.iamanraj.com/upgrade';
 const DEFAULT_TIER_PLANS = {
     free: {
         maxConnections: 2, maxGroupMembers: 0, maxStrokes: 50, maxReminders: 5, maxCardsPerStack: 1, historyDays: 3,
-        features: { gifPicker: false, premiumBrushes: false, timeCapsule: false, animatedCards: false, groupConnections: false, customTheme: false, allThemes: false, recurringAlarms: false }
+        features: { gifPicker: false, premiumBrushes: false, timeCapsule: false, animatedCards: false, groupConnections: false, customTheme: false, allThemes: false, recurringAlarms: false, tabReminders: true, tabLive: true, tabSweetCorner: true, tabMusic: true }
     },
     plus: {
         maxConnections: 5, maxGroupMembers: 8, maxStrokes: 200, maxReminders: 25, maxCardsPerStack: 5, historyDays: 30,
-        features: { gifPicker: true, premiumBrushes: true, timeCapsule: false, animatedCards: true, groupConnections: true, customTheme: true, allThemes: false, recurringAlarms: true }
+        features: { gifPicker: true, premiumBrushes: true, timeCapsule: false, animatedCards: true, groupConnections: true, customTheme: true, allThemes: false, recurringAlarms: true, tabReminders: true, tabLive: true, tabSweetCorner: true, tabMusic: true }
     },
     pro: {
         maxConnections: 0, maxGroupMembers: 50, maxStrokes: 1000, maxReminders: 200, maxCardsPerStack: 20, historyDays: 365,
-        features: { gifPicker: true, premiumBrushes: true, timeCapsule: true, animatedCards: true, groupConnections: true, customTheme: true, allThemes: true, recurringAlarms: true }
+        features: { gifPicker: true, premiumBrushes: true, timeCapsule: true, animatedCards: true, groupConnections: true, customTheme: true, allThemes: true, recurringAlarms: true, tabReminders: true, tabLive: true, tabSweetCorner: true, tabMusic: true }
     }
 };
 
 const PlanConfigSchema = new mongoose.Schema({
     singletonKey: { type: String, unique: true, default: 'global' },
     tiers: { type: Object, default: () => DEFAULT_TIER_PLANS },
+    tiers_order: { type: Array, default: () => ['free', 'plus', 'pro'] },
     upgradeUrl: { type: String, default: 'https://gigi.iamanraj.com/upgrade' }
 }, { timestamps: true });
 const PlanConfig = gigiConn.model('PlanConfig', PlanConfigSchema);
@@ -2633,10 +2634,13 @@ function normalizeTierPlan(tier, stored) {
     }
     out.features = {};
     for (const k of PLAN_FEATURE_KEYS) {
-        out.features[k] = typeof s?.features?.[k] === 'boolean' ? s.features[k] : (base.features?.[k] || false);
+        const isTab = k.startsWith('tab');
+        const defaultVal = isTab ? true : (base.features?.[k] || false);
+        out.features[k] = typeof s?.features?.[k] === 'boolean' ? s.features[k] : defaultVal;
     }
     return out;
 }
+
 
 /** Read the global plan config (creating it from defaults on first use), fully normalized. */
 async function getPlanConfig() {
@@ -3991,6 +3995,14 @@ function broadcastToConnection(connectionCode, builder) {
         }
     });
 }
+
+// ── Live (nearby posts + meet-up tracking) ───────────────────────────────────
+// Mounted here because it needs the auth helper, the sanitiser and the socket
+// fan-out that are all defined above. See plans/live_nearby_implementation.md
+require('./live_routes')({
+    app, gigiConn, mongoose, sanitizeText, requireAuthenticatedMember,
+    ConnectionMembership, Member, broadcastToConnection, normalizeId, logEvent
+});
 
 async function broadcastSharedAlarmUpsert(alarm) {
     const serialized = serializeSharedAlarm(alarm);
@@ -5531,7 +5543,8 @@ app.put('/admin/data/plan-config', requireAdminTokenOrBasic, async (req, res) =>
         }
         if (!tiers.free) tiers.free = normalizeTierPlan('free', DEFAULT_TIER_PLANS.free);
 
-        const update = { tiers };
+        const tiers_order = Object.keys(tiers);
+        const update = { tiers, tiers_order };
         if (typeof body.upgradeUrl === 'string' && body.upgradeUrl.trim()) update.upgradeUrl = body.upgradeUrl.trim();
         const doc = await PlanConfig.findOneAndUpdate(
             { singletonKey: 'global' },
@@ -5543,7 +5556,7 @@ app.put('/admin/data/plan-config', requireAdminTokenOrBasic, async (req, res) =>
         for (const t of Object.keys(doc?.tiers || tiers)) out[t] = normalizeTierPlan(t, doc?.tiers?.[t]);
         
         await broadcastPlanConfigUpdate();
-        res.json({ tiers: out, upgradeUrl: doc?.upgradeUrl || DEFAULT_TIER_PLANS_UPGRADE_URL });
+        res.json({ tiers: out, tiers_order: Object.keys(out), upgradeUrl: doc?.upgradeUrl || DEFAULT_TIER_PLANS_UPGRADE_URL });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -5558,10 +5571,13 @@ app.post('/admin/data/plans', requireAdminTokenOrBasic, async (req, res) => {
         const cfg = await getPlanConfig();
         const tiers = { ...cfg.tiers };
         tiers[cleanTierId] = normalizeTierPlan(cleanTierId, { ...(limits || {}), features: features || {} });
+        
+        const existingOrder = Array.isArray(cfg.tiers_order) ? cfg.tiers_order : Object.keys(tiers);
+        const tiers_order = existingOrder.includes(cleanTierId) ? existingOrder : [...existingOrder, cleanTierId];
 
         await PlanConfig.findOneAndUpdate(
             { singletonKey: 'global' },
-            { $set: { tiers }, $setOnInsert: { singletonKey: 'global' } },
+            { $set: { tiers, tiers_order }, $setOnInsert: { singletonKey: 'global' } },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
 
@@ -5583,10 +5599,12 @@ app.delete('/admin/data/plans/:tierId', requireAdminTokenOrBasic, async (req, re
         if (!tiers[cleanTierId]) return res.status(404).json({ error: 'Tier not found' });
 
         delete tiers[cleanTierId];
+        const existingOrder = Array.isArray(cfg.tiers_order) ? cfg.tiers_order : Object.keys(cfg.tiers);
+        const tiers_order = existingOrder.filter(t => t !== cleanTierId);
 
         await PlanConfig.findOneAndUpdate(
             { singletonKey: 'global' },
-            { $set: { tiers }, $setOnInsert: { singletonKey: 'global' } },
+            { $set: { tiers, tiers_order }, $setOnInsert: { singletonKey: 'global' } },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
 
@@ -5599,6 +5617,7 @@ app.delete('/admin/data/plans/:tierId', requireAdminTokenOrBasic, async (req, re
         res.json({ ok: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 
 app.delete('/admin/data/members/:memberId', requireAdminTokenOrBasic, async (req, res) => {
     try {
