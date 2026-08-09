@@ -113,25 +113,31 @@ object AppUpdateManager {
                 val targetFile = File(context.cacheDir, "gigi-update.apk")
                 if (targetFile.exists()) targetFile.delete()
 
-                Log.i(TAG, "⚡ [TURBO-DOWNLOAD] Probe connection to: $downloadUrl")
-                val headConnection = (URL(downloadUrl).openConnection() as HttpURLConnection).apply {
+                Log.i(TAG, "⚡ [TURBO-DOWNLOAD] Range probe connection to: $downloadUrl")
+                val probeConn = (URL(downloadUrl).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 8000
                     readTimeout = 8000
-                    requestMethod = "HEAD"
+                    setRequestProperty("Range", "bytes=0-0")
                     setRequestProperty("User-Agent", "Mozilla/5.0 GigiApp/1.6")
                     instanceFollowRedirects = true
                     connect()
                 }
 
-                val totalBytes = headConnection.contentLengthLong
-                val acceptRanges = headConnection.getHeaderField("Accept-Ranges")
-                headConnection.disconnect()
+                var totalBytes = probeConn.contentLengthLong
+                val contentRange = probeConn.getHeaderField("Content-Range")
+                if (contentRange != null && contentRange.contains("/")) {
+                    runCatching { totalBytes = contentRange.substringAfter("/").trim().toLong() }
+                }
+                val probeCode = probeConn.responseCode
+                val acceptRanges = probeConn.getHeaderField("Accept-Ranges")
+                probeConn.inputStream?.close()
+                probeConn.disconnect()
 
-                val supportsRanges = acceptRanges != null && acceptRanges.contains("bytes", ignoreCase = true)
-                val useParallel = supportsRanges && totalBytes > 4 * 1024 * 1024 // Use 4 parallel streams for files > 4MB
+                val supportsRanges = probeCode == 206 || (acceptRanges != null && acceptRanges.contains("bytes", ignoreCase = true)) || totalBytes > 4 * 1024 * 1024
+                val useParallel = supportsRanges && totalBytes > 4 * 1024 * 1024
 
                 if (useParallel) {
-                    Log.i(TAG, "🚀 [TURBO-DOWNLOAD] Parallel multi-stream enabled! Total: $totalBytes bytes across $PARALLEL_CHUNKS chunks")
+                    Log.i(TAG, "🚀 [TURBO-DOWNLOAD] Resumable parallel multi-stream enabled! Total: $totalBytes bytes across $PARALLEL_CHUNKS chunks")
                     downloadInParallelChunks(context, downloadUrl, totalBytes, targetFile, versionName)
                 } else {
                     Log.i(TAG, "🚀 [TURBO-DOWNLOAD] Single stream high-speed fallback. Total: $totalBytes bytes")
@@ -157,9 +163,25 @@ object AppUpdateManager {
     ) {
         val chunkSize = totalBytes / PARALLEL_CHUNKS
         val partFiles = Array(PARALLEL_CHUNKS) { i -> File(context.cacheDir, "gigi-update.part$i") }
-        partFiles.forEach { if (it.exists()) it.delete() }
 
-        val downloadedCounter = AtomicLong(0L)
+        // Calculate initial bytes already downloaded from previous interrupted sessions
+        var initialDownloaded = 0L
+        val resumeOffsets = LongArray(PARALLEL_CHUNKS)
+        for (i in 0 until PARALLEL_CHUNKS) {
+            val startByte = i * chunkSize
+            val endByte = if (i == PARALLEL_CHUNKS - 1) totalBytes - 1 else (startByte + chunkSize - 1)
+            val expectedChunkSize = endByte - startByte + 1
+            val existing = if (partFiles[i].exists()) partFiles[i].length() else 0L
+            if (existing >= expectedChunkSize) {
+                resumeOffsets[i] = expectedChunkSize
+                initialDownloaded += expectedChunkSize
+            } else {
+                resumeOffsets[i] = existing
+                initialDownloaded += existing
+            }
+        }
+
+        val downloadedCounter = AtomicLong(initialDownloaded)
 
         // Progress updater loop
         val progressUpdater = launch {
@@ -187,13 +209,23 @@ object AppUpdateManager {
                 async(Dispatchers.IO) {
                     val startByte = i * chunkSize
                     val endByte = if (i == PARALLEL_CHUNKS - 1) totalBytes - 1 else (startByte + chunkSize - 1)
+                    val expectedChunkSize = endByte - startByte + 1
+                    val existingBytes = resumeOffsets[i]
                     val partFile = partFiles[i]
 
+                    // If chunk is already 100% finished from previous session, skip downloading!
+                    if (existingBytes >= expectedChunkSize) {
+                        Log.i(TAG, "⏩ Chunk $i already fully downloaded ($existingBytes bytes), skipping!")
+                        return@async
+                    }
+
+                    val rangeStart = startByte + existingBytes
                     val conn = (URL(downloadUrl).openConnection() as HttpURLConnection).apply {
                         connectTimeout = 10000
                         readTimeout = 30000
-                        setRequestProperty("Range", "bytes=$startByte-$endByte")
+                        setRequestProperty("Range", "bytes=$rangeStart-$endByte")
                         setRequestProperty("User-Agent", "Mozilla/5.0 GigiApp/1.6")
+                        setRequestProperty("Connection", "close")
                         instanceFollowRedirects = true
                         connect()
                     }
@@ -204,7 +236,7 @@ object AppUpdateManager {
                     }
 
                     val input = BufferedInputStream(conn.inputStream, 128 * 1024)
-                    val output = FileOutputStream(partFile)
+                    val output = FileOutputStream(partFile, existingBytes > 0)
                     val buffer = ByteArray(128 * 1024)
                     var read: Int
 
@@ -241,9 +273,9 @@ object AppUpdateManager {
 
         } finally {
             progressUpdater.cancel()
-            partFiles.forEach { runCatching { if (it.exists()) it.delete() } }
         }
     }
+
 
     private suspend fun downloadSingleStream(
         context: Context,

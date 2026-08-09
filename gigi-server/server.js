@@ -181,13 +181,18 @@ app.get(['/download', '/downloads'], (req, res) => {
 </html>`);
 });
 
-app.get(['/download/gigi-latest.apk', '/downloads/gigi-latest.apk'], (req, res) => {
+app.all(['/download/gigi-latest.apk', '/downloads/gigi-latest.apk'], (req, res) => {
     const apk = path.resolve(path.join(DOWNLOADS_DIR, 'gigi-latest.apk'));
     if (!fs.existsSync(apk)) return res.status(404).send('No build published yet.');
+    const stat = fs.statSync(apk);
     res.setHeader('Content-Type', 'application/vnd.android.package-archive');
     res.setHeader('Content-Disposition', 'attachment; filename="gigi.apk"');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Length', stat.size);
+    if (req.method === 'HEAD') return res.status(200).end();
     res.sendFile(apk);
 });
+
 app.get(['/download/latest.json', '/downloads/latest.json'], (req, res) => {
     const meta = path.resolve(path.join(DOWNLOADS_DIR, 'latest.json'));
     if (!fs.existsSync(meta)) return res.json({});
