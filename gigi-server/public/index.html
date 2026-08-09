@@ -599,10 +599,11 @@ let confirmCallback = null;
 let PLAN_CONFIG = null;          // cached /admin/data/plan-config
 let MEMBER_CACHE = {};           // memberId -> member row (for the plan editor)
 let editingMemberId = null;
-const PLAN_NUM_KEYS = ['maxConnections','maxGroupMembers','maxStrokes','maxReminders','maxCardsPerStack','historyDays'];
-const PLAN_FEAT_KEYS = ['gifPicker','premiumBrushes','timeCapsule','animatedCards','groupConnections','customTheme','allThemes','recurringAlarms','tabReminders','tabLive','tabSweetCorner','tabMusic'];
-const PLAN_NUM_LABELS = { maxConnections:'Max connections', maxGroupMembers:'Max group members', maxStrokes:'Max strokes', maxReminders:'Max reminders', maxCardsPerStack:'Cards / stack', historyDays:'History (days)' };
-const PLAN_FEAT_LABELS = { gifPicker:'GIF picker', premiumBrushes:'Premium brushes', timeCapsule:'Time capsule', animatedCards:'Animated cards', groupConnections:'Group connections', customTheme:'Custom theme', allThemes:'All themes', recurringAlarms:'Recurring alarms', tabReminders:'🔔 Reminders tab', tabLive:'📍 Live Location tab', tabSweetCorner:'💖 Sweet Corner tab', tabMusic:'🎵 Music Player tab' };
+const PLAN_NUM_KEYS = ['maxConnections','maxGroupMembers','maxStrokes','maxReminders','maxCardsPerStack','historyDays','maxLivePosts'];
+const PLAN_FEAT_KEYS = ['gifPicker','premiumBrushes','timeCapsule','animatedCards','groupConnections','customTheme','allThemes','recurringAlarms','liveTracking','tabReminders','tabLive','tabSweetCorner','tabMusic'];
+const PLAN_NUM_LABELS = { maxConnections:'Max connections', maxGroupMembers:'Max group members', maxStrokes:'Max strokes', maxReminders:'Max reminders', maxCardsPerStack:'Cards / stack', historyDays:'History (days)', maxLivePosts:'Max live posts' };
+const PLAN_FEAT_LABELS = { gifPicker:'GIF picker', premiumBrushes:'Premium brushes', timeCapsule:'Time capsule', animatedCards:'Animated cards', groupConnections:'Group connections', customTheme:'Custom theme', allThemes:'All themes', recurringAlarms:'Recurring alarms', liveTracking:'Live location tracking', tabReminders:'🔔 Reminders tab', tabLive:'📍 Live Location tab', tabSweetCorner:'💖 Sweet Corner tab', tabMusic:'🎵 Music Player tab' };
+
 
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ data class PlanFeatures(
     val customTheme: Boolean = false,
     val allThemes: Boolean = false,
     val recurringAlarms: Boolean = false,
+    val liveTracking: Boolean = true,
     val tabReminders: Boolean = true,
     val tabLive: Boolean = true,
     val tabSweetCorner: Boolean = true,
@@ -28,6 +29,7 @@ data class UserPlan(
     val maxReminders: Int = 5,
     val maxCardsPerStack: Int = 1,
     val historyDays: Int = 3,
+    val maxLivePosts: Int = 1,
     val features: PlanFeatures = PlanFeatures()
 ) {
     val isPro: Boolean get() = tier == "pro"
@@ -70,6 +72,7 @@ object AppConfig {
                 maxReminders = p.optInt("maxReminders", 5),
                 maxCardsPerStack = p.optInt("maxCardsPerStack", 1),
                 historyDays = p.optInt("historyDays", 3),
+                maxLivePosts = p.optInt("maxLivePosts", 1),
                 features = PlanFeatures(
                     gifPicker = f?.optBoolean("gifPicker", false) ?: false,
                     premiumBrushes = f?.optBoolean("premiumBrushes", false) ?: false,
@@ -79,6 +82,7 @@ object AppConfig {
                     customTheme = f?.optBoolean("customTheme", false) ?: false,
                     allThemes = f?.optBoolean("allThemes", false) ?: false,
                     recurringAlarms = f?.optBoolean("recurringAlarms", false) ?: false,
+                    liveTracking = f?.optBoolean("liveTracking", true) ?: true,
                     tabReminders = f?.optBoolean("tabReminders", true) ?: true,
                     tabLive = f?.optBoolean("tabLive", true) ?: true,
                     tabSweetCorner = f?.optBoolean("tabSweetCorner", true) ?: true,
@@ -89,4 +93,5 @@ object AppConfig {
         applyServerConfig(giphyKey, plan, url)
     }
 }
+
 
