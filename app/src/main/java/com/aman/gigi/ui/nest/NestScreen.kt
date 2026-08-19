@@ -95,18 +95,18 @@ fun NestScreen(
             partnerAvatarUrl = partnerAvatarUrl,
             partnerName = partnerName,
             isPlayingMusic = isPlayingMusic,
-            onFloorTapped = { x, y ->
-                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                viewModel.moveMyTwigiTo(x, y, TwigiAction.WALK)
+            onMoveTarget = { x, y, facing, isWalking ->
+                viewModel.moveMyTwigiTo(targetX = x, targetY = y, facing = facing, isWalking = isWalking)
             },
             onFurnitureTapped = { f ->
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                 when (f.type) {
-                    "fridge" -> viewModel.setFridgeOpen(true)
-                    "couch" -> viewModel.moveMyTwigiTo(f.x, f.y, TwigiAction.SIT_COUCH)
-                    "bed" -> viewModel.moveMyTwigiTo(f.x, f.y, TwigiAction.SLEEP_BED)
-                    "music" -> viewModel.moveMyTwigiTo(f.x, f.y, TwigiAction.JAM_MUSIC)
-                    else -> viewModel.moveMyTwigiTo(f.x, f.y, TwigiAction.IDLE)
+                    "mini_fridge" -> viewModel.setFridgeOpen(true)
+                    "sweetheart_sofa" -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.SIT_COUCH)
+                    "desk_computer", "office_chair" -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.SIT_DESK)
+                    "cozy_bed" -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.SLEEP_BED)
+                    "turntable_station" -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.JAM_MUSIC)
+                    else -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.IDLE)
                 }
             },
             onPetTapped = {

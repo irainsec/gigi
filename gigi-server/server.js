@@ -3244,18 +3244,27 @@ const AppSettings = gigiConn.model('AppSettings', AppSettingsSchema);
 
 // ── Our Nest (Cozy Shared Twigi Room) Schema ──────────────────────────────
 const DEFAULT_NEST_FURNITURE = [
-    { id: 'f_bed_1', name: 'Cozy Canopy Bed', type: 'bed', x: 0.22, y: 0.38, rotation: 0 },
-    { id: 'f_couch_1', name: 'Sweetheart Loveseat', type: 'couch', x: 0.72, y: 0.52, rotation: 0 },
-    { id: 'f_vinyl_1', name: 'Vintage Turntable', type: 'music', x: 0.82, y: 0.28, rotation: 0 },
-    { id: 'f_fridge_1', name: 'Pastel Mini-Fridge', type: 'fridge', x: 0.38, y: 0.24, rotation: 0 },
-    { id: 'f_plant_1', name: 'Lucky Bonsai', type: 'plant', x: 0.12, y: 0.65, rotation: 0 },
-    { id: 'f_rug_1', name: 'Heart Cloud Rug', type: 'rug', x: 0.50, y: 0.62, rotation: 0 }
+    { id: 'f_desk', name: 'Dual Monitor Workstation', type: 'desk_computer', x: 0.26, y: 0.32, widthDp: 90, heightDp: 48 },
+    { id: 'f_chair', name: 'Ergonomic Swivel Chair', type: 'office_chair', x: 0.26, y: 0.38, widthDp: 32, heightDp: 32 },
+    { id: 'f_bookshelf', name: 'Packed Library Bookshelf', type: 'bookshelf_large', x: 0.08, y: 0.24, widthDp: 48, heightDp: 60 },
+    { id: 'f_bulletin', name: 'Bulletin Pinboard', type: 'bulletin_board', x: 0.26, y: 0.16, widthDp: 54, heightDp: 30 },
+    { id: 'f_bed', name: 'Cozy Canopy Bed', type: 'cozy_bed', x: 0.80, y: 0.28, widthDp: 75, heightDp: 70 },
+    { id: 'f_nightstand', name: 'Bedside Lamp Stand', type: 'nightstand_lamp', x: 0.62, y: 0.24, widthDp: 28, heightDp: 36 },
+    { id: 'f_ac', name: 'Wall Air Conditioner', type: 'ac_unit', x: 0.50, y: 0.14, widthDp: 56, heightDp: 22 },
+    { id: 'f_rug', name: 'Cozy Hearth Rug', type: 'heart_rug', x: 0.30, y: 0.70, widthDp: 100, heightDp: 60 },
+    { id: 'f_sofa', name: 'Sweetheart Loveseat', type: 'sweetheart_sofa', x: 0.30, y: 0.66, widthDp: 85, heightDp: 42 },
+    { id: 'f_table', name: 'Coffee Table with Mugs', type: 'coffee_table', x: 0.30, y: 0.75, widthDp: 52, heightDp: 26 },
+    { id: 'f_turntable', name: 'Vintage Vinyl Station', type: 'turntable_station', x: 0.08, y: 0.60, widthDp: 36, heightDp: 42 },
+    { id: 'f_plant', name: 'Leafy Monstera Pot', type: 'potted_plant', x: 0.08, y: 0.82, widthDp: 32, heightDp: 44 },
+    { id: 'f_fridge', name: 'Retro Pastel Mini-Fridge', type: 'mini_fridge', x: 0.84, y: 0.60, widthDp: 42, heightDp: 56 },
+    { id: 'f_dining', name: 'Snack Counter Table', type: 'coffee_table', x: 0.74, y: 0.76, widthDp: 48, heightDp: 32 },
+    { id: 'f_clock', name: 'Wall Clock', type: 'wall_clock', x: 0.84, y: 0.46, widthDp: 24, heightDp: 24 }
 ];
 
 const NestRoomSchema = new mongoose.Schema({
     connectionCode: { type: String, unique: true, index: true, required: true },
-    wallpaper: { type: String, default: 'lavender_stars' },
-    flooring: { type: String, default: 'warm_oak' },
+    wallpaper: { type: String, default: 'apartment_light' },
+    flooring: { type: String, default: 'office_grid' },
     roomMood: { type: String, default: 'cozy' },
     furniture: { type: Array, default: () => DEFAULT_NEST_FURNITURE },
     fridgeNotes: { type: Array, default: () => [] },

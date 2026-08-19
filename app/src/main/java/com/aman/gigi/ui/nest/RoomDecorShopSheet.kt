@@ -31,13 +31,15 @@ fun RoomDecorShopSheet(
     onSelectFlooring: (String) -> Unit
 ) {
     val wallpapers = listOf(
+        WallpaperOption("apartment_light", "Cozy Studio", Color(0xFFE2E8F0), "🏢"),
         WallpaperOption("lavender_stars", "Lavender Stars", Color(0xFF34225E), "✨"),
-        WallpaperOption("cozy_wood", "Cozy Wood Cabin", Color(0xFF452B1E), "🪵"),
+        WallpaperOption("cozy_wood", "Wood Cabin", Color(0xFF452B1E), "🪵"),
         WallpaperOption("mint_sakura", "Mint Sakura", Color(0xFF1E3A34), "🌸"),
         WallpaperOption("midnight_galaxy", "Midnight Galaxy", Color(0xFF0F0B1E), "🌌")
     )
 
     val floorings = listOf(
+        FlooringOption("office_grid", "RPG Grid Tiles", Color(0xFFCBD5E1), Color(0xFF94A3B8)),
         FlooringOption("warm_oak", "Warm Oak", Color(0xFF5C3A21), Color(0xFF3E2312)),
         FlooringOption("dark_walnut", "Dark Walnut", Color(0xFF26170E), Color(0xFF1A0F09)),
         FlooringOption("pink_carpet", "Pink Carpet", Color(0xFF9D174D), Color(0xFF831843)),

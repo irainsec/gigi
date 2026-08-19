@@ -31,7 +31,7 @@ class NestViewModel @Inject constructor(
     private val _myTwigiState = MutableStateFlow(TwigiRoomPosition(x = 0.35f, y = 0.55f))
     val myTwigiState: StateFlow<TwigiRoomPosition> = _myTwigiState.asStateFlow()
 
-    private val _partnerTwigiState = MutableStateFlow(TwigiRoomPosition(x = 0.65f, y = 0.55f, facingLeft = true))
+    private val _partnerTwigiState = MutableStateFlow(TwigiRoomPosition(x = 0.65f, y = 0.55f, facing = FacingDirection.LEFT))
     val partnerTwigiState: StateFlow<TwigiRoomPosition> = _partnerTwigiState.asStateFlow()
 
     private val _timeOfDay = MutableStateFlow(calculateTimeOfDay())
@@ -65,14 +65,17 @@ class NestViewModel @Inject constructor(
                         val newAction = when (event.anim) {
                             "walk" -> TwigiAction.WALK
                             "sit" -> TwigiAction.SIT_COUCH
+                            "desk" -> TwigiAction.SIT_DESK
                             "sleep" -> TwigiAction.SLEEP_BED
                             "jam" -> TwigiAction.JAM_MUSIC
                             else -> TwigiAction.IDLE
                         }
+                        val facingDir = if (event.facingLeft) FacingDirection.LEFT else FacingDirection.RIGHT
                         _partnerTwigiState.value = current.copy(
                             x = event.x,
                             y = event.y,
-                            facingLeft = event.facingLeft,
+                            facing = facingDir,
+                            isWalking = event.anim == "walk",
                             action = newAction
                         )
                     }
@@ -109,36 +112,49 @@ class NestViewModel @Inject constructor(
         _isShopOpen.value = open
     }
 
+    private var lastMoveBroadcastAt = 0L
+
     /** Move own Twigi to a position on the floor and broadcast to partner */
-    fun moveMyTwigiTo(targetX: Float, targetY: Float, action: TwigiAction = TwigiAction.WALK) {
+    fun moveMyTwigiTo(
+        targetX: Float,
+        targetY: Float,
+        facing: FacingDirection = _myTwigiState.value.facing,
+        isWalking: Boolean = false,
+        action: TwigiAction = if (isWalking) TwigiAction.WALK else TwigiAction.IDLE
+    ) {
         val current = _myTwigiState.value
-        val facingLeft = targetX < current.x
         _myTwigiState.value = current.copy(
             x = targetX,
             y = targetY,
-            facingLeft = facingLeft,
+            facing = facing,
+            isWalking = isWalking,
             action = action
         )
 
-        val code = _activeConnectionCode.value ?: return
-        val animStr = when (action) {
-            TwigiAction.WALK -> "walk"
-            TwigiAction.SIT_COUCH -> "sit"
-            TwigiAction.SLEEP_BED -> "sleep"
-            TwigiAction.JAM_MUSIC -> "jam"
-            TwigiAction.IDLE -> "idle"
-        }
-        // Send over WebSocket
-        syncManager.sendCustomJson(
-            connectionId = code,
-            type = "nest_move",
-            payload = mapOf(
-                "x" to targetX,
-                "y" to targetY,
-                "anim" to animStr,
-                "facingLeft" to facingLeft
+        val now = System.currentTimeMillis()
+        if (now - lastMoveBroadcastAt > 80L || !isWalking) {
+            lastMoveBroadcastAt = now
+            val code = _activeConnectionCode.value ?: return
+            val animStr = when (action) {
+                TwigiAction.WALK -> "walk"
+                TwigiAction.SIT_COUCH -> "sit"
+                TwigiAction.SIT_DESK -> "desk"
+                TwigiAction.SLEEP_BED -> "sleep"
+                TwigiAction.JAM_MUSIC -> "jam"
+                TwigiAction.IDLE -> "idle"
+            }
+            syncManager.sendCustomJson(
+                connectionId = code,
+                type = "nest_move",
+                payload = mapOf(
+                    "x" to targetX,
+                    "y" to targetY,
+                    "facing" to facing.name,
+                    "isWalking" to isWalking,
+                    "anim" to animStr
+                )
             )
-        )
+        }
     }
 
     fun sendEmote(emote: String) {
@@ -200,10 +216,10 @@ class NestViewModel @Inject constructor(
     fun updateNowPlayingBehavior(isPlayingMusic: Boolean) {
         val current = _myTwigiState.value
         if (isPlayingMusic && current.action != TwigiAction.JAM_MUSIC) {
-            // Place by turntable
-            moveMyTwigiTo(0.78f, 0.35f, TwigiAction.JAM_MUSIC)
+            // Place by turntable station
+            moveMyTwigiTo(targetX = 0.12f, targetY = 0.62f, facing = FacingDirection.LEFT, isWalking = false, action = TwigiAction.JAM_MUSIC)
         } else if (!isPlayingMusic && current.action == TwigiAction.JAM_MUSIC) {
-            moveMyTwigiTo(current.x, current.y, TwigiAction.IDLE)
+            moveMyTwigiTo(targetX = current.x, targetY = current.y, facing = current.facing, isWalking = false, action = TwigiAction.IDLE)
         }
     }
 

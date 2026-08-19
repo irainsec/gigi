@@ -1,22 +1,22 @@
 {
-  "updatedAt": "2026-08-19T22:30:44Z",
-  "versionCode": 71,
-  "versionName": "v2.2.8",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.2.8-universal.apk",
+  "updatedAt": "2026-08-19T22:54:29Z",
+  "versionCode": 72,
+  "versionName": "v2.2.9",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.2.9-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "ca5c7c4ec17add50346a66b8dba03aa7500a4d5f7e0d26a8b7ceff1b4bec0e50",
+  "sha256": "670dfedecb0fe845c4cba332b3eb67c591592aa5c2587e56261e38a4ea63d28e",
   "sizeMb": 50.2,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.2.8-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.2.8-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.2.8-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.2.8-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.2.9-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.2.9-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.2.9-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.2.9-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "043bf23bef2488dbfbbcc229baa2ed48d811ae72c9757b3376c0e10038ad8ddc",
-    "armeabi-v7a": "9e215417d04d225cb039a671a0f619edc56b903a1379204a9da0cc227adcf6a0",
-    "x86": "7bb9f71cb29c8e453490517491e172d73e2250ae6be41f7c029f7247a96175f7",
-    "x86_64": "5eadbe4244c1445b4bc556845476468c2c040b486a9e50461faefd19aef4c077"
+    "arm64-v8a": "4d9c4f12b2b5bdb67fcd083fc80d62bbdf1187c9fe1194fc186a8100653fec84",
+    "armeabi-v7a": "5d7be9828a909220e910eed62119e5647f4bfa3c37902b31eb4b8a82f12e2145",
+    "x86": "8366781a4ff0c256954d1be0042e04ed378c9dd6ff5609edd3859b8adc5c5ecb",
+    "x86_64": "8f57689ae90b1945e5f3af93388e68c704053e0db943ab77d42f18929711016c"
   },
   "abiSizeMb": {
     "arm64-v8a": 25.5,
@@ -25,5 +25,5 @@
     "x86_64": 26.6
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Introduced Our Nest (Cozy Shared Twigi Room): live interactive 2D pixel home, day/night window lighting, sticky fridge notes, Mochi the virtual pet, customizable wallpaper/flooring, and remote kill switch."
+  "releaseNotes": "Our Nest 2.5D RPG Overhaul: Authentic Agent Town / Gather Town pixel-art room architecture, dual-monitor workstations, cozy canopy beds, bookshelves, sofas, wall AC & bulletin boards, smooth continuous drag-to-walk with 4-directional facing, and natural depth sorting."
 }
