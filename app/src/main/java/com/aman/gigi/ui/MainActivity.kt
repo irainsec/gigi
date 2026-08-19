@@ -34,6 +34,7 @@ import com.aman.gigi.ui.live.LiveMapScreen
 import com.aman.gigi.ui.live.LiveScreen
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
@@ -163,7 +164,8 @@ class MainActivity : ComponentActivity() {
 private const val REMINDERS_TAB_INDEX = 0
 private const val LIVE_TAB_INDEX = 1
 private const val SWEET_CORNER_TAB_INDEX = 2
-private const val MUSIC_TAB_INDEX = 3
+private const val NEST_TAB_INDEX = 3
+private const val MUSIC_TAB_INDEX = 4
 
 @Composable
 fun Home(
@@ -208,6 +210,7 @@ fun Home(
             if (!remoteSettings.killReminders) add(NavigationItem("Reminders", Icons.Default.Notifications, REMINDERS_TAB_INDEX))
             if (!remoteSettings.killLive) add(NavigationItem("Live", Icons.Default.LocationOn, LIVE_TAB_INDEX))
             if (!remoteSettings.killSweetCorner) add(NavigationItem("Sweet Corner", Icons.Default.Favorite, SWEET_CORNER_TAB_INDEX))
+            if (!remoteSettings.killNest) add(NavigationItem("Nest", Icons.Default.Home, NEST_TAB_INDEX))
             if (!remoteSettings.killMusic) add(NavigationItem("Music", Icons.Default.LibraryMusic, MUSIC_TAB_INDEX))
         }
     }
@@ -475,6 +478,10 @@ fun Home(
                             }
                         }
                         SWEET_CORNER_TAB_INDEX -> Developer(viewModel = screensaverViewModel)
+                        NEST_TAB_INDEX -> com.aman.gigi.ui.nest.NestScreen(
+                            screensaverViewModel = screensaverViewModel,
+                            musicViewModel = musicViewModel
+                        )
                         MUSIC_TAB_INDEX -> MusicScreen(
                             onBottomNavVisibilityChanged = { isMusicBottomNavVisible = it }
                         )
@@ -625,6 +632,7 @@ fun Home(
                                 REMINDERS_TAB_INDEX -> planFeatures.tabReminders
                                 LIVE_TAB_INDEX -> planFeatures.tabLive
                                 SWEET_CORNER_TAB_INDEX -> planFeatures.tabSweetCorner
+                                NEST_TAB_INDEX -> planFeatures.tabNest
                                 MUSIC_TAB_INDEX -> planFeatures.tabMusic
                                 else -> true
                             }
@@ -633,6 +641,7 @@ fun Home(
                                     REMINDERS_TAB_INDEX -> "Reminders Tab"
                                     LIVE_TAB_INDEX -> "Live Location Tab"
                                     SWEET_CORNER_TAB_INDEX -> "Sweet Corner Tab"
+                                    NEST_TAB_INDEX -> "Our Nest Tab"
                                     MUSIC_TAB_INDEX -> "Music Player Tab"
                                     else -> "Navigation Tab"
                                 }

@@ -89,6 +89,11 @@ const SETTINGS_CATALOG = [
         hint: 'Stops all location sharing without disabling the rest of Live.'
     },
     {
+        key: 'killNest', label: 'Disable Our Nest', group: 'Kill switches', type: 'bool',
+        client: true, default: false,
+        hint: 'Hide the Our Nest cozy room tab from bottom navigation for everyone.'
+    },
+    {
         key: 'killCosmicNebula', label: 'Disable Cosmic Nebula', group: 'Kill switches', type: 'bool',
         client: true, default: false,
         hint: 'Hide the Cosmic Nebula public discovery universe for everyone.'

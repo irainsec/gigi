@@ -17,6 +17,7 @@ data class PlanFeatures(
     val tabReminders: Boolean = true,
     val tabLive: Boolean = true,
     val tabSweetCorner: Boolean = true,
+    val tabNest: Boolean = true,
     val tabMusic: Boolean = true
 )
 
@@ -78,6 +79,7 @@ data class RemoteSettings(
     val killReminders: Boolean = false,
     val killLive: Boolean = false,
     val killSweetCorner: Boolean = false,
+    val killNest: Boolean = false,
     val killMusic: Boolean = false,
     val killLiveTracking: Boolean = false,
     val killCosmicNebula: Boolean = false,
@@ -111,6 +113,7 @@ object AppConfig {
             killReminders = s.optBoolean("killReminders", cur.killReminders),
             killLive = s.optBoolean("killLive", cur.killLive),
             killSweetCorner = s.optBoolean("killSweetCorner", cur.killSweetCorner),
+            killNest = s.optBoolean("killNest", cur.killNest),
             killMusic = s.optBoolean("killMusic", cur.killMusic),
             killLiveTracking = s.optBoolean("killLiveTracking", cur.killLiveTracking),
             killCosmicNebula = s.optBoolean("killCosmicNebula", cur.killCosmicNebula),

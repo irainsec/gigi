@@ -2310,6 +2310,144 @@ app.post('/api/nebula/report', async (req, res) => {
     }
 });
 
+// ── Our Nest (Cozy Shared Twigi Room) Endpoints ───────────────────────────
+app.get('/api/nest/:connectionCode', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const code = sanitizeText(req.params.connectionCode || '', 120).toLowerCase();
+        if (!code) return res.status(400).json({ error: 'Connection code required' });
+
+        let room = await NestRoom.findOne({ connectionCode: code }).lean();
+        if (!room) {
+            room = await NestRoom.create({ connectionCode: code });
+        }
+        res.json({ success: true, room });
+    } catch (err) {
+        console.error('Error getting nest room:', err);
+        res.status(500).json({ error: 'Failed to get nest room' });
+    }
+});
+
+app.post('/api/nest/decor', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const { connectionCode, wallpaper, flooring, roomMood, furniture } = req.body || {};
+        const code = sanitizeText(connectionCode || '', 120).toLowerCase();
+        if (!code) return res.status(400).json({ error: 'Connection code required' });
+
+        const update = {};
+        if (wallpaper) update.wallpaper = sanitizeText(wallpaper, 60);
+        if (flooring) update.flooring = sanitizeText(flooring, 60);
+        if (roomMood) update.roomMood = sanitizeText(roomMood, 40);
+        if (Array.isArray(furniture)) update.furniture = furniture.slice(0, 30);
+
+        const room = await NestRoom.findOneAndUpdate(
+            { connectionCode: code },
+            { $set: update },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        ).lean();
+
+        // Broadcast layout update to active sockets in this connection
+        broadcastToConnection(code, () => ({
+            type: 'nest_room_update',
+            action: 'decor_changed',
+            connectionCode: code,
+            room
+        }));
+
+        res.json({ success: true, room });
+    } catch (err) {
+        console.error('Error updating nest decor:', err);
+        res.status(500).json({ error: 'Failed to update decor' });
+    }
+});
+
+app.post('/api/nest/notes', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const member = auth.member;
+        const { connectionCode, action, noteId, text, drawingUrl, color } = req.body || {};
+        const code = sanitizeText(connectionCode || '', 120).toLowerCase();
+        if (!code) return res.status(400).json({ error: 'Connection code required' });
+
+        let room = await NestRoom.findOne({ connectionCode: code });
+        if (!room) room = new NestRoom({ connectionCode: code });
+
+        if (action === 'DELETE' && noteId) {
+            room.fridgeNotes = (room.fridgeNotes || []).filter(n => n.id !== noteId);
+        } else if (action === 'ADD' || (!action && (text || drawingUrl))) {
+            const newNote = {
+                id: 'fn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+                authorId: member.memberId,
+                authorName: member.displayName || member.googleDisplayName || `@${member.handle}`,
+                text: sanitizeText(text || '', 500),
+                drawingUrl: drawingUrl ? sanitizeText(drawingUrl, 512) : null,
+                color: sanitizeText(color || '#FEF08A', 20),
+                createdAt: new Date().toISOString()
+            };
+            room.fridgeNotes = [newNote, ...(room.fridgeNotes || [])].slice(0, 50);
+        }
+        await room.save();
+
+        broadcastToConnection(code, () => ({
+            type: 'nest_room_update',
+            action: 'notes_updated',
+            connectionCode: code,
+            fridgeNotes: room.fridgeNotes
+        }));
+
+        res.json({ success: true, fridgeNotes: room.fridgeNotes });
+    } catch (err) {
+        console.error('Error updating fridge notes:', err);
+        res.status(500).json({ error: 'Failed to update fridge notes' });
+    }
+});
+
+app.post('/api/nest/pet/interact', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const member = auth.member;
+        const { connectionCode, action } = req.body || {};
+        const code = sanitizeText(connectionCode || '', 120).toLowerCase();
+        if (!code) return res.status(400).json({ error: 'Connection code required' });
+
+        let room = await NestRoom.findOne({ connectionCode: code });
+        if (!room) room = new NestRoom({ connectionCode: code });
+
+        const pet = room.pet || { name: 'Mochi', type: 'cat', happiness: 100, hunger: 80 };
+        if (action === 'FEED') {
+            pet.hunger = Math.min(100, (pet.hunger || 80) + 20);
+            pet.happiness = Math.min(100, (pet.happiness || 90) + 10);
+            pet.lastFedAt = new Date();
+        } else {
+            // PET / CUDDLE
+            pet.happiness = Math.min(100, (pet.happiness || 90) + 15);
+            pet.lastPettedAt = new Date();
+        }
+        room.pet = pet;
+        room.markModified('pet');
+        await room.save();
+
+        broadcastToConnection(code, () => ({
+            type: 'nest_emote',
+            action: 'pet_interact',
+            actorName: member.displayName || member.googleDisplayName || 'Partner',
+            petAction: action || 'PET',
+            connectionCode: code,
+            pet
+        }));
+
+        res.json({ success: true, pet });
+    } catch (err) {
+        console.error('Error interacting with pet:', err);
+        res.status(500).json({ error: 'Failed to interact with pet' });
+    }
+});
+
 // Reliable connection/group deletion. The WS `disconnect` frame can be dropped when the
 // socket isn't open, which left "deleted" groups alive server-side (they reappeared on
 // every bootstrap). This endpoint does the same work over HTTP: creators hard-delete the
@@ -3103,6 +3241,37 @@ const AppSettingsSchema = new mongoose.Schema({
     values: { type: Object, default: () => AppSettingsLib.defaults() }
 }, { timestamps: true });
 const AppSettings = gigiConn.model('AppSettings', AppSettingsSchema);
+
+// ── Our Nest (Cozy Shared Twigi Room) Schema ──────────────────────────────
+const DEFAULT_NEST_FURNITURE = [
+    { id: 'f_bed_1', name: 'Cozy Canopy Bed', type: 'bed', x: 0.22, y: 0.38, rotation: 0 },
+    { id: 'f_couch_1', name: 'Sweetheart Loveseat', type: 'couch', x: 0.72, y: 0.52, rotation: 0 },
+    { id: 'f_vinyl_1', name: 'Vintage Turntable', type: 'music', x: 0.82, y: 0.28, rotation: 0 },
+    { id: 'f_fridge_1', name: 'Pastel Mini-Fridge', type: 'fridge', x: 0.38, y: 0.24, rotation: 0 },
+    { id: 'f_plant_1', name: 'Lucky Bonsai', type: 'plant', x: 0.12, y: 0.65, rotation: 0 },
+    { id: 'f_rug_1', name: 'Heart Cloud Rug', type: 'rug', x: 0.50, y: 0.62, rotation: 0 }
+];
+
+const NestRoomSchema = new mongoose.Schema({
+    connectionCode: { type: String, unique: true, index: true, required: true },
+    wallpaper: { type: String, default: 'lavender_stars' },
+    flooring: { type: String, default: 'warm_oak' },
+    roomMood: { type: String, default: 'cozy' },
+    furniture: { type: Array, default: () => DEFAULT_NEST_FURNITURE },
+    fridgeNotes: { type: Array, default: () => [] },
+    pet: {
+        type: Object,
+        default: () => ({
+            name: 'Mochi',
+            type: 'cat',
+            happiness: 100,
+            hunger: 80,
+            lastFedAt: new Date(),
+            lastPettedAt: new Date()
+        })
+    }
+}, { timestamps: true });
+const NestRoom = gigiConn.model('NestRoom', NestRoomSchema);
 
 let appSettingsCache = null;
 async function getAppSettings(force = false) {

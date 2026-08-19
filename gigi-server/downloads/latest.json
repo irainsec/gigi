@@ -1,28 +1,29 @@
 {
-  "updatedAt": "2026-08-19T21:37:22Z",
-  "versionCode": 70,
-  "versionName": "v2.2.7",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.2.7-universal.apk",
+  "updatedAt": "2026-08-19T22:30:44Z",
+  "versionCode": 71,
+  "versionName": "v2.2.8",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.2.8-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "fa00df825ffd1f65c6ddbc282fe88583977d31a533eb5ec8a87d97667b5d4aa2",
+  "sha256": "ca5c7c4ec17add50346a66b8dba03aa7500a4d5f7e0d26a8b7ceff1b4bec0e50",
   "sizeMb": 50.2,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.2.7-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.2.7-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.2.7-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.2.7-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.2.8-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.2.8-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.2.8-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.2.8-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "fd943ace555ca7f4ed7dad0a6f8857d8a681bcd43b66055cf1b3fbc642e2af4b",
-    "armeabi-v7a": "6be0e7049f8168496d4052a25f8c1b64d4a2e93ba0eb3b8ab43f7f4debdd4e5a",
-    "x86": "34c5475a4d7b441bd050f0a696eb55fe11b795a6f8272159487070ec7f9bd00e",
-    "x86_64": "99762f0ef06f57173c254864bfd96a797035df22c5975252e9f9cb137759208f"
+    "arm64-v8a": "043bf23bef2488dbfbbcc229baa2ed48d811ae72c9757b3376c0e10038ad8ddc",
+    "armeabi-v7a": "9e215417d04d225cb039a671a0f619edc56b903a1379204a9da0cc227adcf6a0",
+    "x86": "7bb9f71cb29c8e453490517491e172d73e2250ae6be41f7c029f7247a96175f7",
+    "x86_64": "5eadbe4244c1445b4bc556845476468c2c040b486a9e50461faefd19aef4c077"
   },
   "abiSizeMb": {
-    "arm64-v8a": 25.4,
+    "arm64-v8a": 25.5,
     "armeabi-v7a": 22.3,
     "x86": 26.5,
-    "x86_64": 26.5
+    "x86_64": 26.6
   },
-  "releaseNotes": "Navigation tab kill switches in Admin Panel, dynamic bottom nav filtering, and updated onboarding story chapters."
+  "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
+  "releaseNotes": "Introduced Our Nest (Cozy Shared Twigi Room): live interactive 2D pixel home, day/night window lighting, sticky fridge notes, Mochi the virtual pet, customizable wallpaper/flooring, and remote kill switch."
 }

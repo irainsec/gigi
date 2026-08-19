@@ -10,6 +10,9 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.aman.gigi.data.client.ConnectionBootstrapManager
 import com.aman.gigi.data.live.LiveEvent
 import com.aman.gigi.data.live.LiveEventBus
+import com.aman.gigi.data.nest.NestEvent
+import com.aman.gigi.data.nest.NestEventBus
+import com.aman.gigi.data.nest.PetState
 import com.aman.gigi.model.PartnerPresence
 import com.aman.gigi.model.Scribble
 import com.aman.gigi.model.ScribbleStatus
@@ -1478,6 +1481,39 @@ class ScribbleSyncManager @Inject constructor(
                             "live_post_done" -> LiveEventBus.emit(
                                 LiveEvent.PostDone(json.optString("postId"))
                             )
+                            // Our Nest (Cozy Shared Room) events
+                            "nest_room_update" -> NestEventBus.emit(
+                                NestEvent.RoomUpdated(connectionId, json)
+                            )
+                            "nest_move" -> NestEventBus.emit(
+                                NestEvent.PartnerMoved(
+                                    connectionCode = connectionId,
+                                    x = json.optDouble("x", 0.5).toFloat(),
+                                    y = json.optDouble("y", 0.5).toFloat(),
+                                    anim = json.optString("anim", "walk"),
+                                    facingLeft = json.optBoolean("facingLeft", false)
+                                )
+                            )
+                            "nest_emote" -> {
+                                if (json.optString("action") == "pet_interact") {
+                                    NestEventBus.emit(
+                                        NestEvent.PetInteracted(
+                                            connectionCode = connectionId,
+                                            actorName = json.optString("actorName", "Partner"),
+                                            action = json.optString("petAction", "PET"),
+                                            pet = PetState.fromJson(json.optJSONObject("pet"))
+                                        )
+                                    )
+                                } else {
+                                    NestEventBus.emit(
+                                        NestEvent.EmoteSent(
+                                            connectionCode = connectionId,
+                                            actorName = json.optString("actorName", "Partner"),
+                                            emote = json.optString("emote", "💖")
+                                        )
+                                    )
+                                }
+                            }
                             // Admin pushed new remote settings (kill switches, keys,
                             // release gating) — apply without waiting for a relaunch.
                             "app_settings_update" -> com.aman.gigi.utils.AppConfig
@@ -3627,6 +3663,16 @@ class ScribbleSyncManager @Inject constructor(
             }
             webSocketClient.sendText(lower, envelope.toString())
         }
+    }
+
+    fun sendCustomJson(connectionId: String, type: String, payload: Map<String, Any>) {
+        val lower = connectionId.lowercase()
+        val envelope = org.json.JSONObject().apply {
+            put("type", type)
+            put("connectionId", lower)
+            payload.forEach { (k, v) -> put(k, v) }
+        }
+        webSocketClient.sendText(lower, envelope.toString())
     }
 
 }

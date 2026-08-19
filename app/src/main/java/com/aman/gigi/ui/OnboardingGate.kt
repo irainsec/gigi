@@ -628,9 +628,9 @@ private val STORY_CHAPTERS = listOf(
         Color(0xFF38BDF8)
     ),
     StoryChapter(
-        "Chapter 4 · Twigi & Spotify 🌟",
-        "Your Shared Universe",
-        "Listen to songs together in real-time synchronicity, co-care for your pixel-art Twigi companion, and create memories etched in the stars.",
+        "Chapter 4 · Our Nest & Twigi 🏡",
+        "Your Cozy Shared Home",
+        "Decorate your shared room, leave fridge doodle notes, cuddle Mochi the cat, and listen to songs together in real-time synchronicity.",
         Color(0xFF34D399)
     )
 )
