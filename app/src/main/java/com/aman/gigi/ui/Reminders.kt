@@ -371,7 +371,7 @@ fun Reminders(
                     onClick = {
                         val plan = com.aman.gigi.utils.AppConfig.userPlan
                         val currentCount = reminders.size
-                        if (plan.maxReminders > 0 && currentCount >= plan.maxReminders && !plan.isPro) {
+                        if (plan.maxReminders > 0 && currentCount >= plan.maxReminders) {
                             showUpgradeSheet = true
                         } else {
                             dialogReminderItem = null

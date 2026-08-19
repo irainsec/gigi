@@ -21,4 +21,8 @@ class ChatRepository @Inject constructor(
     suspend fun clearAll() {
         chatDao.clearAll()
     }
+
+    suspend fun deleteBlankMessages() {
+        chatDao.deleteBlankMessages()
+    }
 }

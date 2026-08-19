@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skydoves.cloudy.Cloudy
 
-data class NavigationItem(val label: String, val icon: ImageVector)
+data class NavigationItem(val label: String, val icon: ImageVector, val tabIndex: Int = -1)
 
 @Composable
 fun GlassNavActionPill(

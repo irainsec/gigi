@@ -158,7 +158,7 @@ fun DrawingScreen(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
-                    if (plan.isFree || plan.isPlus) {
+                    if (plan.canUpgrade) {
                         androidx.compose.material3.TextButton(onClick = { showUpgradeSheet = true }) {
                             Text("Upgrade", color = Color(0xFF58A6FF), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }

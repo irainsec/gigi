@@ -71,7 +71,11 @@ class MusicPlaybackService : Service() {
         setupMediaSession()
 
         val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
-        registerReceiver(screenStateReceiver, filter)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(screenStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(screenStateReceiver, filter)
+        }
 
         playbackManager.onPlaybackStateChangedListener = {
             updateNotification()

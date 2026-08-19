@@ -14,6 +14,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -79,6 +85,7 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -93,6 +100,26 @@ private class ShootingStar(var x: Float, var y: Float, val vx: Float, val vy: Fl
 private class FloatThing(var x: Float, var y: Float, val vx: Float, val vy: Float, var life: Float, val emoji: String, val size: Float)
 private class Asteroid(var angle: Float, val radiusMul: Float, val size: Float, val speed: Float)
 private class Nebula(val ox: Float, val oy: Float, val radius: Float, val color: Color)
+
+private data class NebulaCloudPuff(
+    val relX: Float,
+    val relY: Float,
+    val radius: Float,
+    val color: Color,
+    val alpha: Float,
+    val driftMul: Float,
+    val pulsePhase: Float
+)
+
+private data class NebulaStar(
+    val relX: Float,
+    val relY: Float,
+    val size: Float,
+    val color: Color,
+    val tier: Int, // 0 = micro, 1 = medium, 2 = bright, 3 = core giant
+    val phase: Float,
+    val speed: Float
+)
 
 /** Galaxy camera state. Held by the ViewModel so zoom/rotation survive tab switches,
  *  and backed by SharedPreferences so it also survives app restarts. */
@@ -134,6 +161,16 @@ private fun loadAsset(context: Context, path: String): ImageBitmap? = runCatchin
 private fun isGroupConn(c: Connection) =
     c.isGroup || c.relationshipType.equals("GROUP", ignoreCase = true)
 
+private class MoteShootingStar(
+    var startX: Float,
+    var startY: Float,
+    var targetX: Float,
+    var targetY: Float,
+    var progress: Float = 0f,
+    val avatarUrl: String?,
+    val name: String
+)
+
 /**
  * Full-screen 3D-style galaxy rendered natively with Compose Canvas (no WebView): you are the
  * sun at the center, each connection is a planet (real textures) orbiting on tilted rings, groups
@@ -151,6 +188,13 @@ fun GalaxyView(
     myNowPlaying: com.aman.gigi.data.nowplaying.NowPlaying? = null,
     // connectionId → a sweet quote just sent to / received from that person
     quotes: Map<String, String> = emptyMap(),
+    nebulaMotes: List<com.aman.gigi.model.NebulaMember> = emptyList(),
+    searchQuery: String = "",
+    onSearchQueryChange: (String) -> Unit = {},
+    pendingGhostInvites: Set<String> = emptySet(),
+    onInviteMote: (com.aman.gigi.model.NebulaMember) -> Unit = {},
+    onBlockMote: (String) -> Unit = {},
+    onReportMote: (String, String, String?) -> Unit = { _, _, _ -> },
     camera: GalaxyCamera,
     onOpenConnection: (String) -> Unit,
     onSunClick: () -> Unit,
@@ -263,6 +307,261 @@ fun GalaxyView(
         )
     }
 
+    var selectedMote by remember { mutableStateOf<com.aman.gigi.model.NebulaMember?>(null) }
+    var reportMoteTarget by remember { mutableStateOf<com.aman.gigi.model.NebulaMember?>(null) }
+    var reportReason by remember { mutableStateOf("INAPPROPRIATE") }
+
+    val curMote = selectedMote
+    if (curMote != null) {
+        val isSent = curMote.inviteStatus == "SENT" || pendingGhostInvites.contains(curMote.memberId)
+        val moteAvatar = curMote.twigiRenderUrl?.takeIf { it.isNotBlank() }
+            ?: curMote.avatarUrl?.takeIf { it.isNotBlank() }
+            ?: curMote.profileEmojiUrl?.takeIf { it.isNotBlank() }
+            ?: com.aman.gigi.ui.components.TELEGRAM_EMOJIS.first()
+
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { selectedMote = null }
+        ) {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = Color(0xFF160D2E),
+                border = BorderStroke(1.5.dp, Color(0xFFC084FC).copy(alpha = 0.6f)),
+                shadowElevation = 24.dp,
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = Color(0xFF3B1D6B)
+                        ) {
+                            Text(
+                                "✨ Cosmic Mote",
+                                color = Color(0xFFE9D5FF),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                        androidx.compose.material3.IconButton(
+                            onClick = { selectedMote = null },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Text("✕", color = Color(0xFFC084FC), fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(86.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(Color(0xFFEC4899), Color(0xFF7C3AED), Color.Transparent)
+                                )
+                            )
+                            .padding(4.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF241442)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val parsedMoteAvatar = com.aman.gigi.utils.ImageUtils.parseEmojiModel(moteAvatar)
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(parsedMoteAvatar).crossfade(true).build(),
+                            contentDescription = curMote.displayName,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(8.dp)
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = curMote.displayName.ifBlank { "Cosmic Soul" },
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            text = "@${curMote.handle}",
+                            color = Color(0xFFC084FC),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    if (!curMote.bio.isNullOrBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0xFF25184B),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "“${curMote.bio}”",
+                                color = Color(0xFFF3E8FF),
+                                fontSize = 13.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(if (curMote.isRecentlyActive) Color(0xFF22C55E) else Color(0xFFA855F7))
+                        )
+                        Text(
+                            text = if (curMote.isRecentlyActive) "Active Recently in Nebula" else "Drifting in Nebula",
+                            color = Color(0xFFD8B4FE),
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    val isSelf = (curMote.memberId == identity?.memberId)
+
+                    if (isSelf) {
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = Color(0xFFFBBF24).copy(alpha = 0.2f),
+                            border = BorderStroke(1.dp, Color(0xFFFBBF24).copy(alpha = 0.6f))
+                        ) {
+                            Text(
+                                text = "🌟 Your Public Nebula Profile",
+                                color = Color(0xFFFDE68A),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        androidx.compose.material3.Button(
+                            onClick = {
+                                selectedMote = null
+                                onSunClick()
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF8B5CF6)
+                            ),
+                            modifier = Modifier.fillMaxWidth().height(48.dp)
+                        ) {
+                            Text(
+                                text = "✏️ Edit Cosmic Profile",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
+                    } else {
+                        androidx.compose.material3.Button(
+                            onClick = {
+                                if (!isSent) {
+                                    onInviteMote(curMote)
+                                    selectedMote = null
+                                }
+                            },
+                            enabled = !isSent,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = if (isSent) Color(0xFF4C1D95) else Color(0xFFEC4899),
+                                disabledContainerColor = Color(0xFF3B1D6B)
+                            ),
+                            modifier = Modifier.fillMaxWidth().height(48.dp)
+                        ) {
+                            Text(
+                                text = if (isSent) "💌 Invitation Sent" else "✨ Invite to My Galaxy",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    onBlockMote(curMote.memberId)
+                                    selectedMote = null
+                                }
+                            ) {
+                                Text("🚫 Block", color = Color(0xFF94A3B8), fontSize = 12.sp)
+                            }
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    reportMoteTarget = curMote
+                                    selectedMote = null
+                                }
+                            ) {
+                                Text("⚠️ Report", color = Color(0xFFF87171), fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    val repTarget = reportMoteTarget
+    if (repTarget != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { reportMoteTarget = null },
+            title = { androidx.compose.material3.Text("Report @${repTarget.handle}") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    androidx.compose.material3.Text("Select a reason:", fontSize = 13.sp)
+                    listOf("INAPPROPRIATE" to "Inappropriate content / bio", "HARASSMENT" to "Harassment / Spam", "IMPERSONATION" to "Impersonation", "OTHER" to "Other").forEach { (code, lbl) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { reportReason = code }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            androidx.compose.material3.RadioButton(
+                                selected = reportReason == code,
+                                onClick = { reportReason = code }
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            androidx.compose.material3.Text(lbl, fontSize = 13.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        onReportMote(repTarget.memberId, reportReason, null)
+                        reportMoteTarget = null
+                    }
+                ) {
+                    androidx.compose.material3.Text("Submit Report", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { reportMoteTarget = null }) {
+                    androidx.compose.material3.Text("Cancel")
+                }
+            }
+        )
+    }
+
     // emoji_self prefs key wins (user's latest pick); fall back to identity fields
     val sunEmojiUrl = if (identity?.avatarMode == "TWIGI" && !identity.twigiRenderUrl.isNullOrBlank()) {
         identity.twigiRenderUrl
@@ -320,6 +619,123 @@ fun GalaxyView(
             )
         }
         out
+    }
+
+    // Procedural Multi-Octave FBM Volumetric Nebula Cloud Puffs (Stable across frames)
+    val fbmNebulaPuffs = remember {
+        val rnd = java.util.Random(2026)
+        val puffs = ArrayList<NebulaCloudPuff>(120)
+
+        // 1. North Electric Cyan/Sapphire Reflection Cloud (Upper lobe, center: x = -40f, y = -360f)
+        val blueColors = listOf(
+            Color(0xFF0A1931), // Deep space sapphire
+            Color(0xFF0369A1), // Deep ocean blue
+            Color(0xFF0284C7), // Intense cerulean
+            Color(0xFF06B6D4), // Electric cyan
+            Color(0xFF38BDF8), // Radiant sky blue
+            Color(0xFF22D3EE), // Luminous turquoise
+            Color(0xFFE0F2FE), // Ionized white-blue stellar core
+            Color(0xFFFFFFFF)  // Pure light center
+        )
+        repeat(55) {
+            val u = rnd.nextFloat()
+            val ang = rnd.nextFloat() * 6.28318f
+            val oct1 = (u.pow(0.72f)) * 540f
+            val oct2 = (sin(ang * 3.3f) * 70f)
+            val oct3 = (cos(ang * 5.7f) * 35f)
+            val dist = (oct1 + oct2 + oct3).coerceAtLeast(0f)
+            val px = -40f + dist * cos(ang) * 1.15f
+            val py = -360f + dist * sin(ang) * 0.92f
+            val radius = (190f + rnd.nextFloat() * 340f) * (1f - (dist / 680f).coerceIn(0f, 0.55f))
+            val colorIdx = ((1f - (dist / 620f).coerceIn(0f, 1f)) * (blueColors.size - 1)).roundToInt()
+            val col = blueColors[colorIdx]
+            val alpha = (0.07f + rnd.nextFloat() * 0.26f) * (1f - (dist / 680f).coerceIn(0f, 0.65f))
+            puffs.add(NebulaCloudPuff(px, py, radius, col, alpha, 0.5f + rnd.nextFloat() * 0.8f, rnd.nextFloat() * 6.28f))
+        }
+
+        // 2. South Hydrogen-Alpha Rose/Magenta/Crimson Emission Cloud (Lower lobe, center: x = +30f, y = +160f)
+        val pinkColors = listOf(
+            Color(0xFF2E021B), // Deep space boundary
+            Color(0xFF4C0519), // Deep ruby wine
+            Color(0xFF881337), // Crimson
+            Color(0xFFBE123C), // Rose red
+            Color(0xFFE11D48), // Radiant magenta
+            Color(0xFFF43F5E), // Vibrant neon rose
+            Color(0xFFFB7185), // Soft coral
+            Color(0xFFFDA4AF), // Peach-pink
+            Color(0xFFFFE4E6), // Ionized glowing peach
+            Color(0xFFFFFFFF)  // Blazing central stellar core
+        )
+        repeat(65) {
+            val u = rnd.nextFloat()
+            val ang = rnd.nextFloat() * 6.28318f
+            val oct1 = (u.pow(0.68f)) * 650f
+            val oct2 = (sin(ang * 2.7f + 1.2f) * 85f)
+            val oct3 = (cos(ang * 6.1f) * 45f)
+            val dist = (oct1 + oct2 + oct3).coerceAtLeast(0f)
+            val px = 30f + dist * cos(ang) * 1.22f
+            val py = 160f + dist * sin(ang) * 0.95f
+            val radius = (210f + rnd.nextFloat() * 400f) * (1f - (dist / 780f).coerceIn(0f, 0.55f))
+            val colorIdx = ((1f - (dist / 720f).coerceIn(0f, 1f)) * (pinkColors.size - 1)).roundToInt()
+            val col = pinkColors[colorIdx]
+            val alpha = (0.08f + rnd.nextFloat() * 0.30f) * (1f - (dist / 780f).coerceIn(0f, 0.65f))
+            puffs.add(NebulaCloudPuff(px, py, radius, col, alpha, 0.6f + rnd.nextFloat() * 0.7f, rnd.nextFloat() * 6.28f))
+        }
+
+        // 3. Central Translucent Wisps linking the two lobes
+        repeat(25) {
+            val t = rnd.nextFloat()
+            val px = -40f + (30f - (-40f)) * t + (rnd.nextFloat() - 0.5f) * 240f
+            val py = -360f + (160f - (-360f)) * t + (rnd.nextFloat() - 0.5f) * 200f
+            val radius = 220f + rnd.nextFloat() * 280f
+            val col = if (rnd.nextBoolean()) Color(0xFF818CF8) else Color(0xFFC084FC)
+            puffs.add(NebulaCloudPuff(px, py, radius, col, 0.07f + rnd.nextFloat() * 0.12f, 0.4f + rnd.nextFloat() * 0.5f, rnd.nextFloat() * 6.28f))
+        }
+
+        puffs
+    }
+
+    // Natural Star Population for the Cosmic Nebula
+    val fbmNebulaStars = remember {
+        val rnd = java.util.Random(777)
+        val starsList = ArrayList<NebulaStar>(190)
+        // 150 Tiny background stars
+        repeat(150) {
+            val ang = rnd.nextFloat() * 6.28318f
+            val dist = (rnd.nextFloat().pow(0.6f)) * 1100f
+            val px = dist * cos(ang)
+            val py = (dist * sin(ang) * 0.95f) - 100f
+            val sz = 0.8f + rnd.nextFloat() * 1.6f
+            val col = when (rnd.nextInt(5)) {
+                0 -> Color(0xFFBAE6FD)
+                1 -> Color(0xFFFFFFFF)
+                2 -> Color(0xFFFEF08A)
+                3 -> Color(0xFFFECDD3)
+                else -> Color(0xFFDDD6FE)
+            }
+            starsList.add(NebulaStar(px, py, sz, col, 0, rnd.nextFloat() * 6.28f, 1f + rnd.nextFloat() * 2f))
+        }
+        // 35 Medium diamond stars with soft halos
+        repeat(35) {
+            val ang = rnd.nextFloat() * 6.28318f
+            val dist = (rnd.nextFloat().pow(0.7f)) * 900f
+            val px = dist * cos(ang)
+            val py = (dist * sin(ang) * 0.95f) - 100f
+            val sz = 2.4f + rnd.nextFloat() * 2.0f
+            val col = when (rnd.nextInt(4)) {
+                0 -> Color(0xFF38BDF8)
+                1 -> Color(0xFFFFFFFF)
+                2 -> Color(0xFFFBBF24)
+                else -> Color(0xFFF472B6)
+            }
+            starsList.add(NebulaStar(px, py, sz, col, 1, rnd.nextFloat() * 6.28f, 0.8f + rnd.nextFloat() * 1.5f))
+        }
+        // 4 Bright internal illuminating stars inside the gas clouds
+        starsList.add(NebulaStar(-40f, -360f, 6.5f, Color(0xFFBAE6FD), 2, 0f, 0.5f))
+        starsList.add(NebulaStar(-120f, -220f, 4.5f, Color(0xFFE0F2FE), 2, 1.2f, 0.7f))
+        starsList.add(NebulaStar(30f, 160f, 8.5f, Color(0xFFFFE4E6), 3, 0.5f, 0.4f)) // Central rose giant
+        starsList.add(NebulaStar(120f, 260f, 5.0f, Color(0xFFFDA4AF), 2, 2.1f, 0.6f))
+        starsList
     }
 
     /** Star colour by temperature: hot blue-white → white → warm amber → cool red. */
@@ -520,13 +936,17 @@ fun GalaxyView(
         }
     }
 
+    val moteShootingStars = remember { mutableListOf<MoteShootingStar>() }
+    var draggingMote by remember { mutableStateOf<com.aman.gigi.model.NebulaMember?>(null) }
+    var dragMotePos by remember { mutableStateOf(Offset.Zero) }
+
     fun orbitRadiusPx(i: Int, minDim: Float) = minDim * (0.17f + i * 0.115f) * zoom
 
     Box(modifier = modifier) {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(planets) {
+            .pointerInput(planets, nebulaMotes) {
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
                 val w = size.width.toFloat(); val h = size.height.toFloat()
@@ -555,18 +975,34 @@ fun GalaxyView(
                         if (d < rad && d < hitD) { hitD = d; hit = p }
                     }
                 }
-                // Hit-test cute gifts out in the galaxy (only when no planet is under the finger).
-                var giftHit: Gift? = null
-                if (false) {                      // surprises removed from the galaxy
-                    var gd = Float.MAX_VALUE
-                    gifts.forEach { g ->
-                        val gxp = pcx + g.fx * minDim * zoom
-                        val gyp = pcy + g.fy * minDim * zoom
-                        val d = hypot(down.position.x - gxp, down.position.y - gyp)
-                        if (d < minDim * 0.06f && d < gd) { gd = d; giftHit = g }
+
+                // Hit-test Nebula public motes
+                var hitMote: com.aman.gigi.model.NebulaMember? = null
+                var hitMoteD = Float.MAX_VALUE
+                val isDiscoverable = identity?.discoverable == true
+                if (!hitSun && hit == null && isDiscoverable && nebulaMotes.isNotEmpty()) {
+                    val nebulaCenterY = pcy + 1800f * zoom
+                    nebulaMotes.forEach { m ->
+                        val angleA = (m.nebulaSeed * 0.137f) + (frame / 10_000_000_000f) * 0.18f
+                        val angleB = (m.nebulaSeed * 0.281f) + (frame / 10_000_000_000f) * 0.12f
+                        val distNormX = (cos(angleA) * 0.75f + sin(angleB * 0.5f) * 0.25f)
+                        val distNormY = (sin(angleB) * 0.75f + cos(angleA * 0.5f) * 0.25f)
+                        val mx = pcx + distNormX * (minDim * 0.95f) * zoom
+                        val my = nebulaCenterY + distNormY * (minDim * 0.75f) * zoom
+                        val rad = pr * 1.5f + 32f
+                        val d = hypot(down.position.x - mx, down.position.y - my)
+                        if (d < rad && d < hitMoteD) {
+                            hitMoteD = d
+                            hitMote = m
+                        }
                     }
                 }
+
                 if (hit != null) draggingId = hit!!.id
+                if (hitMote != null) {
+                    draggingMote = hitMote
+                    dragMotePos = down.position
+                }
                 var totalMove = 0f
                 var prevPinch = -1f
 
@@ -578,7 +1014,7 @@ fun GalaxyView(
                     val event = awaitPointerEvent()
                     val pressed = event.changes.filter { it.pressed }
                     if (pressed.isEmpty()) break
-                    if (pressed.size >= 2 && hit == null && !hitSun) {
+                    if (pressed.size >= 2 && hit == null && !hitSun && draggingMote == null) {
                         val d = hypot(
                             pressed[0].position.x - pressed[1].position.x,
                             pressed[0].position.y - pressed[1].position.y
@@ -593,6 +1029,7 @@ fun GalaxyView(
                         totalMove += hypot(delta.x, delta.y)
                         if (totalMove > 18f) pressTarget = null   // moved → it's a drag, not a hold
                         val hp = hit
+                        val hm = draggingMote
                         if (hp != null) {
                             val ux = (ch.position.x - pcx) / zoom
                             val uy = (ch.position.y - pcy) / (zoom * tilt)
@@ -605,11 +1042,14 @@ fun GalaxyView(
                             }
                             hp.orbit = best
                             hp.angle = kotlin.math.atan2(uy, ux) - rotY
+                        } else if (hm != null) {
+                            dragMotePos = ch.position
                         } else if (!hitSun) {
-                            // Drag to explore — pan the camera across the vast galaxy.
-                            val lim = minDim * 4f
-                            panX = (panX + delta.x).coerceIn(-lim, lim)
-                            panY = (panY + delta.y).coerceIn(-lim, lim)
+                            // Drag to explore — pan the camera across the vast galaxy & nebula.
+                            val limX = minDim * 4f
+                            val limY = minDim * 6f
+                            panX = (panX + delta.x).coerceIn(-limX, limX)
+                            panY = (panY + delta.y).coerceIn(-limY, limY)
                             camera.panX = panX; camera.panY = panY
                         }
                         pressed.forEach { it.consume() }
@@ -618,15 +1058,36 @@ fun GalaxyView(
 
                 pressTarget = null            // finger up → disarm the hold timer
                 val hp = hit
+                val hm = draggingMote
                 if (hp != null) {
                     if (longPressFired) Unit          // the customizer opened; don't also open the chat
                     else if (totalMove < 16f) onOpenConnection(hp.id)
                     else prefs.edit().putInt(hp.id, hp.orbit).apply()
                     draggingId = null
+                } else if (hm != null) {
+                    if (totalMove < 16f) {
+                        selectedMote = hm
+                    } else if (dragMotePos.y < pcy + 900f * zoom) {
+                        // Dragged upward into Galaxy territory -> launch starlight arc!
+                        val rndAng = (rnd.nextFloat() * 6.2832f)
+                        val farR = orbitRadiusPx(3, minDim)
+                        val targetX = pcx + farR * cos(rndAng)
+                        val targetY = pcy + farR * tilt * sin(rndAng)
+                        moteShootingStars.add(
+                            MoteShootingStar(
+                                startX = dragMotePos.x,
+                                startY = dragMotePos.y,
+                                targetX = targetX,
+                                targetY = targetY,
+                                avatarUrl = hm.twigiRenderUrl ?: hm.avatarUrl ?: hm.profileEmojiUrl,
+                                name = hm.displayName
+                            )
+                        )
+                        onInviteMote(hm)
+                    }
+                    draggingMote = null
                 } else if (hitSun) {
                     if (!longPressFired && totalMove < 16f) onSunClick()
-                } else if (totalMove < 16f && giftHit != null) {
-                    surpriseMsg = giftHit!!.message   // tapped a hidden gift → reveal the surprise
                 } else {
                     // Persist camera after a pan/zoom gesture so it survives even a hard kill.
                     camera.panX = panX; camera.panY = panY; camera.zoom = zoom
@@ -640,6 +1101,7 @@ fun GalaxyView(
         val cx = w / 2f; val cy = h / 2f
         val pcx = cx + panX; val pcy = cy + panY   // panned solar-system center
         val minDim = min(w, h)
+        val pr = minDim * 0.052f * zoom
         lastW = w; lastH = h
 
         // Background space gradient (the bright core follows the sun as you explore)
@@ -655,6 +1117,129 @@ fun GalaxyView(
         nebulae.forEach { n ->
             glow(pcx + n.ox * w, pcy + n.oy * h, n.radius * minDim, n.color, 0.13f)
         }
+
+        // ── COSMIC NEBULA REGION (GPU Procedural Multi-Octave FBM Cloud & Starfield) ──
+        val isDiscoverable = identity?.discoverable == true && !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula
+        if (isDiscoverable) {
+            val nebulaScreenX = pcx
+            val nebulaScreenY = pcy + 1800f * zoom + 150f * zoom
+
+            val tSec = frame / 1_000_000_000f
+
+            // 1. Deep Space Ambient Space Glow
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF1E1035).copy(alpha = 0.55f), Color(0xFF0A0416).copy(alpha = 0.25f), Color.Transparent),
+                    center = Offset(nebulaScreenX, nebulaScreenY - 100f * zoom),
+                    radius = 1350f * zoom
+                ),
+                radius = 1350f * zoom,
+                center = Offset(nebulaScreenX, nebulaScreenY - 100f * zoom)
+            )
+
+            // 2. Procedural FBM Volumetric Gas Clouds (Additive Soft Blending)
+            fbmNebulaPuffs.forEach { puff ->
+                val driftX = sin(tSec * 0.18f * puff.driftMul + puff.pulsePhase) * 18f * zoom
+                val driftY = cos(tSec * 0.15f * puff.driftMul + puff.pulsePhase) * 14f * zoom
+                val pulse = 0.88f + 0.12f * sin(tSec * 0.4f * puff.driftMul + puff.pulsePhase)
+                val center = Offset(nebulaScreenX + (puff.relX * zoom) + driftX, nebulaScreenY + (puff.relY * zoom) + driftY)
+                val r = puff.radius * zoom * pulse
+                val alpha = (puff.alpha * pulse).coerceIn(0f, 1f)
+
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(puff.color.copy(alpha = alpha), puff.color.copy(alpha = alpha * 0.35f), Color.Transparent),
+                        center = center,
+                        radius = r
+                    ),
+                    radius = r,
+                    center = center,
+                    blendMode = androidx.compose.ui.graphics.BlendMode.Plus
+                )
+            }
+
+            // 3. Multi-Tier Star Population (Tiny, Medium, Bright, and Core Giants with Cross Spikes)
+            fbmNebulaStars.forEach { s ->
+                val sx = nebulaScreenX + s.relX * zoom
+                val sy = nebulaScreenY + s.relY * zoom
+                val twinkle = 0.65f + 0.35f * sin(tSec * s.speed + s.phase)
+                val r = s.size * zoom
+
+                when (s.tier) {
+                    0 -> { // Tiny background pinprick
+                        drawCircle(s.color.copy(alpha = 0.85f * twinkle), r, Offset(sx, sy))
+                    }
+                    1 -> { // Medium star with glowing halo
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(s.color.copy(alpha = 0.45f * twinkle), Color.Transparent),
+                                center = Offset(sx, sy),
+                                radius = r * 4.5f
+                            ),
+                            radius = r * 4.5f,
+                            center = Offset(sx, sy),
+                            blendMode = androidx.compose.ui.graphics.BlendMode.Plus
+                        )
+                        drawCircle(s.color.copy(alpha = twinkle), r, Offset(sx, sy))
+                        drawCircle(Color.White.copy(alpha = twinkle), r * 0.5f, Offset(sx, sy))
+                    }
+                    2, 3 -> { // Massive Core Giants with 4-point cross diffraction spikes
+                        // Large luminous halo
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(s.color.copy(alpha = 0.65f * twinkle), s.color.copy(alpha = 0.2f * twinkle), Color.Transparent),
+                                center = Offset(sx, sy),
+                                radius = r * 7f
+                            ),
+                            radius = r * 7f,
+                            center = Offset(sx, sy),
+                            blendMode = androidx.compose.ui.graphics.BlendMode.Plus
+                        )
+                        // Core diamond
+                        drawCircle(s.color.copy(alpha = twinkle), r, Offset(sx, sy))
+                        drawCircle(Color.White, r * 0.6f, Offset(sx, sy))
+
+                        // Cross diffraction spikes
+                        val spikeLen = (if (s.tier == 3) 58f else 38f) * zoom * twinkle
+                        val spikeW = (if (s.tier == 3) 2.0f else 1.5f) * zoom
+                        drawLine(Color.White.copy(alpha = 0.9f * twinkle), Offset(sx - spikeLen, sy), Offset(sx + spikeLen, sy), strokeWidth = spikeW)
+                        drawLine(Color.White.copy(alpha = 0.9f * twinkle), Offset(sx, sy - spikeLen), Offset(sx, sy + spikeLen), strokeWidth = spikeW)
+                        // Diagonal flare
+                        val diagLen = spikeLen * 0.45f
+                        drawLine(s.color.copy(alpha = 0.55f * twinkle), Offset(sx - diagLen, sy - diagLen), Offset(sx + diagLen, sy + diagLen), strokeWidth = 1.0f * zoom)
+                        drawLine(s.color.copy(alpha = 0.55f * twinkle), Offset(sx - diagLen, sy + diagLen), Offset(sx + diagLen, sy - diagLen), strokeWidth = 1.0f * zoom)
+                    }
+                }
+            }
+
+            // 4. Luminous Header Banner at the top of Cosmic Nebula
+            label(
+                "🌌 THE COSMIC NEBULA",
+                nebulaScreenX, nebulaScreenY - 490f * zoom,
+                minDim * 0.046f,
+                color = android.graphics.Color.argb(255, 253, 164, 175)
+            )
+            label(
+                "Drifting in open space ✨",
+                nebulaScreenX, nebulaScreenY - 445f * zoom,
+                minDim * 0.024f,
+                color = android.graphics.Color.argb(210, 216, 180, 254)
+            )
+        }
+
+        // Header Banner for My Galaxy (Matches Cosmic Nebula aesthetics)
+        label(
+            "✨ MY GALAXY",
+            pcx, pcy - 480f * zoom,
+            minDim * 0.046f,
+            color = android.graphics.Color.argb(255, 253, 230, 138)
+        )
+        label(
+            "Sanctuary of Hearts 💖",
+            pcx, pcy - 435f * zoom,
+            minDim * 0.024f,
+            color = android.graphics.Color.argb(210, 244, 114, 182)
+        )
 
         // Bright galactic core + a dark dust lane across it, like a real spiral galaxy
         glow(pcx, pcy, minDim * 0.42f, Color(0xFFFFE7B8), 0.10f)
@@ -705,8 +1290,7 @@ fun GalaxyView(
             }
         }
 
-        // Constellations: faint lines from a group's planet to each of its moons, so a
-        // group literally reads as a little constellation of its people.
+        // Constellations: faint lines from a group's planet to each of its moons
         planets.filter { it.isGroup && it.moons.isNotEmpty() }.forEach { p ->
             val R = minDim * (0.17f + p.orbit * 0.115f) * zoom
             val ea = p.angle + rotY
@@ -754,6 +1338,56 @@ fun GalaxyView(
             }
         }
 
+        // Faraway Orbit Ring: Ghost Planets (Pending Invites)
+        if (pendingGhostInvites.isNotEmpty()) {
+            val farR = orbitRadiusPx(3, minDim)
+            pendingGhostInvites.forEachIndexed { idx, _ ->
+                val gAngle = (frame / 15_000_000_000f) + (idx * 6.2832f / pendingGhostInvites.size)
+                val gx = pcx + farR * cos(gAngle + rotY)
+                val gy = pcy + farR * tilt * sin(gAngle + rotY)
+                drawCircle(
+                    color = Color(0xFFEC4899).copy(alpha = 0.25f),
+                    radius = pr * 1.3f,
+                    center = Offset(gx, gy)
+                )
+                drawCircle(
+                    color = Color(0xFFC084FC).copy(alpha = 0.8f),
+                    radius = pr * 1.3f,
+                    center = Offset(gx, gy),
+                    style = Stroke(width = 2.5f, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(12f, 8f)))
+                )
+                label("Invited ✨", gx, gy + pr * 1.8f, minDim * 0.022f, color = android.graphics.Color.argb(220, 255, 180, 230))
+            }
+        }
+
+        // Mote Shooting Stars (Flying starlight arc when invited)
+        val msIt = moteShootingStars.iterator()
+        while (msIt.hasNext()) {
+            val ms = msIt.next()
+            val t = ms.progress
+            val arcX = ms.startX + (ms.targetX - ms.startX) * t
+            val arcHeight = -250f * zoom * sin(t * 3.14159f)
+            val arcY = ms.startY + (ms.targetY - ms.startY) * t + arcHeight
+
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(Color(0xFFEC4899), Color(0xFF7C3AED), Color.Transparent),
+                    center = Offset(arcX, arcY),
+                    radius = 24f * zoom
+                ),
+                radius = 24f * zoom,
+                center = Offset(arcX, arcY)
+            )
+            drawCircle(Color.White, 5f * zoom, Offset(arcX, arcY))
+
+            ms.progress += 0.025f
+            if (ms.progress >= 1f) {
+                // Spark burst on arrival
+                drawCircle(Color(0xFFFFD6F2), 35f * zoom, Offset(ms.targetX, ms.targetY), style = Stroke(width = 3f))
+                msIt.remove()
+            }
+        }
+
         // Asteroid belt
         asteroids.forEach { a ->
             val R = minDim * a.radiusMul * zoom
@@ -763,9 +1397,6 @@ fun GalaxyView(
             val depthA = 0.6f + 0.4f * ((sin(ea) + 1f) / 2f)
             drawCircle(Color(0xFF9C8C7A).copy(alpha = 0.7f), a.size * depthA, Offset(ax, ay))
         }
-
-        // (The scattered surprise trinkets were removed — the galaxy now reads as a
-        // real starfield rather than a treasure hunt.)
 
         // Shooting stars (streaks)
         shootingStars.forEach { s ->
@@ -782,8 +1413,6 @@ fun GalaxyView(
             )
             drawCircle(Color.White.copy(alpha = s.life.coerceIn(0f, 1f)), 3.5f, Offset(s.x, s.y))
         }
-
-        // Shadows removed by request
 
         // Floating hearts & sparkles
         floaters.forEach { f ->
@@ -920,7 +1549,7 @@ fun GalaxyView(
                     )
                 )
 
-                // ♫ Now Playing — a soft pill under the name when a connection is listening to something.
+                // ♫ Now Playing
                 val np = if (p != null) nowPlaying[p.id.lowercase()] else null
                 if (np != null && np.isPlaying) {
                     val npWidthDp = 200.dp
@@ -952,8 +1581,7 @@ fun GalaxyView(
                     }
                 }
 
-                // 💬 Sweet quote — a soft cloud above the planet when a quote was just
-                // exchanged with this person (either direction). Fades after ~30s.
+                // 💬 Sweet quote
                 val quoteText = if (p != null) quotes[p.id.lowercase()] else null
                 if (!quoteText.isNullOrBlank()) {
                     val qWidthDp = 190.dp
@@ -986,9 +1614,8 @@ fun GalaxyView(
 
                 // Render Moons for this item if it's a planet
                 p?.moons?.forEach { m ->
-                    val moonUrl = m.emojiUrl ?: com.aman.gigi.ui.components.TELEGRAM_EMOJIS[0] // fallback emoji
+                    val moonUrl = m.emojiUrl ?: com.aman.gigi.ui.components.TELEGRAM_EMOJIS[0]
                     val mRad = item.r * 0.35f
-                    // Moon position relative to planet, considering camera tilt
                     val mx = item.px + item.r * m.radius * cos(m.angle)
                     val my = item.py + item.r * m.radius * tilt * sin(m.angle)
                     val mSizeDp = with(density) { (mRad * 2).toDp() }
@@ -1008,28 +1635,323 @@ fun GalaxyView(
                     }
                 }
             }
+
+            // ── Overlay Public Motes in the Cosmic Nebula ──
+            val isDiscoverable = identity?.discoverable == true && !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula
+            val allNebulaMotes = remember(nebulaMotes, identity) {
+                if (identity?.discoverable == true) {
+                    val myId = identity.memberId
+                    val alreadyHasMe = nebulaMotes.any { it.memberId == myId }
+                    if (!alreadyHasMe) {
+                        val myMote = com.aman.gigi.model.NebulaMember(
+                            memberId = myId,
+                            handle = identity.handle ?: "you",
+                            displayName = identity.displayName.takeIf { !it.isNullOrBlank() } ?: "You",
+                            avatarUrl = identity.avatarUrl,
+                            twigiRenderUrl = identity.twigiRenderUrl,
+                            profileEmojiUrl = identity.profileEmojiUrl,
+                            bio = identity.bio ?: "Exploring the cosmic realm ✨",
+                            nebulaSeed = myId.hashCode(),
+                            isRecentlyActive = true,
+                            inviteStatus = "SELF"
+                        )
+                        listOf(myMote) + nebulaMotes
+                    } else {
+                        nebulaMotes
+                    }
+                } else {
+                    nebulaMotes
+                }
+            }
+
+            if (isDiscoverable && allNebulaMotes.isNotEmpty()) {
+                val nebulaCenterY = pcy + 1800f * zoom + 150f * zoom
+                allNebulaMotes.forEach { mote ->
+                    val isSelf = (mote.memberId == identity?.memberId)
+                    val angleA = (mote.nebulaSeed * 0.137f) + (currentFrame / 10_000_000_000f) * 0.18f
+                    val angleB = (mote.nebulaSeed * 0.281f) + (currentFrame / 10_000_000_000f) * 0.12f
+                    val distNormX = (cos(angleA) * 0.75f + sin(angleB * 0.5f) * 0.25f)
+                    val distNormY = (sin(angleB) * 0.75f + cos(angleA * 0.5f) * 0.25f)
+
+                    val isMatch = searchQuery.isBlank() ||
+                        mote.displayName.contains(searchQuery, ignoreCase = true) ||
+                        mote.handle.contains(searchQuery, ignoreCase = true) ||
+                        (mote.bio?.contains(searchQuery, ignoreCase = true) == true)
+
+                    val moteAlpha = if (isMatch) 1.0f else 0.18f
+                    val moteScale = if (searchQuery.isNotBlank() && isMatch) 1.25f else if (isSelf) 1.15f else 1.0f
+
+                    val isDraggingThis = draggingMote?.memberId == mote.memberId
+                    val mx = if (isDraggingThis) dragMotePos.x else pcx + distNormX * (minDim * 0.95f) * zoom
+                    val my = if (isDraggingThis) dragMotePos.y else nebulaCenterY + distNormY * (minDim * 0.75f) * zoom
+
+                    val moteRad = pr * 1.35f * moteScale
+                    val moteSizeDp = with(density) { (moteRad * 2).toDp() }
+
+                    val isSent = mote.inviteStatus == "SENT" || pendingGhostInvites.contains(mote.memberId)
+                    val moteAvatar = mote.twigiRenderUrl?.takeIf { it.isNotBlank() }
+                        ?: mote.avatarUrl?.takeIf { it.isNotBlank() }
+                        ?: mote.profileEmojiUrl?.takeIf { it.isNotBlank() }
+                        ?: if (isSelf) sunEmojiUrl else com.aman.gigi.ui.components.TELEGRAM_EMOJIS.first()
+
+                    Box(
+                        modifier = Modifier
+                            .offset { IntOffset(mx.roundToInt() - moteRad.roundToInt(), my.roundToInt() - moteRad.roundToInt()) }
+                            .size(moteSizeDp)
+                            .clip(CircleShape)
+                            .clickable { selectedMote = mote }
+                    ) {
+                        // Glowing Halo
+                        val haloColors = when {
+                            isSelf -> listOf(Color(0xFFFBBF24).copy(alpha = 0.7f * moteAlpha), Color(0xFFC084FC).copy(alpha = 0.35f * moteAlpha), Color.Transparent)
+                            isSent -> listOf(Color(0xFFC084FC).copy(alpha = 0.55f * moteAlpha), Color.Transparent)
+                            else -> listOf(Color(0xFFEC4899).copy(alpha = 0.55f * moteAlpha), Color.Transparent)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .background(Brush.radialGradient(haloColors))
+                        )
+
+                        // Avatar image inside bubble
+                        val parsedUrl = com.aman.gigi.utils.ImageUtils.parseEmojiModel(moteAvatar)
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(parsedUrl).crossfade(true).build(),
+                            imageLoader = imageLoader,
+                            contentDescription = mote.displayName,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(4.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1E1035).copy(alpha = 0.8f * moteAlpha))
+                        )
+
+                        // Active / Self Indicator
+                        if (isSelf) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(Color(0xFFFBBF24))
+                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                            ) {
+                                Text("✨", fontSize = 8.sp)
+                            }
+                        } else if (mote.isRecentlyActive) {
+                            val dotSize = (moteSizeDp * 0.16f).coerceIn(7.dp, 11.dp)
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(dotSize)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                                    .padding(1.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF22C55E))
+                            )
+                        }
+                    }
+
+                    // Mote Label (Name + @handle)
+                    val mLabelY = my + moteRad + (3f * zoom)
+                    val mLabelWidthDp = 180.dp
+                    val mLabelWidthPx = with(density) { mLabelWidthDp.roundToPx() }
+                    val mFontSizeSp = (9.5f * zoom).coerceIn(6.5f, 13f).sp
+
+                    Column(
+                        modifier = Modifier
+                            .offset { IntOffset(mx.roundToInt() - mLabelWidthPx / 2, mLabelY.roundToInt()) }
+                            .width(mLabelWidthDp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = if (isSelf) "✨ You" else mote.displayName.ifBlank { "@${mote.handle}" },
+                            color = if (isSelf) Color(0xFFFDE68A) else Color.White.copy(alpha = moteAlpha),
+                            fontSize = mFontSizeSp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            style = androidx.compose.ui.text.TextStyle(
+                                shadow = androidx.compose.ui.graphics.Shadow(
+                                    color = Color.Black.copy(alpha = 0.85f),
+                                    offset = Offset(0f, 2f),
+                                    blurRadius = 6f
+                                )
+                            )
+                        )
+                        Text(
+                            text = "@${mote.handle}",
+                            color = if (isSelf) Color(0xFFFCD34D) else Color(0xFFC084FC).copy(alpha = 0.9f * moteAlpha),
+                            fontSize = (mFontSizeSp.value * 0.82f).sp,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+
+                        if (isSent) {
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = Color(0xFF7C3AED).copy(alpha = 0.85f),
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
+                                Text(
+                                    text = "💌 Sent",
+                                    color = Color.White,
+                                    fontSize = (mFontSizeSp.value * 0.72f).sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        // Recenter button — fly back to your solar system when exploring far.
-        AnimatedVisibility(
-            visible = panX != 0f || panY != 0f,
-            enter = fadeIn() + scaleIn(),
-            exit = fadeOut() + scaleOut(),
-            modifier = Modifier.align(androidx.compose.ui.Alignment.TopStart).padding(start = 16.dp, top = 70.dp)
+        // Top Navigation Controls (Segmented Switcher + Stacked Nebula Search Bar)
+        val isViewingNebula = panY <= -900f
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 58.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Surface(
-                onClick = { panX = 0f; panY = 0f; camera.panX = 0f; camera.panY = 0f
-                    prefs.edit().putFloat("g_panX", 0f).putFloat("g_panY", 0f).apply() },
-                shape = CircleShape,
-                color = Color(0xFF8B5CF6).copy(alpha = 0.85f)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+            if (identity?.discoverable == true && !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula) {
+                // Public Mode: Segmented Realm Switcher [ 🏠 My Galaxy | 🌌 Nebula ]
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = Color(0xFF1E1035).copy(alpha = 0.92f),
+                    border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.45f)),
+                    shadowElevation = 8.dp
                 ) {
-                    Text("🏠", fontSize = 14.sp)
-                    Text("Recenter", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Row(
+                        modifier = Modifier.padding(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            onClick = {
+                                panX = 0f; panY = 0f; camera.panX = 0f; camera.panY = 0f
+                                prefs.edit().putFloat("g_panX", 0f).putFloat("g_panY", 0f).apply()
+                            },
+                            shape = RoundedCornerShape(999.dp),
+                            color = if (!isViewingNebula) Color(0xFF8B5CF6) else Color.Transparent
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Text("🏠", fontSize = 13.sp)
+                                Text("My Galaxy", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Surface(
+                            onClick = {
+                                panX = 0f; panY = -1800f; camera.panX = 0f; camera.panY = -1800f
+                                prefs.edit().putFloat("g_panX", 0f).putFloat("g_panY", -1800f).apply()
+                            },
+                            shape = RoundedCornerShape(999.dp),
+                            color = if (isViewingNebula) Color(0xFFEC4899) else Color.Transparent
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Text("🌌", fontSize = 13.sp)
+                                Text("Nebula", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                // Animated Nebula Search Bar - Appears ONLY when Nebula is selected/viewed, right below the switcher!
+                AnimatedVisibility(
+                    visible = isViewingNebula,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .padding(horizontal = 24.dp)
+                        .fillMaxWidth(0.92f)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color(0xFF1E1035).copy(alpha = 0.94f),
+                        border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.55f)),
+                        shadowElevation = 10.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🔍", fontSize = 15.sp)
+                            Spacer(Modifier.width(10.dp))
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = searchQuery,
+                                onValueChange = onSearchQueryChange,
+                                singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                decorationBox = { innerTextField ->
+                                    if (searchQuery.isEmpty()) {
+                                        Text("Search Nebula by @handle or name...", color = Color(0xFFA78BFA), fontSize = 13.sp)
+                                    }
+                                    innerTextField()
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { onSearchQueryChange("") },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Clear",
+                                        tint = Color(0xFFC084FC),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Private Mode: Standard Recenter button
+                AnimatedVisibility(
+                    visible = panX != 0f || panY != 0f,
+                    enter = fadeIn() + scaleIn(),
+                    exit = fadeOut() + scaleOut()
+                ) {
+                    Surface(
+                        onClick = {
+                            panX = 0f; panY = 0f; camera.panX = 0f; camera.panY = 0f
+                            prefs.edit().putFloat("g_panX", 0f).putFloat("g_panY", 0f).apply()
+                        },
+                        shape = CircleShape,
+                        color = Color(0xFF8B5CF6).copy(alpha = 0.85f),
+                        shadowElevation = 8.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text("🏠", fontSize = 14.sp)
+                            Text("Recenter", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                 }
             }
         }
@@ -1094,16 +2016,23 @@ private fun DrawScope.glow(x: Float, y: Float, r: Float, color: Color, alpha: Fl
     )
 }
 
-private fun DrawScope.label(text: String, x: Float, y: Float, sizePx: Float, color: Int = android.graphics.Color.WHITE) {
-    val shown = if (text.length > 16) text.take(15) + "…" else text
+private fun DrawScope.label(
+    text: String,
+    x: Float,
+    y: Float,
+    sizePx: Float,
+    color: Int = android.graphics.Color.WHITE,
+    maxChars: Int = 0
+) {
+    val shown = if (maxChars > 0 && text.length > maxChars) text.take(maxChars - 1) + "…" else text
     drawContext.canvas.nativeCanvas.apply {
         val paint = android.graphics.Paint().apply {
             this.color = color
             textSize = sizePx
             textAlign = android.graphics.Paint.Align.CENTER
             isAntiAlias = true
-            isFakeBoldText = true
-            setShadowLayer(6f, 0f, 1f, android.graphics.Color.BLACK)
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+            setShadowLayer(6f, 0f, 2f, android.graphics.Color.argb(200, 0, 0, 0))
         }
         drawText(shown, x, y, paint)
     }

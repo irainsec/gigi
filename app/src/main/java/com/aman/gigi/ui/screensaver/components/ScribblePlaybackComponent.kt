@@ -63,7 +63,11 @@ private fun sanitizeMediaValue(value: String?): String? =
 private fun buildServerMediaUrl(assetPath: String): String {
     val wsUri = URI(com.aman.gigi.BuildConfig.SERVER_URL)
     val scheme = if (wsUri.scheme.equals("wss", ignoreCase = true)) "https" else "http"
-    val cleanPath = assetPath.replace("\\", "/").trimStart('/')
+    val cleanPath = assetPath.replace("\\", "/")
+        .trimStart('/')
+        .removePrefix("app/")
+        .removePrefix("captures/")
+        .trimStart('/')
     return URI(
         scheme,
         wsUri.userInfo,
@@ -80,21 +84,45 @@ private fun resolveMediaModel(mediaUrl: String?, mediaBase64: String?): Any? {
     if (!sanitizedBase64.isNullOrBlank()) {
         if (sanitizedBase64.startsWith("http://", ignoreCase = true) ||
             sanitizedBase64.startsWith("https://", ignoreCase = true) ||
-            sanitizedBase64.startsWith("file://", ignoreCase = true) ||
             sanitizedBase64.startsWith("content://", ignoreCase = true) ||
-            sanitizedBase64.startsWith("/", ignoreCase = false)) {
+            sanitizedBase64.startsWith("file://", ignoreCase = true)) {
             return sanitizedBase64
         }
-        return runCatching { Base64.decode(sanitizedBase64, Base64.DEFAULT) }.getOrNull()
+        if ((sanitizedBase64.startsWith("/data/") || sanitizedBase64.startsWith("/storage/") || sanitizedBase64.startsWith("/sdcard/")) &&
+            java.io.File(sanitizedBase64).exists()) {
+            return java.io.File(sanitizedBase64)
+        }
+        val cleanBase64 = if (sanitizedBase64.contains(",")) sanitizedBase64.substringAfter(",") else sanitizedBase64
+        val bytes = runCatching {
+            Base64.decode(cleanBase64.replace("\n", "").replace("\r", "").trim(), Base64.DEFAULT)
+        }.getOrNull()
+        if (bytes != null && bytes.isNotEmpty()) {
+            return bytes
+        }
     }
 
     val sanitizedUrl = sanitizeMediaValue(mediaUrl) ?: return null
+    // If it's a raw binary strokes capture (.bin), don't pass to image loader
+    if (sanitizedUrl.endsWith(".bin", ignoreCase = true)) return null
+
+    // Check if sanitizedUrl is actually Base64 data (e.g. data:image/ or starts with /9j/ or long base64 string)
+    if (sanitizedUrl.startsWith("data:image/") || sanitizedUrl.startsWith("/9j/") ||
+        (sanitizedUrl.length > 500 && !sanitizedUrl.contains("://") && !sanitizedUrl.contains(" "))) {
+        val cleanBase64 = if (sanitizedUrl.contains(",")) sanitizedUrl.substringAfter(",") else sanitizedUrl
+        val bytes = runCatching {
+            Base64.decode(cleanBase64.replace("\n", "").replace("\r", "").trim(), Base64.DEFAULT)
+        }.getOrNull()
+        if (bytes != null && bytes.isNotEmpty()) {
+            return bytes
+        }
+    }
+
     return when {
-        sanitizedUrl.startsWith("http://", ignoreCase = true) -> sanitizedUrl
-        sanitizedUrl.startsWith("https://", ignoreCase = true) -> sanitizedUrl
-        sanitizedUrl.startsWith("content://", ignoreCase = true) -> sanitizedUrl
-        sanitizedUrl.startsWith("file://", ignoreCase = true) -> sanitizedUrl
-        sanitizedUrl.startsWith("/", ignoreCase = false) -> sanitizedUrl
+        sanitizedUrl.startsWith("http://", ignoreCase = true) || sanitizedUrl.startsWith("https://", ignoreCase = true) -> {
+            sanitizedUrl.replace("/app/captures/", "/captures/").replace("/captures/captures/", "/captures/")
+        }
+        sanitizedUrl.startsWith("content://", ignoreCase = true) || sanitizedUrl.startsWith("file://", ignoreCase = true) -> sanitizedUrl
+        (sanitizedUrl.startsWith("/data/") || sanitizedUrl.startsWith("/storage/") || sanitizedUrl.startsWith("/sdcard/")) && java.io.File(sanitizedUrl).exists() -> java.io.File(sanitizedUrl)
         sanitizedUrl.startsWith("binary://", ignoreCase = true) -> null
         else -> buildServerMediaUrl(sanitizedUrl)
     }
@@ -209,10 +237,14 @@ fun ScribblePlaybackComponent(
                         val throwable = error.result.throwable
                         val msg = throwable.message ?: "Unknown Error"
                         Log.e("ScribblePlayer", "Coil: Loading failed", throwable)
-                        errorMessage = if (msg.contains("resolve host")) {
-                            "Network Link Broken: Device cannot translate 'giphy.com' to an address."
-                        } else {
-                            msg
+                        errorMessage = when {
+                            msg.contains("resolve host", ignoreCase = true) || msg.contains("UnknownHostException", ignoreCase = true) ->
+                                "Network issue: Unable to reach media server."
+                            msg.contains("Unable to create a fetcher", ignoreCase = true) ->
+                                "Unable to display media."
+                            msg.length > 80 ->
+                                "Unable to load drawing media."
+                            else -> msg
                         }
                     }
                 )
@@ -249,13 +281,14 @@ fun ScribblePlaybackComponent(
                         )
                     }
 
-                    if (model is String) {
+                    val modelStr = model as? String
+                    if (modelStr != null && modelStr.length < 50 && !modelStr.startsWith("data:") && !modelStr.startsWith("/9j/")) {
                         Spacer(Modifier.height(12.dp))
                         Text(
-                        text = "From: ${model.take(30)}...", 
-                        color = Color.LightGray, 
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1
+                            text = "From: $modelStr", 
+                            color = Color.LightGray, 
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1
                         )
                     }
 

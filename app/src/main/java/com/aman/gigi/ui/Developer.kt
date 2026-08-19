@@ -66,6 +66,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -188,6 +189,19 @@ fun Developer(
     val activeBreak by viewModel.activeBreak.collectAsState()
     val breakResponses by viewModel.breakResponses.collectAsState()
     val myBreakAnswer by viewModel.myBreakAnswer.collectAsState()
+    val nebulaMotes by viewModel.nebulaMotes.collectAsState()
+    val nebulaSearchResults by viewModel.nebulaSearchResults.collectAsState()
+    val nebulaSearchQuery by viewModel.nebulaSearchQuery.collectAsState()
+    val pendingGhostInvites by viewModel.pendingGhostInvites.collectAsState()
+
+    LaunchedEffect(memberIdentity?.discoverable) {
+        if (memberIdentity?.discoverable == true) {
+            while (true) {
+                viewModel.loadNebulaMotes()
+                kotlinx.coroutines.delay(25_000L)
+            }
+        }
+    }
     val creatorConnections = activeConnections.filter { it.role.equals("CREATOR", ignoreCase = true) }
     val availableConnections = if (creatorConnections.isNotEmpty()) creatorConnections else activeConnections
     val currentPartner = when {
@@ -317,6 +331,19 @@ fun Developer(
                     nowPlaying = galaxyNowPlaying,
                     myNowPlaying = galaxyMyNowPlaying,
                     quotes = galaxyQuotes,
+                    nebulaMotes = if (nebulaSearchQuery.isNotBlank()) nebulaSearchResults else nebulaMotes,
+                    searchQuery = nebulaSearchQuery,
+                    onSearchQueryChange = { viewModel.setNebulaSearchQuery(it) },
+                    pendingGhostInvites = pendingGhostInvites,
+                    onInviteMote = { mote ->
+                        viewModel.sendNebulaInvite(mote)
+                    },
+                    onBlockMote = { id ->
+                        viewModel.blockMember(id)
+                    },
+                    onReportMote = { id, reason, note ->
+                        viewModel.reportMember(id, reason, note)
+                    },
                     onInvite = { viewModel.navigateTo(ScreensaverViewModel.ScreensaverScreen.CREATE) },
                     camera = viewModel.galaxyCamera,
                     onOpenConnection = { id ->
@@ -624,7 +651,7 @@ fun Developer(
             com.aman.gigi.ui.twigi.TwigiCreatorScreen(
                 initialConfigJson = memberIdentity?.twigiConfigJson,
                 saving = twigiSaving,
-                isSubscribed = com.aman.gigi.utils.AppConfig.userPlan.isPlus,
+                isSubscribed = com.aman.gigi.utils.AppConfig.userPlan.isPaid,
                 onDismiss = { showLpcStudio = false },
                 onSave = { cfgJson ->
                     twigiSaving = true

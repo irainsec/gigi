@@ -57,6 +57,8 @@ import com.aman.gigi.ui.theme.RemindMeTheme
 import com.aman.gigi.viewmodel.ScreensaverViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -64,12 +66,16 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var screensaverManager: ScreensaverManager
 
+    @Inject
+    lateinit var spotifyAuth: com.aman.gigi.data.spotify.SpotifyAuth
+
     private val currentIntentState = mutableStateOf<android.content.Intent?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         currentIntentState.value = intent
+        consumeSpotifyRedirect(intent)
         // Initialize screensaver manager
         screensaverManager.initialize()
         // Restore + re-verify any active Play subscription (handles reinstalls and
@@ -87,10 +93,24 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             RemindMeTheme {
+                // The splash sits over the real UI rather than delaying it, so the app is
+                // already warm by the time the animation clears. It can be tapped away.
+                var splashDone by rememberSaveable { mutableStateOf(false) }
+
                 // No up-front permission wall. Features ask for what they need, when they
                 // need it, via PermissionFlowHost + an animated rationale popup.
                 PermissionFlowHost {
                     Home(intent = currentIntentState.value)
+                }
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = !splashDone,
+                    enter = androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.fadeOut(
+                        animationSpec = androidx.compose.animation.core.tween(420)
+                    )
+                ) {
+                    com.aman.gigi.ui.components.GigiSplash(onFinished = { splashDone = true })
                 }
             }
         }
@@ -112,6 +132,26 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         currentIntentState.value = intent
+        consumeSpotifyRedirect(intent)
+    }
+
+    /**
+     * Completes the Spotify PKCE handshake when the browser bounces the user back to
+     * gigi://spotify-callback.
+     *
+     * The callback almost always arrives through onNewIntent — the activity is still
+     * alive behind the Custom Tab — but onCreate is covered too in case the process was
+     * killed while the consent screen was open. The intent's data is cleared afterwards
+     * so a configuration change can't replay a one-time authorization code.
+     */
+    private fun consumeSpotifyRedirect(intent: android.content.Intent?) {
+        val uri = intent?.data ?: return
+        if (uri.scheme != "gigi" || uri.host != "spotify-callback") return
+        intent.data = null
+        lifecycleScope.launch {
+            val ok = spotifyAuth.handleRedirect(uri)
+            android.util.Log.i("MainActivity", "Spotify connect ${if (ok) "succeeded" else "failed"}")
+        }
     }
 }
 
@@ -159,19 +199,30 @@ fun Home(
         selectedNavIndex = SWEET_CORNER_TAB_INDEX // Return to the default Sweet Corner tab
     }
 
+    val remoteSettings by com.aman.gigi.utils.AppConfig.settingsFlow.collectAsState()
+
     // Moonlight is no longer a tab — its flows (doodle/sparkle/create) launch as a
     // full-screen overlay from the Sweet Corner constellation.
-    val navItems = listOf(
-        NavigationItem("Reminders", Icons.Default.Notifications),
-        NavigationItem("Live", Icons.Default.LocationOn),
-        NavigationItem("Sweet Corner", Icons.Default.Favorite),
-        NavigationItem("Music", Icons.Default.LibraryMusic)
-    )
+    val navItems = remember(remoteSettings) {
+        buildList {
+            if (!remoteSettings.killReminders) add(NavigationItem("Reminders", Icons.Default.Notifications, REMINDERS_TAB_INDEX))
+            if (!remoteSettings.killLive) add(NavigationItem("Live", Icons.Default.LocationOn, LIVE_TAB_INDEX))
+            if (!remoteSettings.killSweetCorner) add(NavigationItem("Sweet Corner", Icons.Default.Favorite, SWEET_CORNER_TAB_INDEX))
+            if (!remoteSettings.killMusic) add(NavigationItem("Music", Icons.Default.LibraryMusic, MUSIC_TAB_INDEX))
+        }
+    }
+
+    LaunchedEffect(navItems) {
+        if (navItems.isNotEmpty() && navItems.none { it.tabIndex == selectedNavIndex }) {
+            selectedNavIndex = (navItems.find { it.tabIndex == SWEET_CORNER_TAB_INDEX } ?: navItems.first()).tabIndex
+        }
+    }
+
     // Inside the Music tab the pill morphs into music controls (Player centered).
     val musicNavItems = listOf(
-        NavigationItem("Library", Icons.Default.Album),
-        NavigationItem("Player", Icons.Default.PlayArrow),
-        NavigationItem("Settings", Icons.Default.Settings)
+        NavigationItem("Library", Icons.Default.Album, 0),
+        NavigationItem("Player", Icons.Default.PlayArrow, 1),
+        NavigationItem("Settings", Icons.Default.Settings, 2)
     )
     val musicTabIndex = MUSIC_TAB_INDEX
 
@@ -269,10 +320,37 @@ fun Home(
         }
     }
 
-    com.aman.gigi.ui.components.CuteUpdateDialog(
-        updateInfo = updateInfoState,
-        onDismiss = { updateInfoState = null }
-    )
+    // Keep the UpdateInfo around after the sheet is hidden so the floating chip can
+    // bring it back — dismissing used to throw it away, stranding a download that was
+    // still running with no way into the installer from inside the app.
+    var updateSheetOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(updateInfoState) {
+        val info = updateInfoState ?: return@LaunchedEffect
+        // "Later" means later, not "next time you open the app". The chip and Settings
+        // still get you back to it; this just stops the dialog ambushing every launch.
+        if (com.aman.gigi.data.update.UpdatePrefs.isDeferred(context, info.versionCode)) return@LaunchedEffect
+        updateSheetOpen = true
+    }
+
+    key(updateSheetOpen) {
+        com.aman.gigi.ui.components.CuteUpdateDialog(
+            updateInfo = if (updateSheetOpen) updateInfoState else null,
+            onDismiss = { updateSheetOpen = false }
+        )
+    }
+
+    // Sits above everything, just under the status bar, whenever a download is
+    // running with the sheet hidden. Tapping it brings the installer back.
+    Box(Modifier.fillMaxSize().zIndex(20f)) {
+        com.aman.gigi.ui.components.UpdateFloatingChip(
+            visible = !updateSheetOpen,
+            onClick = { updateSheetOpen = true },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 8.dp, end = 12.dp)
+        )
+    }
 
     // ─── Contextual permissions ───────────────────────────────────────────
     // Ask for what each feature needs, the moment the user reaches it, with an
@@ -516,7 +594,7 @@ fun Home(
                 GlassBottomNavigation(
                     items = if (inMusicTab) musicNavItems else navItems,
                     selectedItem = when {
-                        !inMusicTab -> selectedNavIndex
+                        !inMusicTab -> navItems.indexOfFirst { it.tabIndex == selectedNavIndex }.coerceAtLeast(0)
                         isMusicSettingsOpen -> 2
                         isAlbumBrowserOpen -> 0
                         else -> 1
@@ -540,28 +618,30 @@ fun Home(
                                 }
                             }
                         } else {
+                            val targetItem = navItems.getOrNull(index) ?: return@GlassBottomNavigation
+                            val targetTabIndex = targetItem.tabIndex
                             val planFeatures = com.aman.gigi.utils.AppConfig.userPlan.features
-                            val isAllowed = when (index) {
-                                0 -> planFeatures.tabReminders
-                                1 -> planFeatures.tabLive
-                                2 -> planFeatures.tabSweetCorner
-                                3 -> planFeatures.tabMusic
+                            val isAllowed = when (targetTabIndex) {
+                                REMINDERS_TAB_INDEX -> planFeatures.tabReminders
+                                LIVE_TAB_INDEX -> planFeatures.tabLive
+                                SWEET_CORNER_TAB_INDEX -> planFeatures.tabSweetCorner
+                                MUSIC_TAB_INDEX -> planFeatures.tabMusic
                                 else -> true
                             }
                             if (!isAllowed) {
-                                lockedTabFeatureName = when (index) {
-                                    0 -> "Reminders Tab"
-                                    1 -> "Live Location Tab"
-                                    2 -> "Sweet Corner Tab"
-                                    3 -> "Music Player Tab"
+                                lockedTabFeatureName = when (targetTabIndex) {
+                                    REMINDERS_TAB_INDEX -> "Reminders Tab"
+                                    LIVE_TAB_INDEX -> "Live Location Tab"
+                                    SWEET_CORNER_TAB_INDEX -> "Sweet Corner Tab"
+                                    MUSIC_TAB_INDEX -> "Music Player Tab"
                                     else -> "Navigation Tab"
                                 }
                             } else {
                                 // Re-tapping Sweet Corner opens the connections sheet.
-                                if (index == SWEET_CORNER_TAB_INDEX && selectedNavIndex == SWEET_CORNER_TAB_INDEX) {
+                                if (targetTabIndex == SWEET_CORNER_TAB_INDEX && selectedNavIndex == SWEET_CORNER_TAB_INDEX) {
                                     screensaverViewModel.openConnectionsSheet()
                                 } else {
-                                    selectedNavIndex = index
+                                    selectedNavIndex = targetTabIndex
                                 }
                             }
                         }

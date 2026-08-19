@@ -108,9 +108,10 @@ fun OnboardingGateScreen(
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+        val intentData = result.data
+        if (intentData != null) {
             try {
-                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                val task = GoogleSignIn.getSignedInAccountFromIntent(intentData)
                 val account = task.getResult(ApiException::class.java)
                 val idToken = account?.idToken
                 if (!idToken.isNullOrBlank()) {
@@ -132,12 +133,13 @@ fun OnboardingGateScreen(
     val googleSignInClient = remember(activity) {
         activity?.let {
             val webClientId = try { it.getString(R.string.default_web_client_id) } catch (e: Exception) { "" }
-            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(webClientId)
+            val builder = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
                 .requestProfile()
-                .build()
-            GoogleSignIn.getClient(it, gso)
+            if (!webClientId.isNullOrBlank()) {
+                builder.requestIdToken(webClientId)
+            }
+            GoogleSignIn.getClient(it, builder.build())
         }
     }
 
@@ -608,27 +610,27 @@ private data class StoryChapter(
 
 private val STORY_CHAPTERS = listOf(
     StoryChapter(
-        "Chapter 1 · The Beginning 🌌",
-        "A Distant Spark",
-        "Somewhere in the endless digital noise, two stars are looking for a quiet space of their own. A home built just for two.",
+        "Chapter 1 · My Galaxy 🌌",
+        "Your Personal Sanctuary",
+        "Two stars orbiting in a living cosmic galaxy. See each other's live presence, battery level, and music in real time without any noise.",
         Color(0xFF8B5CF6)
     ),
     StoryChapter(
-        "Chapter 2 · Live Connection 🎨",
-        "Doodles That Come Alive",
-        "Draw a silly heart or a sweet message. Watch it animate stroke by stroke live on your person's lock screen in real time.",
+        "Chapter 2 · Live Scribbles 🎨",
+        "Drawings on Lock & Home Screen",
+        "Draw handwritten doodles, photo notes, and love sparkles. They stream live onto your person's lock screen and interactive home screen widget.",
         Color(0xFFEC4899)
     ),
     StoryChapter(
-        "Chapter 3 · Daily Magic ☕",
-        "Shared Beats & Whispers",
-        "Listen to songs together in real time, call for a tea break, or send photo sparkles that peel open only when touched.",
-        Color(0xFFF0A75A)
+        "Chapter 3 · The Cosmic Nebula 🌌",
+        "Drifting in Open Space",
+        "Explore the public Cosmic Nebula. Discover other public voyagers drifting across procedural gas clouds, or keep your galaxy intimate and private.",
+        Color(0xFF38BDF8)
     ),
     StoryChapter(
-        "Chapter 4 · Complete Your Orbit 🌟",
+        "Chapter 4 · Twigi & Spotify 🌟",
         "Your Shared Universe",
-        "Welcome to Gigi. Step into your shared galaxy, customize your star, and bring your person home.",
+        "Listen to songs together in real-time synchronicity, co-care for your pixel-art Twigi companion, and create memories etched in the stars.",
         Color(0xFF34D399)
     )
 )
@@ -795,28 +797,49 @@ private fun GigiIntroCards(onDone: () -> Unit) {
     }
 }
 
-// Chapter 1: Pulsing Star & Burst
+// Chapter 1: Living Galaxy with Orbiting Partner Star
 @Composable
 private fun AnimatedChapter1Spark() {
     val infiniteTransition = rememberInfiniteTransition(label = "ch1")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.9f, targetValue = 1.15f,
+    val orbitAngle by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(4500, easing = LinearEasing), RepeatMode.Restart),
+        label = "orbit"
+    )
+    val corePulse by infiniteTransition.animateFloat(
+        initialValue = 0.92f, targetValue = 1.08f,
         animationSpec = infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "pulse"
+        label = "corePulse"
     )
 
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
         Box(
             modifier = Modifier
-                .size(120.dp)
-                .scale(pulseScale)
-                .background(Brush.radialGradient(listOf(Color(0xFFFBBF24).copy(alpha = 0.6f), Color.Transparent)), CircleShape)
+                .size(128.dp)
+                .border(1.5.dp, Color(0xFF8B5CF6).copy(alpha = 0.45f), CircleShape)
         )
-        Text("🌟", fontSize = 72.sp, modifier = Modifier.scale(pulseScale))
+        Box(
+            modifier = Modifier
+                .size(70.dp)
+                .scale(corePulse)
+                .background(Brush.radialGradient(listOf(Color(0xFFFBBF24).copy(alpha = 0.65f), Color.Transparent)), CircleShape)
+        )
+        Text("☀️", fontSize = 48.sp, modifier = Modifier.scale(corePulse))
+
+        // Orbiting partner star
+        val angleRad = Math.toRadians(orbitAngle.toDouble())
+        val offsetX = (58 * Math.cos(angleRad)).dp
+        val offsetY = (58 * Math.sin(angleRad)).dp
+
+        Text(
+            "💖",
+            fontSize = 26.sp,
+            modifier = Modifier.offset(x = offsetX, y = offsetY)
+        )
     }
 }
 
-// Chapter 2: Real-time Live Heart Drawing Stroke
+// Chapter 2: Real-time Live Heart Drawing Stroke on Home Widget
 @Composable
 private fun AnimatedChapter2Doodle() {
     val infiniteTransition = rememberInfiniteTransition(label = "ch2")
@@ -827,89 +850,106 @@ private fun AnimatedChapter2Doodle() {
     )
 
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
-        androidx.compose.foundation.Canvas(modifier = Modifier.size(140.dp)) {
-            val path = androidx.compose.ui.graphics.Path()
-            val w = size.width
-            val h = size.height
-            val cx = w / 2f
-            val cy = h / 2.2f
-            val scale = w / 36f
+        // Widget Frame
+        Box(
+            modifier = Modifier
+                .size(136.dp)
+                .clip(RoundedCornerShape(26.dp))
+                .background(Color(0xFF1E1035))
+                .border(1.5.dp, Color(0xFFEC4899).copy(alpha = 0.5f), RoundedCornerShape(26.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.foundation.Canvas(modifier = Modifier.size(90.dp)) {
+                val path = androidx.compose.ui.graphics.Path()
+                val w = size.width
+                val h = size.height
+                val cx = w / 2f
+                val cy = h / 2.2f
+                val scale = w / 36f
 
-            val totalSteps = (100 * strokeProgress).toInt().coerceAtLeast(2)
-            for (i in 0..totalSteps) {
-                val t = (i / 100f) * 2 * Math.PI.toFloat()
-                val sinVal = kotlin.math.sin(t.toDouble())
-                val x = cx + (16 * sinVal * sinVal * sinVal).toFloat() * scale
-                val y = cy - (13 * kotlin.math.cos(t.toDouble()) - 5 * kotlin.math.cos(2 * t.toDouble()) - 2 * kotlin.math.cos(3 * t.toDouble()) - kotlin.math.cos(4 * t.toDouble())).toFloat() * scale
-                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-            }
+                val totalSteps = (100 * strokeProgress).toInt().coerceAtLeast(2)
+                for (i in 0..totalSteps) {
+                    val t = (i / 100f) * 2 * Math.PI.toFloat()
+                    val sinVal = kotlin.math.sin(t.toDouble())
+                    val x = cx + (16 * sinVal * sinVal * sinVal).toFloat() * scale
+                    val y = cy - (13 * kotlin.math.cos(t.toDouble()) - 5 * kotlin.math.cos(2 * t.toDouble()) - 2 * kotlin.math.cos(3 * t.toDouble()) - kotlin.math.cos(4 * t.toDouble())).toFloat() * scale
+                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
 
-            drawPath(
-                path = path,
-                color = Color(0xFFEC4899),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                    width = 7.dp.toPx(),
-                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                drawPath(
+                    path = path,
+                    color = Color(0xFFEC4899),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        width = 5.dp.toPx(),
+                        cap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
                 )
-            )
+            }
         }
-        Text("✏️", fontSize = 32.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp))
+        Text("✏️", fontSize = 28.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp))
     }
 }
 
-// Chapter 3: Spinning Record & Steam
+// Chapter 3: The Cosmic Nebula Drifting Cloud
 @Composable
 private fun AnimatedChapter3Beats() {
     val infiniteTransition = rememberInfiniteTransition(label = "ch3")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Restart),
-        label = "spin"
+    val cloudDrift by infiniteTransition.animateFloat(
+        initialValue = -10f, targetValue = 10f,
+        animationSpec = infiniteRepeatable(tween(2400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "cloud"
     )
-    val floatY by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = -12f,
-        animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "float"
-    )
-
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
-        Text("🎵", fontSize = 32.sp, modifier = Modifier.align(Alignment.TopStart).padding(8.dp).offset(y = floatY.dp))
-        Text("🫖", fontSize = 48.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp))
-        Text(
-            "🎶",
-            fontSize = 64.sp,
-            modifier = Modifier.graphicsLayer { rotationZ = rotation }
-        )
-    }
-}
-
-// Chapter 4: Orbiting Galaxy Stars
-@Composable
-private fun AnimatedChapter4Galaxy() {
-    val infiniteTransition = rememberInfiniteTransition(label = "ch4")
-    val orbitAngle by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(5000, easing = LinearEasing), RepeatMode.Restart),
-        label = "orbit"
+    val starTwinkle by infiniteTransition.animateFloat(
+        initialValue = 0.3f, targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Reverse),
+        label = "twinkle"
     )
 
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
         Box(
             modifier = Modifier
                 .size(130.dp)
-                .border(1.5.dp, Color(0xFF34D399).copy(alpha = 0.4f), CircleShape)
+                .background(Brush.radialGradient(listOf(Color(0xFF38BDF8).copy(alpha = 0.45f), Color(0xFFC084FC).copy(alpha = 0.25f), Color.Transparent)), CircleShape)
         )
-        Text("☀️", fontSize = 48.sp)
+        Text("🌌", fontSize = 68.sp, modifier = Modifier.offset(x = cloudDrift.dp))
+        Text("✨", fontSize = 28.sp, modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).scale(starTwinkle))
+        Text("🪐", fontSize = 34.sp, modifier = Modifier.align(Alignment.BottomStart).padding(6.dp).offset(y = (-cloudDrift).dp))
+    }
+}
 
-        // Orbiting partner star
-        val angleRad = Math.toRadians(orbitAngle.toDouble())
-        val offsetX = (58 * Math.cos(angleRad)).dp
-        val offsetY = (58 * Math.sin(angleRad)).dp
+// Chapter 4: Twigi Companion & Shared Spotify Beats
+@Composable
+private fun AnimatedChapter4Galaxy() {
+    val infiniteTransition = rememberInfiniteTransition(label = "ch4")
+    val vinylRotation by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(3500, easing = LinearEasing), RepeatMode.Restart),
+        label = "vinyl"
+    )
+    val twigiBounce by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = -8f,
+        animationSpec = infiniteRepeatable(tween(800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "twigiBounce"
+    )
 
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(160.dp)) {
+        Box(
+            modifier = Modifier
+                .size(124.dp)
+                .background(Brush.radialGradient(listOf(Color(0xFF34D399).copy(alpha = 0.35f), Color.Transparent)), CircleShape)
+        )
+        // Vinyl record
         Text(
-            "🌟",
-            fontSize = 28.sp,
-            modifier = Modifier.offset(x = offsetX, y = offsetY)
+            "💿",
+            fontSize = 58.sp,
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 12.dp).graphicsLayer { rotationZ = vinylRotation }
         )
+        // Twigi companion
+        Text(
+            "🌱",
+            fontSize = 48.sp,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp).offset(y = twigiBounce.dp)
+        )
+        Text("🎵", fontSize = 24.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
     }
 }

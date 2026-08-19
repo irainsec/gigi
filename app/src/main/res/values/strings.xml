@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">gigi by amanraj</string>
     <!-- default_web_client_id is auto-generated from google-services.json by the Google Services Gradle plugin -->
+    <string name="twigi_status_widget_description">See your person\'s Twigi and what they\'re up to</string>
 </resources>

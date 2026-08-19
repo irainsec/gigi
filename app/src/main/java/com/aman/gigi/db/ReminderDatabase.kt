@@ -9,14 +9,36 @@ import com.aman.gigi.model.RecurrencePatternConverter
 import com.aman.gigi.model.Reminder
 import com.aman.gigi.model.SharedAlarmMirror
 
-@Database(entities = [Reminder::class, RecentlySentGif::class, SharedAlarmMirror::class], version = 10, exportSchema = false)
+@Database(
+    entities = [Reminder::class, RecentlySentGif::class, SharedAlarmMirror::class, RecentPlay::class],
+    version = 11,
+    exportSchema = false
+)
 @TypeConverters(RecurrencePatternConverter::class)
 abstract class ReminderDatabase : RoomDatabase() {
     abstract fun reminderDAO(): ReminderDAO
     abstract fun recentlySentGifDao(): RecentlySentGifDao
     abstract fun sharedAlarmDao(): SharedAlarmDao
+    abstract fun recentPlayDao(): RecentPlayDao
 
     companion object {
+        /** Adds the play history behind the Library's "Recent" deck. */
+        val MIGRATION_10_11: Migration = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS recent_plays (
+                        songId INTEGER PRIMARY KEY NOT NULL,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        albumArtUri TEXT,
+                        playedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         val MIGRATION_1_2: Migration = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE reminder_items ADD COLUMN recurrencePattern TEXT DEFAULT NULL")

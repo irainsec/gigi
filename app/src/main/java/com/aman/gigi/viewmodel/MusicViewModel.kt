@@ -30,6 +30,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -81,7 +83,8 @@ class MusicViewModel @Inject constructor(
     private val syncManager: com.aman.gigi.data.sync.ScribbleSyncManager,
     private val connectionRepository: com.aman.gigi.repository.ConnectionRepository,
     private val lyricsRepository: LyricsRepository,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val recentPlayDao: com.aman.gigi.db.RecentPlayDao
 ) : AndroidViewModel(application) {
 
     private val tag = "MusicViewModel"
@@ -90,6 +93,10 @@ class MusicViewModel @Inject constructor(
     val uiState: StateFlow<MusicUiState> = _uiState.asStateFlow()
 
     val activeConnections = connectionRepository.getActiveConnections()
+
+    /** Play history, newest first — backs the Library's "Recent" deck. */
+    val recentPlays = recentPlayDao.observeRecent()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _isAlbumBrowserOpen = MutableStateFlow(false)
     val isAlbumBrowserOpen = _isAlbumBrowserOpen.asStateFlow()
@@ -346,6 +353,32 @@ class MusicViewModel @Inject constructor(
 
         startPlaybackService()
         playbackManager.playSong(song, resolvedAlbumId)
+        rememberPlay(song)
+    }
+
+    /**
+     * Records the play for the Recent deck. Keyed on songId so a track on repeat moves
+     * up the list instead of filling history with copies of itself.
+     */
+    private fun rememberPlay(song: LocalSong) {
+        viewModelScope.launch {
+            runCatching {
+                recentPlayDao.record(
+                    com.aman.gigi.db.RecentPlay(
+                        songId = song.id,
+                        title = song.title,
+                        artist = song.artist,
+                        albumArtUri = song.albumArtUri?.toString(),
+                        playedAt = System.currentTimeMillis()
+                    )
+                )
+                recentPlayDao.trim()
+            }.onFailure { Log.w(tag, "Could not record play: ${it.message}") }
+        }
+    }
+
+    fun clearRecentPlays() {
+        viewModelScope.launch { runCatching { recentPlayDao.clear() } }
     }
 
     fun playAlbum(album: MusicAlbum) {

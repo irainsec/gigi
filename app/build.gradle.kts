@@ -13,18 +13,18 @@ val configuredServerUrl = (findProperty("GIGI_SERVER_URL") as String?)
     ?: System.getenv("GIGI_SERVER_URL")
     ?: "wss://gigi.iamanraj.com"
 
-val mapsApiKey = (findProperty("GIGI_MAPS_API_KEY") as String?)
-    ?: System.getenv("GIGI_MAPS_API_KEY")
-    ?: ""
-
 val releaseStoreFilePath = (findProperty("GIGI_RELEASE_STORE_FILE") as String?)
     ?: System.getenv("GIGI_RELEASE_STORE_FILE")
+    ?: rootProject.file("my-release-key.jks").absolutePath
 val releaseStorePassword = (findProperty("GIGI_RELEASE_STORE_PASSWORD") as String?)
     ?: System.getenv("GIGI_RELEASE_STORE_PASSWORD")
+    ?: "123456"
 val releaseKeyAlias = (findProperty("GIGI_RELEASE_KEY_ALIAS") as String?)
     ?: System.getenv("GIGI_RELEASE_KEY_ALIAS")
+    ?: "my-key-alias"
 val releaseKeyPassword = (findProperty("GIGI_RELEASE_KEY_PASSWORD") as String?)
     ?: System.getenv("GIGI_RELEASE_KEY_PASSWORD")
+    ?: "123456"
 val hasReleaseSigning = !releaseStoreFilePath.isNullOrBlank() &&
     !releaseStorePassword.isNullOrBlank() &&
     !releaseKeyAlias.isNullOrBlank() &&
@@ -38,8 +38,8 @@ android {
         applicationId = "com.aman.gigi"
         minSdk = 26
         targetSdk = 35
-        versionCode = 37
-        versionName = "v1.7.7"
+        versionCode = 70
+        versionName = "v2.2.7"
 
 
 
@@ -49,10 +49,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "SERVER_URL", "\"$configuredServerUrl\"")
-        // Maps key is injected, never committed. Set GIGI_MAPS_API_KEY in local.properties
-        // or the environment; Live falls back to a list-only view when it is blank.
-        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
-        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
     }
 
     signingConfigs {
@@ -95,6 +91,19 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+        }
+    }
+
+    // Native libs are ~59 MB of the APK across four architectures, and a phone can
+    // only ever use one of them. Splitting means an arm64 device downloads ~15 MB of
+    // libs instead of 59. The universal APK is still produced for manual installs,
+    // emulators, and as the website's "just give me the file" fallback.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true
         }
     }
 
@@ -150,8 +159,11 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
 
-    // Sceneview Android (Google Filament 3D Engine for Native 3D VRM Avatars)
-    implementation("io.github.sceneview:sceneview:2.2.1")
+    // Removed: io.github.sceneview:sceneview (Filament 3D engine).
+    // It was added for 3D VRM avatars; Twigi moved to 2D LPC sprites and the only
+    // remaining ".glb/.vrm" code paths draw a static "✨ 3D" placeholder. The AAR was
+    // costing 16 MB of the APK (4 native libs + bundled models/environments/materials)
+    // with zero call sites. Re-add it only alongside a real renderer.
 
     // Play Billing
     implementation("com.android.billingclient:billing-ktx:7.0.0")
@@ -164,6 +176,11 @@ dependencies {
     implementation(libs.mlkit.face.detection)
     implementation(libs.guava)
     implementation(libs.play.services.location)
+
+    // Chrome Custom Tabs — hosts the Spotify PKCE consent screen. A WebView would be
+    // both a phishing pattern and a breach of Spotify's terms, which require the user
+    // to see the real accounts.spotify.com address bar.
+    implementation("androidx.browser:browser:1.8.0")
 
     // Connected Screensaver Dependencies
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -181,10 +198,10 @@ dependencies {
 
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:21.3.0")
-    // Live: nearby posts + meet-up map
+    // Live: nearby posts + meet-up map.
+    // Maps are rendered from OpenStreetMap tiles (OsmTiles/OsmMapView), so the Google
+    // Maps SDK is gone — no API key, no billing account, ~2 MB smaller.
     implementation("com.google.android.gms:play-services-location:21.3.0")
-    implementation("com.google.maps.android:maps-compose:6.4.1")
-    implementation("com.google.android.gms:play-services-maps:19.0.0")
 
     // Glance Widgets
     implementation("androidx.glance:glance-appwidget:1.0.0")

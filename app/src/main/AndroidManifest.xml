@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Live meet-ups share location only while the meet-up is running, in a visible
+         foreground service. We deliberately do NOT request ACCESS_BACKGROUND_LOCATION. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -91,7 +94,29 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="gigi" android:host="join" />
             </intent-filter>
+            <!-- Where Spotify returns the user after the PKCE consent screen. Must match
+                 the redirect URI registered in the Spotify developer dashboard exactly. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="gigi" android:host="spotify-callback" />
+            </intent-filter>
         </activity>
+
+        <!-- Streams your position to an accepted meet-up. Runs only while the meet-up
+             is live, with an ongoing notification, and stops on Done / expiry. -->
+        <service
+            android:name=".service.LiveTrackingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <!-- Owns the update download. A 50-100 MB transfer has to be foreground work,
+             or the OS kills the process partway through when the screen locks. -->
+        <service
+            android:name=".data.update.UpdateDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Floating chat-head bubble for incoming messages (WindowManager overlay). -->
         <service
@@ -210,6 +235,19 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+            <!-- Your person's Twigi on the home screen. Home-screen only: Android
+                 phones have had no lockscreen widgets since API 21. -->
+            <receiver
+                android:name=".widget.TwigiStatusWidgetReceiver"
+                android:exported="true">
+                <intent-filter>
+                    <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                </intent-filter>
+                <meta-data
+                    android:name="android.appwidget.provider"
+                    android:resource="@xml/twigi_status_widget_info" />
+            </receiver>
+
             <receiver
             android:name=".widget.SharedCountdownWidgetReceiver"
             android:exported="true">

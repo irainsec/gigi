@@ -278,6 +278,81 @@ tr.clickable-row:hover td { background: var(--surface2); }
   border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-row td { text-align: center; padding: 40px; }
+
+/* ── softer, friendlier admin skin ───────────────────────────────────────── */
+body { background:
+  radial-gradient(1200px 600px at 12% -10%, rgba(168,85,247,.16), transparent 60%),
+  radial-gradient(900px 500px at 100% 0%, rgba(236,72,153,.12), transparent 55%),
+  var(--bg); }
+.sidebar { border-right: 1px solid rgba(255,255,255,.05); }
+.nav-item { border-radius: 14px; transition: transform .15s ease, background .15s ease; }
+.nav-item:hover { transform: translateX(2px); }
+.nav-item.active { box-shadow: inset 0 0 0 1px rgba(168,85,247,.35); }
+
+.card, .plan-card { border-radius: 20px !important; }
+.plan-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+  border: 1px solid rgba(255,255,255,.07);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.plan-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(168,85,247,.4);
+  box-shadow: 0 14px 40px -18px rgba(168,85,247,.6);
+}
+.plan-card-head {
+  text-transform: capitalize; font-size: 16px; letter-spacing:.2px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.plan-card.tier-free  .plan-card-head { color:#86EFAC; }
+.plan-card.tier-plus  .plan-card-head { color:#93C5FD; }
+.plan-card.tier-pro   .plan-card-head { color:#FDE68A; }
+
+/* grouped knobs */
+.plan-group { margin-top: 14px; }
+.plan-group-head {
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text-muted); font-weight: 700; margin: 0 0 8px;
+  padding-bottom: 6px; border-bottom: 1px dashed rgba(255,255,255,.08);
+}
+.plan-num-row, .plan-feat-row { border-radius: 12px; padding: 6px 8px; }
+.plan-feat-row {
+  display:flex; align-items:center; gap:8px; cursor:pointer;
+  transition: background .15s ease;
+}
+.plan-feat-row:hover, .plan-num-row:hover { background: rgba(255,255,255,.04); }
+.plan-feat-row.is-unwired { opacity: .55; }
+.plan-feat-row input[type=checkbox] { accent-color: #A855F7; width:16px; height:16px; }
+.plan-num-row input {
+  border-radius: 10px; text-align: right;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.plan-num-row input:focus {
+  border-color: rgba(168,85,247,.7);
+  box-shadow: 0 0 0 3px rgba(168,85,247,.18); outline: none;
+}
+
+/* how much a toggle actually bites */
+.enf {
+  font-size: 9px; font-weight: 700; letter-spacing: .04em;
+  padding: 2px 7px; border-radius: 999px; white-space: nowrap; margin-left: auto;
+}
+.enf-server { background: rgba(16,185,129,.16); color:#6EE7B7; }
+.enf-app    { background: rgba(245,158,11,.16); color:#FCD34D; }
+.enf-none   { background: rgba(148,163,184,.14); color:#94A3B8; }
+
+/* settings page */
+.set-row { margin: 10px 0 2px; }
+.set-hint {
+  font-size: 11px; color: var(--text-muted);
+  margin: 2px 8px 12px; line-height: 1.45;
+}
+
+.btn { border-radius: 999px !important; }
+.btn-primary { box-shadow: 0 8px 24px -10px rgba(168,85,247,.9); }
+.btn:active { transform: translateY(1px); }
+.section-title { letter-spacing: -0.02em; }
+.plans-grid { gap: 18px; }
 </style>
 </head>
 <body>
@@ -322,6 +397,9 @@ tr.clickable-row:hover td { background: var(--surface2); }
         </button>
         <button class="nav-item" data-page="plans" onclick="showPage('plans', this)">
           <span class="nav-icon">💎</span> Plans
+        </button>
+        <button class="nav-item" data-page="settings" onclick="showPage('settings', this)">
+          <span class="nav-icon">🎛️</span> App Settings
         </button>
         <button class="nav-item" data-page="reset" onclick="showPage('reset', this)">
           <span class="nav-icon">🔴</span> Reset
@@ -417,6 +495,21 @@ tr.clickable-row:hover td { background: var(--surface2); }
           <div class="card" style="margin-top:18px;padding:16px">
             <label class="plan-field-label">Upgrade URL (opened by the app's upgrade button)</label>
             <input type="text" class="form-input" id="plan-upgrade-url" placeholder="https://…" style="margin-top:6px">
+          </div>
+        </div>
+
+        <div class="page" id="page-settings">
+          <div class="section-header">
+            <div class="section-title">App Settings</div>
+            <button class="btn btn-primary btn-sm" onclick="saveAppSettings()">💾 Save &amp; push live</button>
+          </div>
+          <div style="color:var(--text-muted);font-size:13px;margin:-4px 0 16px">
+            Things the app used to have baked in. Saving pushes them to every open app
+            over the socket — no new build, no store review. 🔑 keys are write-only:
+            they show as dots and stay untouched unless you type a new value.
+          </div>
+          <div id="settings-grid" class="plans-grid">
+            <div class="loading-row"><div class="spinner"></div></div>
           </div>
         </div>
 
@@ -599,10 +692,19 @@ let confirmCallback = null;
 let PLAN_CONFIG = null;          // cached /admin/data/plan-config
 let MEMBER_CACHE = {};           // memberId -> member row (for the plan editor)
 let editingMemberId = null;
-const PLAN_NUM_KEYS = ['maxConnections','maxGroupMembers','maxStrokes','maxReminders','maxCardsPerStack','historyDays','maxLivePosts'];
-const PLAN_FEAT_KEYS = ['gifPicker','premiumBrushes','timeCapsule','animatedCards','groupConnections','customTheme','allThemes','recurringAlarms','liveTracking','tabReminders','tabLive','tabSweetCorner','tabMusic'];
-const PLAN_NUM_LABELS = { maxConnections:'Max connections', maxGroupMembers:'Max group members', maxStrokes:'Max strokes', maxReminders:'Max reminders', maxCardsPerStack:'Cards / stack', historyDays:'History (days)', maxLivePosts:'Max live posts' };
-const PLAN_FEAT_LABELS = { gifPicker:'GIF picker', premiumBrushes:'Premium brushes', timeCapsule:'Time capsule', animatedCards:'Animated cards', groupConnections:'Group connections', customTheme:'Custom theme', allThemes:'All themes', recurringAlarms:'Recurring alarms', liveTracking:'Live location tracking', tabReminders:'🔔 Reminders tab', tabLive:'📍 Live Location tab', tabSweetCorner:'💖 Sweet Corner tab', tabMusic:'🎵 Music Player tab' };
+// Rendered from the catalog the server sends with /admin/data/plan-config, so a new
+// knob added in plan_catalog.js shows up here with no edit to this file.
+let PLAN_NUM_KEYS = [], PLAN_FEAT_KEYS = [], LIMIT_META = {}, FEATURE_META = {};
+let PLAN_META_CATALOG = [];
+let SETTINGS_CATALOG = [];
+const GROUP_ICON = { Core:'💞', Creative:'🎨', Reminders:'⏰', Live:'📍', Navigation:'🧭',
+                     Chat:'💬', Themes:'🌈', 'API keys':'🔑', Releases:'🚀',
+                     Operations:'🛠️', 'Kill switches':'🛑', Links:'🔗' };
+const ENFORCE_BADGE = {
+  server: ['✓ enforced', 'enf-server', 'The API blocks this, so it holds even if the app is modified.'],
+  app:    ['◐ in app',   'enf-app',    'The app hides or blocks this. A modified client could bypass it.'],
+  none:   ['○ not wired','enf-none',   'Declared but nothing reads it yet — toggling it has no effect.']
+};
 
 
 
@@ -669,12 +771,13 @@ function showPage(name, el) {
   document.getElementById('page-' + name).classList.add('active');
   el.classList.add('active');
   currentPage = name;
-  const titles = { dashboard: 'Dashboard', members: 'Members', connections: 'Connections', plans: 'Plan Tiers & Limits', reset: 'Danger Zone' };
+  const titles = { dashboard: 'Dashboard', members: 'Members', connections: 'Connections', plans: 'Plan Tiers & Limits', settings: 'App Settings', reset: 'Danger Zone' };
   document.getElementById('topbar-title').textContent = titles[name] || name;
   if (name === 'dashboard') loadDashboard();
   if (name === 'members') loadMembers();
   if (name === 'connections') loadConnections();
   if (name === 'plans') loadPlans();
+  if (name === 'settings') loadAppSettings();
 }
 
 function refreshPage() {
@@ -774,46 +877,146 @@ async function loadPlans() {
   grid.innerHTML = `<div class="loading-row"><div class="spinner"></div></div>`;
   try {
     PLAN_CONFIG = await api('GET', '/admin/data/plan-config');
+    const limits   = PLAN_CONFIG.limitCatalog   || [];
+    const features = PLAN_CONFIG.featureCatalog || [];
+    PLAN_META_CATALOG = PLAN_CONFIG.metaCatalog || [];
+    PLAN_NUM_KEYS  = limits.map(l => l.key);
+    PLAN_FEAT_KEYS = features.map(f => f.key);
+    LIMIT_META = {}; limits.forEach(l => LIMIT_META[l.key] = l);
+    FEATURE_META = {}; features.forEach(f => FEATURE_META[f.key] = f);
+
     document.getElementById('plan-upgrade-url').value = PLAN_CONFIG.upgradeUrl || '';
-    const rawOrder = PLAN_CONFIG.tiers_order || Object.keys(PLAN_CONFIG.tiers || {});
-    const order = rawOrder.filter(t => PLAN_CONFIG.tiers && PLAN_CONFIG.tiers[t]);
+    const order = (PLAN_CONFIG.tiers_order || Object.keys(PLAN_CONFIG.tiers || {}))
+      .filter(t => PLAN_CONFIG.tiers && PLAN_CONFIG.tiers[t]);
+
+    // Everything a plan controls, bucketed by the catalog's own groups.
+    const groups = [];
+    const seen = {};
+    [...limits.map(x => ({...x, kind:'num'})), ...features.map(x => ({...x, kind:'feat'}))]
+      .forEach(item => {
+        if (!seen[item.group]) { seen[item.group] = { name: item.group, items: [] }; groups.push(seen[item.group]); }
+        seen[item.group].items.push(item);
+      });
+
     grid.innerHTML = order.map(tier => {
       const p = PLAN_CONFIG.tiers[tier] || {};
-      const isFree = tier === 'free';
-      const nums = PLAN_NUM_KEYS.map(k => `
-        <div class="plan-num-row">
-          <span class="plan-field-label">${PLAN_NUM_LABELS[k]}</span>
-          <input type="number" min="0" id="plan-${tier}-${k}" value="${p[k] != null ? p[k] : 0}">
+      const badge = tier === 'pro' ? '👑' : tier === 'plus' ? '💎' : tier === 'free' ? '🌱' : '⭐';
+      const body = groups.map(g => `
+        <div class="plan-group">
+          <div class="plan-group-head">${GROUP_ICON[g.name] || '✨'} ${g.name}</div>
+          ${g.items.map(item => {
+            const [btxt, bcls, btip] = ENFORCE_BADGE[item.enforced] || ENFORCE_BADGE.none;
+            const badgeHtml = `<span class="enf ${bcls}" title="${esc(btip)}">${btxt}</span>`;
+            if (item.kind === 'num') {
+              const v = p[item.key] != null ? p[item.key] : 0;
+              return `<div class="plan-num-row" title="${esc(item.hint || '')}">
+                        <span class="plan-field-label">${esc(item.label)} ${badgeHtml}</span>
+                        <input type="number" min="0" id="plan-${tier}-${item.key}" value="${v}">
+                      </div>`;
+            }
+            const on = p.features && p.features[item.key];
+            return `<label class="plan-feat-row ${item.enforced==='none'?'is-unwired':''}" title="${esc(item.hint || '')}">
+                      <input type="checkbox" id="plan-${tier}-feat-${item.key}" ${on ? 'checked' : ''}>
+                      <span>${esc(item.label)}</span> ${badgeHtml}
+                    </label>`;
+          }).join('')}
         </div>`).join('');
-      
-      const regularFeatKeys = PLAN_FEAT_KEYS.filter(k => !k.startsWith('tab'));
-      const tabFeatKeys = PLAN_FEAT_KEYS.filter(k => k.startsWith('tab'));
 
-      const feats = regularFeatKeys.map(k => `
-        <label class="plan-feat-row"><input type="checkbox" id="plan-${tier}-feat-${k}" ${p.features && p.features[k] ? 'checked' : ''}> ${PLAN_FEAT_LABELS[k]}</label>`).join('');
+      const meta = p.meta || {};
+      const pricing = `
+        <div class="plan-group">
+          <div class="plan-group-head">PRICING &amp; PRESENTATION</div>
+          ${PLAN_META_CATALOG.map(m => {
+            const v = meta[m.key];
+            if (m.type === 'bool') {
+              return `<label class="plan-feat-row" title="${esc(m.hint)}">
+                        <input type="checkbox" id="plan-${tier}-meta-${m.key}" ${v ? 'checked' : ''}>
+                        <span>${esc(m.label)}</span>
+                      </label>`;
+            }
+            const type = m.type === 'number' ? 'number' : 'text';
+            return `<div class="plan-num-row" title="${esc(m.hint)}">
+                      <span class="plan-field-label">${esc(m.label)}</span>
+                      <input type="${type}" id="plan-${tier}-meta-${m.key}"
+                             value="${esc(v)}" style="text-align:right;min-width:120px">
+                    </div>`;
+          }).join('')}
+        </div>`;
 
-      const tabs = tabFeatKeys.map(k => {
-        const isChecked = !p.features || p.features[k] !== false; // Default allowed (true) if unspecified
-        return `<label class="plan-feat-row"><input type="checkbox" id="plan-${tier}-feat-${k}" ${isChecked ? 'checked' : ''}> ${PLAN_FEAT_LABELS[k]}</label>`;
-      }).join('');
-
-      const badgeEmoji = tier === 'pro' ? '👑' : tier === 'plus' ? '💎' : tier === 'free' ? '🌱' : '⭐';
-      const deleteBtn = !isFree ? `<button class="btn btn-ghost btn-sm" style="color:#F43F5E" onclick="deleteCustomPlan('${tier}')">🗑️ Delete</button>` : '';
-
+      const del = tier === 'free' ? '' :
+        `<button class="btn btn-ghost btn-sm" style="color:#F43F5E" onclick="deleteCustomPlan('${tier}')">🗑️</button>`;
+      const shown = meta.displayName || tier;
       return `<div class="plan-card tier-${tier}">
-        <div class="plan-card-head" style="display:flex;justify-content:space-between;align-items:center">
-          <span>${badgeEmoji} ${tier}</span>
-          ${deleteBtn}
+        <div class="plan-card-head">
+          <span>${esc(meta.emoji || badge)} ${esc(shown)}
+            <span style="opacity:.4;font-size:11px;font-weight:400">${esc(tier)}</span>
+          </span>${del}
         </div>
-        ${nums}
-        <div class="plan-feature-label">Features</div>
-        ${feats}
-        <div class="plan-feature-label" style="margin-top:12px;color:#A855F7">Allowed Navigation Tabs</div>
-        ${tabs}
+        ${pricing}
+        ${body}
       </div>`;
     }).join('');
 
+    if (!order.length) grid.innerHTML = emptyState('No plans yet', 'Create one to get started.');
   } catch (e) { grid.innerHTML = emptyState('Failed to load', e.message); }
+}
+
+function esc(t) {
+  return String(t == null ? '' : t)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── App settings (remote config) ─────────────────────────────────────────────
+async function loadAppSettings() {
+  const grid = document.getElementById('settings-grid');
+  grid.innerHTML = `<div class="loading-row"><div class="spinner"></div></div>`;
+  try {
+    const d = await api('GET', '/admin/data/app-settings');
+    SETTINGS_CATALOG = d.catalog || [];
+    const vals = d.values || {};
+    const groups = [];
+    const seen = {};
+    SETTINGS_CATALOG.forEach(sp => {
+      if (!seen[sp.group]) { seen[sp.group] = { name: sp.group, items: [] }; groups.push(seen[sp.group]); }
+      seen[sp.group].items.push(sp);
+    });
+
+    grid.innerHTML = groups.map(g => `
+      <div class="plan-card">
+        <div class="plan-card-head"><span>${GROUP_ICON[g.name] || '⚙️'} ${esc(g.name)}</span></div>
+        ${g.items.map(sp => {
+          const v = vals[sp.key];
+          const hint = sp.hint ? `<div class="set-hint">${esc(sp.hint)}</div>` : '';
+          if (sp.type === 'bool') {
+            return `<label class="plan-feat-row">
+                      <input type="checkbox" id="set-${sp.key}" ${v ? 'checked' : ''}>
+                      <span>${esc(sp.label)}</span>
+                    </label>${hint}`;
+          }
+          const type = sp.type === 'number' ? 'number' : 'text';
+          return `<div class="set-row">
+                    <label class="plan-field-label">${sp.secret ? '🔑 ' : ''}${esc(sp.label)}</label>
+                    <input class="form-input" type="${type}" id="set-${sp.key}" value="${esc(v)}">
+                  </div>${hint}`;
+        }).join('')}
+      </div>`).join('');
+  } catch (e) { grid.innerHTML = emptyState('Failed to load', e.message); }
+}
+
+async function saveAppSettings() {
+  const values = {};
+  SETTINGS_CATALOG.forEach(sp => {
+    const el = document.getElementById('set-' + sp.key);
+    if (!el) return;
+    values[sp.key] = sp.type === 'bool' ? el.checked
+                   : sp.type === 'number' ? Number(el.value) || 0
+                   : el.value;
+  });
+  try {
+    await api('PUT', '/admin/data/app-settings', { values });
+    toast('Settings pushed to every open app 🚀', 'success');
+    loadAppSettings();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
 function openCreatePlanModal() {
@@ -870,6 +1073,14 @@ async function savePlanConfig() {
     PLAN_FEAT_KEYS.forEach(k => {
       const el = document.getElementById(`plan-${tier}-feat-${k}`);
       if (el) t.features[k] = el.checked;
+    });
+    t.meta = {};
+    PLAN_META_CATALOG.forEach(m => {
+      const el = document.getElementById(`plan-${tier}-meta-${m.key}`);
+      if (!el) return;
+      t.meta[m.key] = m.type === 'bool' ? el.checked
+                    : m.type === 'number' ? (Number(el.value) || 0)
+                    : el.value;
     });
     tiers[tier] = t;
   });

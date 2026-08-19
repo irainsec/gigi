@@ -5,6 +5,9 @@ import com.aman.gigi.model.Scribble
 import com.aman.gigi.model.ScribbleStatus
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import com.aman.gigi.widget.LatestNoteWidget
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,7 +16,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class ScribbleRepository @Inject constructor(
-    private val scribbleDao: ScribbleDao
+    private val scribbleDao: ScribbleDao,
+    @ApplicationContext private val context: Context
 ) {
     
     /**
@@ -63,6 +67,7 @@ class ScribbleRepository @Inject constructor(
             createdAt = System.currentTimeMillis()
         )
         scribbleDao.insertScribble(newScribble)
+        runCatching { LatestNoteWidget.refresh(context) }
         return scribbleId
     }
 
@@ -117,6 +122,7 @@ class ScribbleRepository @Inject constructor(
             receivedAt = System.currentTimeMillis()
         )
         scribbleDao.insertScribble(receivedScribble)
+        runCatching { LatestNoteWidget.refresh(context) }
     }
     
     /**

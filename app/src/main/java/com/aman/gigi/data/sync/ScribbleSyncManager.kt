@@ -8,6 +8,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.aman.gigi.data.client.ConnectionBootstrapManager
+import com.aman.gigi.data.live.LiveEvent
+import com.aman.gigi.data.live.LiveEventBus
 import com.aman.gigi.model.PartnerPresence
 import com.aman.gigi.model.Scribble
 import com.aman.gigi.model.ScribbleStatus
@@ -197,6 +199,8 @@ class ScribbleSyncManager @Inject constructor(
                             }
                         }
                     }
+                    // 3. Purge corrupted blank chat messages
+                    chatRepository.deleteBlankMessages()
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to run auto-pruning", e)
                 }
@@ -1441,6 +1445,43 @@ class ScribbleSyncManager @Inject constructor(
                             "chat_message" -> {
                                 scope.launch { handleIncomingChat(json, connectionId) }
                             }
+                            // Live tab — relayed straight to the bus; the ViewModel
+                            // decides what's relevant to whatever is on screen.
+                            "live_post_new" -> LiveEventBus.emit(LiveEvent.PostAdded)
+                            "live_join_request" -> LiveEventBus.emit(
+                                LiveEvent.JoinRequested(
+                                    json.optString("postId"),
+                                    json.optString("memberId"),
+                                    json.optString("name", "Someone")
+                                )
+                            )
+                            "live_join_accepted", "live_join_declined" -> LiveEventBus.emit(
+                                LiveEvent.JoinAnswered(
+                                    json.optString("postId"),
+                                    json.optString("memberId"),
+                                    json.optString("type") == "live_join_accepted"
+                                )
+                            )
+                            "live_location" -> LiveEventBus.emit(
+                                LiveEvent.PeerLocation(
+                                    postId = json.optString("postId"),
+                                    memberId = json.optString("memberId"),
+                                    name = json.optString("name", "Someone"),
+                                    avatarUrl = json.optString("avatarUrl")
+                                        .takeIf { it.isNotBlank() && it != "null" },
+                                    lat = json.optDouble("lat"),
+                                    lng = json.optDouble("lng"),
+                                    heading = json.optDouble("heading").toFloat()
+                                        .takeIf { !json.isNull("heading") }
+                                )
+                            )
+                            "live_post_done" -> LiveEventBus.emit(
+                                LiveEvent.PostDone(json.optString("postId"))
+                            )
+                            // Admin pushed new remote settings (kill switches, keys,
+                            // release gating) — apply without waiting for a relaunch.
+                            "app_settings_update" -> com.aman.gigi.utils.AppConfig
+                                .applySettingsJson(json.optJSONObject("settings"))
                             "now_playing" -> handleIncomingNowPlaying(json, connectionId)
                             "break_invite" -> handleIncomingBreakInvite(json, connectionId)
                             "break_response" -> handleIncomingBreakResponse(json)
@@ -3015,11 +3056,16 @@ class ScribbleSyncManager @Inject constructor(
     /** Persists an incoming chat message and notifies observers. */
     private suspend fun handleIncomingChat(json: org.json.JSONObject, connectionId: String) {
         try {
+            val text = json.optString("text", "").trim()
+            val gifUrl = json.optString("gifUrl", "").trim()
+            if (text.isBlank() && gifUrl.isBlank()) {
+                Log.w(TAG, "Ignoring blank incoming chat message")
+                return
+            }
+
             val id = json.optString("clientMsgId").ifBlank { java.util.UUID.randomUUID().toString() }
             val senderName = json.optString("senderName", "Partner")
             val type = json.optString("msgType", "text")
-            val text = json.optString("text", "")
-            val gifUrl = json.optString("gifUrl", "")
             chatRepository.save(
                 com.aman.gigi.model.ChatMessage(
                     id = id,
@@ -3227,20 +3273,26 @@ class ScribbleSyncManager @Inject constructor(
     ) {
         val lower = connectionId.lowercase()
         if (lower.isBlank()) return
+        val cleanText = text.trim()
+        val cleanGif = gifUrl.trim()
+        if (cleanText.isBlank() && cleanGif.isBlank()) {
+            Log.w(TAG, "Ignoring blank chat message from push")
+            return
+        }
         scope.launch {
             val id = clientMsgId.ifBlank { java.util.UUID.randomUUID().toString() }
             chatRepository.save(
                 com.aman.gigi.model.ChatMessage(
                     id = id, connectionId = lower, senderDeviceId = "",
                     senderName = senderName, isMine = false, type = msgType,
-                    text = text, gifUrl = gifUrl,
+                    text = cleanText, gifUrl = cleanGif,
                     sentAt = System.currentTimeMillis(), status = "DELIVERED"
                 )
             )
-            val preview = if (msgType == "gif") "sent a GIF 🎞️" else text
+            val preview = if (msgType == "gif") "sent a GIF 🎞️" else cleanText
             _events.emit(SyncEvent.ChatMessageReceived(lower, senderName, preview))
             if (com.aman.gigi.ui.chat.ChatPresence.openConnectionId != lower) {
-                triggerChatBubble(lower, senderName, preview, msgType, gifUrl)
+                triggerChatBubble(lower, senderName, preview, msgType, cleanGif)
             }
         }
     }
@@ -3261,21 +3313,80 @@ class ScribbleSyncManager @Inject constructor(
                 Log.i(TAG, "🎨 [FCM-Push] Processing incoming doodle push for $lower: asset=$assetRef, id=$sId")
                 
                 val baseUrl = com.aman.gigi.utils.Constants.SERVER_URL.trimEnd('/')
-                val fullUrl = if (assetRef.startsWith("http")) assetRef else "$baseUrl/${assetRef.trimStart('/')}"
-                
-                val scribble = Scribble(
+                val cleanAsset = assetRef.replace("\\", "/")
+                    .trimStart('/')
+                    .removePrefix("app/")
+                    .removePrefix("captures/")
+                    .trimStart('/')
+                val fullUrl = if (assetRef.startsWith("http://", ignoreCase = true) || assetRef.startsWith("https://", ignoreCase = true)) {
+                    assetRef.replace("/app/captures/", "/captures/").replace("/captures/captures/", "/captures/")
+                } else {
+                    "$baseUrl/captures/$cleanAsset"
+                }
+
+                var parsedScribble: Scribble? = null
+
+                if (cleanAsset.isNotBlank()) {
+                    val tempFile = java.io.File(context.cacheDir, "fcm_download_$sId.bin")
+                    val downloaded = httpUploader.downloadFile(fullUrl, tempFile)
+                    if (downloaded && tempFile.exists() && tempFile.length() > 0) {
+                        val rawBytes = tempFile.readBytes()
+                        tempFile.delete()
+
+                        // Try decompressing GZIP payload first (standard binary scribble packet format)
+                        val decompressedBytes = runCatching {
+                            java.util.zip.GZIPInputStream(rawBytes.inputStream()).use { it.readBytes() }
+                        }.getOrNull() ?: rawBytes
+
+                        val jsonString = runCatching {
+                            String(decompressedBytes, java.nio.charset.StandardCharsets.UTF_8)
+                        }.getOrNull()
+
+                        if (jsonString != null && jsonString.startsWith("{") && jsonString.endsWith("}")) {
+                            parsedScribble = ScribbleSerializer.deserialize(jsonString)
+                        } else if (cleanAsset.endsWith(".png", ignoreCase = true) || 
+                                   cleanAsset.endsWith(".jpg", ignoreCase = true) || 
+                                   cleanAsset.endsWith(".jpeg", ignoreCase = true) || 
+                                   cleanAsset.endsWith(".gif", ignoreCase = true) || 
+                                   cleanAsset.endsWith(".webp", ignoreCase = true)) {
+                            val base64 = android.util.Base64.encodeToString(rawBytes, android.util.Base64.NO_WRAP)
+                            parsedScribble = Scribble(
+                                scribbleId = sId,
+                                connectionId = lower,
+                                strokes = emptyList(),
+                                isSent = false,
+                                status = com.aman.gigi.model.ScribbleStatus.RECEIVED,
+                                revealType = if (actionType == "sparkle") "SPARKLE" else null,
+                                mediaUrl = fullUrl,
+                                mediaBase64 = base64
+                            )
+                        }
+                    }
+                }
+
+                val finalScribble = parsedScribble?.copy(
+                    scribbleId = sId,
+                    connectionId = lower,
+                    isSent = false,
+                    status = com.aman.gigi.model.ScribbleStatus.RECEIVED,
+                    revealType = if (actionType == "sparkle") "SPARKLE" else parsedScribble.revealType
+                ) ?: Scribble(
                     scribbleId = sId,
                     connectionId = lower,
                     strokes = emptyList(),
                     isSent = false,
                     status = com.aman.gigi.model.ScribbleStatus.RECEIVED,
                     revealType = if (actionType == "sparkle") "SPARKLE" else null,
-                    mediaUrl = fullUrl,
-                    mediaBase64 = fullUrl
+                    mediaUrl = if (cleanAsset.endsWith(".png", ignoreCase = true) || 
+                                   cleanAsset.endsWith(".jpg", ignoreCase = true) || 
+                                   cleanAsset.endsWith(".jpeg", ignoreCase = true) || 
+                                   cleanAsset.endsWith(".gif", ignoreCase = true) || 
+                                   cleanAsset.endsWith(".webp", ignoreCase = true)) fullUrl else null,
+                    mediaBase64 = null
                 )
                 
-                scribbleRepository.saveReceivedScribble(scribble)
-                triggerLockscreenScribble(scribble)
+                scribbleRepository.saveReceivedScribble(finalScribble)
+                triggerLockscreenScribble(finalScribble)
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error handling doodle from FCM push", e)
             }

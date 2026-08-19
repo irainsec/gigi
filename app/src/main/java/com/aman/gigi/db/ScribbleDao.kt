@@ -29,6 +29,12 @@ interface ScribbleDao {
     @Query("SELECT scribbleId, connectionId, status, createdAt, mediaType, revealType, isSent FROM scribbles ORDER BY createdAt DESC LIMIT :limit")
     suspend fun getLatestScribbleSummaries(limit: Int = 1): List<com.aman.gigi.model.ScribbleSummary>
 
+    @Query("SELECT * FROM scribbles ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getLatestScribbleOnce(): Scribble?
+
+    @Query("SELECT * FROM scribbles WHERE connectionId = :connectionId ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getLatestScribbleForConnection(connectionId: String): Scribble?
+
     @Query("DELETE FROM scribbles WHERE connectionId = :connectionId AND createdAt < :timestamp")
     suspend fun deleteOldHistory(connectionId: String, timestamp: Long)
     

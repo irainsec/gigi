@@ -37,6 +37,8 @@ data class Connection(
     val meetingDate: Long? = null,
     val creatorDeviceId: String? = null,
     val relationshipType: String = "ROMANTIC", // ROMANTIC, FRIENDSHIP, FAMILY
+    val origin: String = "INVITE", // INVITE or NEBULA
+    val trustRing: Int = 0, // 0 = My Heart, 1 = Close Ones, 2 = Dear Stars, 3 = Faraway
     val createdAt: Long = System.currentTimeMillis(),
     val lastSyncedAt: Long = System.currentTimeMillis()
 )
@@ -105,6 +107,26 @@ data class MemberIdentity(
     val themeSongTitle: String? = null,
     val themeSongUrl: String? = null,
     val dateOfBirth: String? = null,
+    val discoverable: Boolean = false,
+    val handle: String? = null,
+    val bio: String? = null,
+    val nebulaSeed: Int = 42,
     val profileComplete: Boolean = false,
     val lastBootstrapAt: Long = System.currentTimeMillis()
+)
+
+/**
+ * Represents a public discoverable user drifting in the Cosmic Nebula.
+ */
+data class NebulaMember(
+    val memberId: String = "",
+    val handle: String = "",
+    val displayName: String = "",
+    val avatarUrl: String? = null,
+    val twigiRenderUrl: String? = null,
+    val profileEmojiUrl: String? = null,
+    val bio: String? = null,
+    val nebulaSeed: Int = 42,
+    val isRecentlyActive: Boolean = false,
+    val inviteStatus: String = "NONE" // NONE, SENT, RECEIVED
 )

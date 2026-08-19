@@ -64,6 +64,12 @@ fun ScreensaverSettingsScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val context = LocalContext.current
 
+    var showSpotifySheet by remember { mutableStateOf(false) }
+    if (showSpotifySheet) {
+        com.aman.gigi.ui.spotify.SpotifySheet(onClose = { showSpotifySheet = false })
+        return
+    }
+
     var isEditing by remember { mutableStateOf(false) }
     var editName by remember(memberIdentity) { mutableStateOf(memberIdentity?.displayName ?: "") }
     var editGender by remember(memberIdentity) { mutableStateOf(memberIdentity?.gender ?: "HER") }
@@ -436,6 +442,176 @@ fun ScreensaverSettingsScreen(
                 }
             }
 
+            // ── Cosmic Discovery (Public Mode) ──────────────────────────────────
+            var isDiscoverableLocal by remember(memberIdentity?.discoverable) { mutableStateOf(memberIdentity?.discoverable ?: false) }
+            var handleInput by remember(memberIdentity?.handle) { mutableStateOf(memberIdentity?.handle ?: "") }
+            var bioInput by remember(memberIdentity?.bio) { mutableStateOf(memberIdentity?.bio ?: "") }
+            var discoveryError by remember { mutableStateOf<String?>(null) }
+            var isSavingDiscovery by remember { mutableStateOf(false) }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFF3E8FF),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Text("🌌", fontSize = 18.sp)
+                            }
+                        }
+                        Column {
+                            Text(
+                                "Cosmic Discovery",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = TextDark
+                            )
+                            Text(
+                                if (isDiscoverableLocal) "Public in Nebula" else "Private (Only your Galaxy)",
+                                fontSize = 12.sp,
+                                color = if (isDiscoverableLocal) Color(0xFF7C3AED) else TextGrey
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = isDiscoverableLocal,
+                        onCheckedChange = { checked ->
+                            isDiscoverableLocal = checked
+                            discoveryError = null
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF7C3AED),
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color(0xFFE2E8F0)
+                        )
+                    )
+                }
+
+                if (isDiscoverableLocal) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(
+                            value = handleInput,
+                            onValueChange = { 
+                                handleInput = it.lowercase().filter { c -> c.isLetterOrDigit() || c == '_' }.take(20)
+                                discoveryError = null
+                            },
+                            label = { Text("Cosmic @handle") },
+                            placeholder = { Text("e.g. stargazer_99") },
+                            leadingIcon = { Text("@", color = Color(0xFF7C3AED), fontWeight = FontWeight.Bold) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = bioInput,
+                            onValueChange = { 
+                                bioInput = it.take(80)
+                                discoveryError = null
+                            },
+                            label = { Text("Bio (max 80 chars)") },
+                            placeholder = { Text("Stargazing and dreaming ✨") },
+                            singleLine = false,
+                            maxLines = 2,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+
+                        if (discoveryError != null) {
+                            Text(
+                                text = discoveryError ?: "",
+                                color = Color.Red,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                if (handleInput.length < 3) {
+                                    discoveryError = "Handle must be at least 3 characters"
+                                    return@Button
+                                }
+                                isSavingDiscovery = true
+                                viewModel.toggleDiscoverability(
+                                    discoverable = true,
+                                    handle = handleInput,
+                                    bio = bioInput
+                                ) { res ->
+                                    isSavingDiscovery = false
+                                    if (res.isFailure) {
+                                        discoveryError = res.exceptionOrNull()?.message ?: "Failed to save"
+                                    }
+                                }
+                            },
+                            enabled = !isSavingDiscovery,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                if (isSavingDiscovery) "Updating..." else "Save Cosmic Profile",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else if (memberIdentity?.discoverable == true) {
+                    val currentId = memberIdentity
+                    Button(
+                        onClick = {
+                            isSavingDiscovery = true
+                            viewModel.toggleDiscoverability(
+                                discoverable = false,
+                                handle = currentId?.handle,
+                                bio = currentId?.bio
+                            ) {
+                                isSavingDiscovery = false
+                            }
+                        },
+                        enabled = !isSavingDiscovery,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Switch to Private Mode", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFFAF5FF))
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        text = "🛡️ When Public, you drift in the Cosmic Nebula for other public accounts to discover. New Nebula connections start in Faraway orbit and cannot track your live location unless you bring them closer.",
+                        fontSize = 11.sp,
+                        color = Color(0xFF6B21A8),
+                        lineHeight = 15.sp
+                    )
+                }
+            }
+
             // ── Account & sync ────────────────────────────────────────────────
             Column(
                 modifier = Modifier
@@ -526,6 +702,33 @@ fun ScreensaverSettingsScreen(
                                         Text("Needs notification permission · tap to grant", fontSize = 11.sp, color = TextGrey)
                                     }
                                     Text("Enable", fontWeight = FontWeight.Bold, color = Color(0xFF7C3AED), fontSize = 12.sp)
+                                }
+                            }
+                        } else {
+                            HorizontalDivider(color = Color(0xFFF0EAFB), thickness = 1.dp)
+                            MediaControlReadout()
+                        }
+
+                        // Hidden entirely until a Spotify app is configured on the server —
+                        // a Connect button that cannot possibly work is worse than none.
+                        if (com.aman.gigi.utils.AppConfig.settings.spotifyClientId.isNotBlank()) {
+                            HorizontalDivider(color = Color(0xFFF0EAFB), thickness = 1.dp)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFFF7F5FF))
+                                    .clickable { showSpotifySheet = true }
+                                    .padding(12.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("🎧", fontSize = 18.sp)
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Spotify", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextDark)
+                                        Text("Bring your playlists into Gigi", fontSize = 11.sp, color = TextGrey)
+                                    }
+                                    Text("Open", fontWeight = FontWeight.Bold, color = Color(0xFF1DB954), fontSize = 12.sp)
                                 }
                             }
                         }
@@ -715,5 +918,71 @@ private fun ActionRow(icon: String, label: String, tint: Color, onClick: () -> U
             Text(label, fontWeight = FontWeight.Medium, color = tint, fontSize = 15.sp)
         }
         Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = TextGrey, modifier = Modifier.size(20.dp))
+    }
+}
+
+/**
+ * What Gigi can actually do with whatever is playing right now.
+ *
+ * Two jobs. For the user it explains why a transport button is sometimes greyed out —
+ * free Spotify refuses skips past its hourly limit, and some players never allow
+ * seeking. For us it answers one question without needing adb: whether Spotify's
+ * Android app exposes PLAY_FROM_SEARCH to third-party controllers. If it does, "tap a
+ * song in Gigi, hear it in Spotify" needs no Spotify SDK at all.
+ */
+@Composable
+private fun MediaControlReadout() {
+    val hub = com.aman.gigi.data.nowplaying.rememberMediaControlHub()
+    val tracker = com.aman.gigi.data.nowplaying.rememberNowPlayingTracker()
+    val caps by hub.capabilities.collectAsState()
+    val source by hub.sourcePackage.collectAsState()
+    val np by tracker.mine.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFF7F5FF))
+            .padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("🎛️", fontSize = 18.sp)
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Music controls", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextDark)
+                Text(
+                    np?.let { "${it.title} · ${it.app}" }
+                        ?: "Play something in any music app to see this fill in",
+                    fontSize = 11.sp,
+                    color = TextGrey
+                )
+            }
+        }
+
+        if (source != null) {
+            Spacer(Modifier.height(10.dp))
+            CapabilityRow("Play / pause", caps.canPlayPause)
+            CapabilityRow("Skip forward", caps.canSkipNext)
+            CapabilityRow("Skip back", caps.canSkipPrevious)
+            CapabilityRow("Seek", caps.canSeek)
+            CapabilityRow("Start a chosen song", caps.canStartSpecificTrack)
+        }
+    }
+}
+
+@Composable
+private fun CapabilityRow(label: String, on: Boolean) {
+    Row(
+        modifier = Modifier.padding(vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            if (on) "✓" else "✗",
+            color = if (on) Color(0xFF16A34A) else Color(0xFFDC2626),
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(label, fontSize = 11.sp, color = TextGrey)
     }
 }

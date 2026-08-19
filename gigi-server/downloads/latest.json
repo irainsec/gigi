@@ -1,9 +1,28 @@
 {
-  "updatedAt": "2026-08-09T17:44:20Z",
-  "versionCode": 37,
-  "versionName": "v1.7.7",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "iosDownloadUrl": "itms-services://?action=download-manifest&url=https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Bug fixes, notification improvements, Bestie theme, storybook onboarding & stability updates.",
-  "sizeMb": 93.5
+  "updatedAt": "2026-08-19T21:37:22Z",
+  "versionCode": 70,
+  "versionName": "v2.2.7",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.2.7-universal.apk",
+  "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
+  "sha256": "fa00df825ffd1f65c6ddbc282fe88583977d31a533eb5ec8a87d97667b5d4aa2",
+  "sizeMb": 50.2,
+  "abiUrls": {
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.2.7-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.2.7-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.2.7-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.2.7-x86_64.apk"
+  },
+  "abiSha256": {
+    "arm64-v8a": "fd943ace555ca7f4ed7dad0a6f8857d8a681bcd43b66055cf1b3fbc642e2af4b",
+    "armeabi-v7a": "6be0e7049f8168496d4052a25f8c1b64d4a2e93ba0eb3b8ab43f7f4debdd4e5a",
+    "x86": "34c5475a4d7b441bd050f0a696eb55fe11b795a6f8272159487070ec7f9bd00e",
+    "x86_64": "99762f0ef06f57173c254864bfd96a797035df22c5975252e9f9cb137759208f"
+  },
+  "abiSizeMb": {
+    "arm64-v8a": 25.4,
+    "armeabi-v7a": 22.3,
+    "x86": 26.5,
+    "x86_64": 26.5
+  },
+  "releaseNotes": "Navigation tab kill switches in Admin Panel, dynamic bottom nav filtering, and updated onboarding story chapters."
 }

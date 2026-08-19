@@ -33,8 +33,14 @@ fun UpgradeSheet(
 ) {
     val plan by AppConfig.planFlow.collectAsState()
     val context = LocalContext.current
-    val targetTier = plan.upgradeTarget
-    val isUpgradable = plan.isFree || plan.isPlus
+    // Everything about the offer now comes from the server's tier list: which tiers
+    // are sellable, what they're called, what they cost, and their product ids. The
+    // app used to hardcode "Plus"/"Pro" and two product ids, so a tier deleted in the
+    // admin panel was still advertised here.
+    val offer = plan.nextUpgrade
+    val isUpgradable = plan.canUpgrade && offer != null
+    val targetTier = offer?.displayName ?: ""
+    val targetProductId = offer?.productId ?: ""
 
     val billingManager = remember { BillingManager(context) }
     val isBillingReady by billingManager.isReady.collectAsState()
@@ -42,22 +48,17 @@ fun UpgradeSheet(
     LaunchedEffect(Unit) {
         billingManager.startConnection()
     }
-    LaunchedEffect(isBillingReady) {
-        if (isBillingReady) {
-            billingManager.queryPrices(listOf("gigi_plus_monthly", "gigi_pro_monthly"))
+    LaunchedEffect(isBillingReady, plan.upgradeOptions) {
+        if (isBillingReady && plan.upgradeOptions.isNotEmpty()) {
+            billingManager.queryPrices(plan.upgradeOptions.map { it.productId })
         }
     }
 
-    if (!isUpgradable) {
-        onDismiss()
-        return
-    }
 
     val accentColor = if (plan.isFree) Color(0xFF58A6FF) else Color(0xFFBF91F9)
-    val targetProductId = if (plan.isFree) "gigi_plus_monthly" else "gigi_pro_monthly"
-    // Live localized price from Play; hardcoded fallback until the query returns
+    // Play's localised price wins; the admin-set label is the fallback.
     val tierPrice = prices[targetProductId]?.let { "$it/month" }
-        ?: if (plan.isFree) "₹99/month" else "₹199/month"
+        ?: offer?.priceLabel.orEmpty()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -104,7 +105,8 @@ fun UpgradeSheet(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = featureDescription,
+                text = if (isUpgradable) featureDescription
+                       else "This isn't part of your plan right now.",
                 fontSize = 14.sp,
                 color = Color(0xFF8B949E),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -113,7 +115,7 @@ fun UpgradeSheet(
 
             Spacer(Modifier.height(24.dp))
 
-            Box(
+            if (isUpgradable) Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF0D1117), RoundedCornerShape(12.dp))
@@ -124,13 +126,14 @@ fun UpgradeSheet(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Gigi $targetTier",
+                            text = "${offer?.emoji.orEmpty()} $targetTier".trim(),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = accentColor
                         )
                         Text(
-                            text = "Unlocks $featureName and more",
+                            text = offer?.tagline?.takeIf { it.isNotBlank() }
+                                ?: "Unlocks $featureName and more",
                             fontSize = 12.sp,
                             color = Color(0xFF8B949E)
                         )
@@ -147,7 +150,7 @@ fun UpgradeSheet(
 
             Spacer(Modifier.height(20.dp))
 
-            Button(
+            if (isUpgradable) Button(
                 onClick = {
                     val activity = context as? Activity
                     if (activity != null) {
@@ -160,7 +163,8 @@ fun UpgradeSheet(
                 colors = ButtonDefaults.buttonColors(containerColor = accentColor)
             ) {
                 Text(
-                    text = "Upgrade to $targetTier · $tierPrice",
+                    text = listOf("Upgrade to $targetTier", tierPrice)
+                        .filter { it.isNotBlank() }.joinToString(" · "),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -170,7 +174,10 @@ fun UpgradeSheet(
             Spacer(Modifier.height(12.dp))
 
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                Text("Maybe later", color = Color(0xFF8B949E), fontSize = 14.sp)
+                Text(
+                    if (isUpgradable) "Maybe later" else "OK",
+                    color = Color(0xFF8B949E), fontSize = 14.sp
+                )
             }
         }
     }

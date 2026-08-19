@@ -171,4 +171,20 @@ class SettingsViewModel @Inject constructor(
             else -> "Just now"
         }
     }
+
+    fun toggleDiscoverability(
+        discoverable: Boolean,
+        handle: String?,
+        bio: String?,
+        onResult: (Result<Unit>) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val res = bootstrapManager.updateDiscoverability(discoverable, handle, bio)
+            if (res.isSuccess) {
+                onResult(Result.success(Unit))
+            } else {
+                onResult(Result.failure(res.exceptionOrNull() ?: Exception("Unknown error")))
+            }
+        }
+    }
 }

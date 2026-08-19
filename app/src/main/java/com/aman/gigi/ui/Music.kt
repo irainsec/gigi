@@ -127,6 +127,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import com.aman.gigi.data.nowplaying.MediaControlHub
+import com.aman.gigi.data.nowplaying.NowPlaying
+import com.aman.gigi.data.nowplaying.rememberMediaControlHub
+import com.aman.gigi.data.nowplaying.rememberNowPlayingTracker
+import com.aman.gigi.data.nowplaying.toLocalSong
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -549,6 +554,7 @@ fun MusicScreen(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val recentPlays: List<com.aman.gigi.db.RecentPlay> by viewModel.recentPlays.collectAsStateWithLifecycle()
     val activeConnections by viewModel.activeConnections.collectAsStateWithLifecycle(initialValue = emptyList())
     var hasPermission by remember { mutableStateOf(hasMusicLibraryPermission(context)) }
     var showSleepTimerSheet by remember { mutableStateOf(false) }
@@ -639,6 +645,31 @@ fun MusicScreen(
         return
     }
 
+    // Whatever is playing OUTSIDE Gigi — Spotify, YT Music, anything publishing a
+    // media session. Gigi's own playback is excluded: it already has this whole
+    // screen, and showing it twice would be confusing.
+    val screensaverViewModel: com.aman.gigi.viewmodel.ScreensaverViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val memberIdentity by screensaverViewModel.memberIdentity.collectAsStateWithLifecycle()
+    val controlHub = rememberMediaControlHub()
+    val nowPlayingTracker = rememberNowPlayingTracker()
+    val externalCaps by controlHub.capabilities.collectAsStateWithLifecycle()
+    val externalSourcePkg by controlHub.sourcePackage.collectAsStateWithLifecycle()
+    val phoneNowPlaying by nowPlayingTracker.mine.collectAsStateWithLifecycle()
+    val externalSession = phoneNowPlaying?.takeIf {
+        externalSourcePkg != null &&
+            externalSourcePkg?.contains("com.aman.gigi") != true &&
+            externalCaps.any &&
+            !uiState.isPlaying
+    }
+
+    // Someone you're connected to who happens to be playing the same thing right now.
+    val partnersNowPlaying by nowPlayingTracker.others.collectAsStateWithLifecycle()
+    val listeningTogetherWith = remember(partnersNowPlaying, activeConnections) {
+        activeConnections.firstOrNull { conn ->
+            !conn.isGroup && partnersNowPlaying.containsKey(conn.connectionId.lowercase())
+        }
+    }
+
     val dragOffset = remember { Animatable(0f) }
     val libraryProgress = remember { Animatable(0f) }
     val albumListState = rememberLazyListState()
@@ -657,6 +688,7 @@ fun MusicScreen(
     }
     var showThemeEditor by rememberSaveable { mutableStateOf(false) }
     var showAdvancedThemeEditor by rememberSaveable { mutableStateOf(false) }
+    var isHeadbangCardDismissed by rememberSaveable { mutableStateOf(false) }
     var isLaunchingLandscape by rememberSaveable { mutableStateOf(false) }
     var activeAdvancedTab by rememberSaveable { mutableStateOf(AdvancedEditorTab.VINYL) }
     var themePreset by rememberSaveable { mutableStateOf(initialThemeState.preset) }
@@ -675,7 +707,22 @@ fun MusicScreen(
     val loadAnimProgress = remember { Animatable(0f) }
     var selectedIndex by remember(songs) { mutableIntStateOf(fallbackPage.coerceIn(0, songs.lastIndex)) }
     selectedIndex = selectedIndex.coerceIn(0, songs.lastIndex)
-    val controlSong = songs[selectedIndex]
+    // When another app owns playback, the big vinyl IS that player — same disc, same
+    // skin, same buttons, just pointed at Spotify instead of the local library. A
+    // second mini-player stacked on top of this one was the wrong answer.
+    val externalSong = externalSession?.toLocalSong()
+    val controlSong = externalSong ?: songs[selectedIndex]
+    val isExternalActive = externalSong != null
+
+    // PlaybackState hands out a timestamped anchor rather than a live position, so the
+    // progress ring has to extrapolate between updates.
+    var externalPositionMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(isExternalActive, externalSession?.title, externalSession?.isPlaying) {
+        while (isExternalActive) {
+            externalPositionMs = controlHub.currentPositionMs()
+            kotlinx.coroutines.delay(500)
+        }
+    }
 
     // "Auto" means follow the song: when Theme is Auto, the theme changes per song; when the
     // Disc is Auto, the pressing changes per song. A manually-picked theme/disc stays fixed.
@@ -879,51 +926,57 @@ fun MusicScreen(
         MusicBackdrop(activePalette = activePalette, modifier = Modifier.fillMaxSize())
 
         if (isLandscape) {
-            val isCurrentSong = uiState.currentSongId == controlSong.id
+            val isCurrentSong = isExternalActive || uiState.currentSongId == controlSong.id
+            val shownProgressMs = when {
+                isExternalActive -> externalPositionMs
+                isCurrentSong -> uiState.progressMs
+                else -> 0L
+            }
             val progressFraction = progressFraction(
-                progressMs = if (isCurrentSong) uiState.progressMs else 0L,
+                progressMs = shownProgressMs,
                 durationMs = if (isCurrentSong && uiState.durationMs > 0L) uiState.durationMs else controlSong.durationMs
             )
             LandscapeVinylPlayer(
                 modifier = Modifier.fillMaxSize(),
                 song = controlSong,
-                isPlaying = isCurrentSong && uiState.isPlaying,
-                progressMs = if (isCurrentSong) uiState.progressMs else 0L,
+                isPlaying = externalSession?.isPlaying ?: (isCurrentSong && uiState.isPlaying),
+                progressMs = shownProgressMs,
                 progressFraction = progressFraction,
                 palette = activePalette,
                 themeConfig = themeConfig,
                 canPrevious = songs.isNotEmpty(),
                 canNext = songs.isNotEmpty(),
                 onPlayPause = {
-                    if (isCurrentSong) {
-                        viewModel.togglePlayback(isLockscreen)
-                    } else {
-                        viewModel.playSong(controlSong, activeAlbum?.albumId)
+                    when {
+                        isExternalActive -> controlHub.playPause()
+                        isCurrentSong -> viewModel.togglePlayback(isLockscreen)
+                        else -> viewModel.playSong(controlSong, activeAlbum?.albumId)
                     }
                 },
                 onPrevious = {
-                    if (songs.isNotEmpty()) {
+                    if (isExternalActive) {
+                        controlHub.previous()
+                    } else if (songs.isNotEmpty()) {
                         val target = if (selectedIndex > 0) selectedIndex - 1 else songs.lastIndex
                         viewModel.playSong(songs[target], activeAlbum?.albumId)
                     }
                 },
                 onNext = {
-                    if (songs.isNotEmpty()) {
+                    if (isExternalActive) {
+                        controlHub.next()
+                    } else if (songs.isNotEmpty()) {
                         val target = if (selectedIndex < songs.lastIndex) selectedIndex + 1 else 0
                         viewModel.playSong(songs[target], activeAlbum?.albumId)
                     }
                 },
                 onPlaybackStateRequested = { shouldPlay ->
-                    if (shouldPlay) {
-                        if (isCurrentSong) {
-                            if (!uiState.isPlaying) {
-                                viewModel.togglePlayback(isLockscreen)
-                            }
-                        } else {
-                            viewModel.playSong(controlSong, activeAlbum?.albumId)
-                        }
-                    } else if (isCurrentSong && uiState.isPlaying) {
-                        viewModel.togglePlayback(isLockscreen)
+                    when {
+                        isExternalActive ->
+                            if (shouldPlay != (externalSession?.isPlaying == true)) controlHub.playPause()
+                        shouldPlay && isCurrentSong ->
+                            if (!uiState.isPlaying) viewModel.togglePlayback(isLockscreen)
+                        shouldPlay -> viewModel.playSong(controlSong, activeAlbum?.albumId)
+                        isCurrentSong && uiState.isPlaying -> viewModel.togglePlayback(isLockscreen)
                     }
                 },
                 onExitLandscape = {
@@ -1130,8 +1183,10 @@ fun MusicScreen(
                             }
                     ) {
                         FullScreenSongPage(
-                            song = songs[selectedIndex],
+                            song = controlSong,
                             uiState = uiState,
+                            externalIsPlaying = externalSession?.isPlaying,
+                            externalProgressMs = if (isExternalActive) externalPositionMs else null,
                             pageOffset = dragProgress,
                             pagePresence = currentPresence,
                             palette = applyVinylTheme(
@@ -1143,15 +1198,26 @@ fun MusicScreen(
                             songCount = songs.size,
                             recordAlpha = platterRecordAlpha,
                             onPlayPause = {
-                                if (uiState.currentSongId == controlSong.id) {
-                                    viewModel.togglePlayback(isLockscreen)
-                                } else {
-                                    viewModel.playSong(controlSong, activeAlbum?.albumId)
+                                when {
+                                    // Never hand the synthetic external song to our own
+                                    // player — it has no file behind it.
+                                    isExternalActive -> controlHub.playPause()
+                                    uiState.currentSongId == controlSong.id ->
+                                        viewModel.togglePlayback(isLockscreen)
+                                    else -> viewModel.playSong(controlSong, activeAlbum?.albumId)
                                 }
                             },
-                            onPrevious = { settleToSong(selectedIndex - 1) },
-                            onNext = { settleToSong(selectedIndex + 1) },
-                            onSeek = viewModel::seekTo
+                            onPrevious = {
+                                if (isExternalActive) controlHub.previous()
+                                else settleToSong(selectedIndex - 1)
+                            },
+                            onNext = {
+                                if (isExternalActive) controlHub.next()
+                                else settleToSong(selectedIndex + 1)
+                            },
+                            onSeek = { ms ->
+                                if (isExternalActive) controlHub.seekTo(ms) else viewModel.seekTo(ms)
+                            }
                         )
 
                         incomingIndex?.let { page ->
@@ -1197,17 +1263,24 @@ fun MusicScreen(
                                 },
                         songIndex = selectedIndex,
                         songCount = songs.size,
-                        isPlaying = uiState.isPlaying,
+                        isPlaying = externalSession?.isPlaying ?: uiState.isPlaying,
                         palette = activePalette,
                         onPlayPause = {
-                            if (uiState.currentSongId == controlSong.id) {
-                                viewModel.togglePlayback(isLockscreen)
-                            } else {
-                                viewModel.playSong(controlSong, activeAlbum?.albumId)
+                            when {
+                                isExternalActive -> controlHub.playPause()
+                                uiState.currentSongId == controlSong.id ->
+                                    viewModel.togglePlayback(isLockscreen)
+                                else -> viewModel.playSong(controlSong, activeAlbum?.albumId)
                             }
                         },
-                        onPrevious = { settleToSong(selectedIndex - 1) },
-                        onNext = { settleToSong(selectedIndex + 1) }
+                        onPrevious = {
+                            if (isExternalActive) controlHub.previous()
+                            else settleToSong(selectedIndex - 1)
+                        },
+                        onNext = {
+                            if (isExternalActive) controlHub.next()
+                            else settleToSong(selectedIndex + 1)
+                        }
                     )
 
 
@@ -1235,6 +1308,8 @@ fun MusicScreen(
                                 animateBrowser(libraryProgress.value > 0.34f)
                             },
                             onRefresh = viewModel::scanDeviceMusic,
+                            onPlaySong = { song -> viewModel.playSong(song, null) },
+                            recentPlays = recentPlays,
                             onCreateAlbum = { showCreateAlbumDialog = true },
                             onPlayShuffledLibrary = {
                                 scope.launch {
@@ -1285,6 +1360,24 @@ fun MusicScreen(
                     }
 
                     val isAnyToolVisible = showDeckTools || showThemeEditor || showAdvancedThemeEditor || isMusicSettingsOpen
+
+                    // Only shows when you're genuinely on the same track — the component
+                    // itself decides, comparing normalised title and artist.
+                    if (!isHeadbangCardDismissed && !isAnyToolVisible) {
+                        val activePartner = listeningTogetherWith ?: activeConnections.firstOrNull { !it.isGroup }
+                        com.aman.gigi.ui.components.SharedListeningTwigis(
+                            mine = phoneNowPlaying,
+                            theirs = activePartner?.connectionId?.let { partnersNowPlaying[it.lowercase()] },
+                            partnerName = activePartner?.partnerName?.ifBlank { "them" } ?: "partner",
+                            myTwigiUrl = memberIdentity?.twigiRenderUrl ?: memberIdentity?.profileEmojiUrl,
+                            partnerTwigiUrl = activePartner?.partnerTwigiUrl,
+                            onDismiss = { isHeadbangCardDismissed = true },
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(horizontal = 20.dp)
+                                .padding(top = 70.dp)
+                        )
+                    }
 
                     if (browserProgress > 0.08f && !isAnyToolVisible) {
                         val nowPlayingBottomPadding = lerpValue(30f, 96f, browserProgress).dp
@@ -3613,6 +3706,8 @@ private fun AlbumBrowserOverlay(
     onCreateAlbum: () -> Unit,
     onPlayShuffledLibrary: () -> Unit,
     onPlayAlbum: (MusicAlbum) -> Unit,
+    onPlaySong: (LocalSong) -> Unit = {},
+    recentPlays: List<com.aman.gigi.db.RecentPlay> = emptyList(),
     onCollapse: () -> Unit,
     onDeleteAlbum: (Long) -> Unit,
     activeConnections: List<com.aman.gigi.model.Connection> = emptyList(),
@@ -3623,6 +3718,13 @@ private fun AlbumBrowserOverlay(
  
     val density = androidx.compose.ui.platform.LocalDensity.current
     val itemHeightPx = with(density) { 84.dp.toPx() }
+
+    // Two decks, swipeable: hand-made albums, and every track as its own sleeve.
+    val libraryPager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { 3 })
+    val songListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val recentListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val libraryScope = rememberCoroutineScope()
+    val allSongs = uiState.songs
  
     val contentAlpha by animateFloatAsState(
         targetValue = if (isSwooping) 0f else 1f,
@@ -3679,6 +3781,88 @@ private fun AlbumBrowserOverlay(
                             translationX = -detailTransition * 300f
                         }
                 ) {
+                    androidx.compose.foundation.pager.HorizontalPager(
+                        state = libraryPager,
+                        modifier = Modifier.fillMaxSize(),
+                        // The search results are a single list, not a two-deck browse.
+                        userScrollEnabled = searchQuery.isEmpty()
+                    ) { page ->
+                    if (page == 2 && searchQuery.isEmpty()) {
+                        // ── recently played ──────────────────────────────────
+                        val recentSongs = remember(recentPlays, allSongs) {
+                            val byId = allSongs.associateBy { it.id }
+                            recentPlays.mapNotNull { byId[it.songId] }
+                        }
+                        LazyColumn(
+                            state = recentListState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                top = 254.dp, start = 24.dp, end = 24.dp, bottom = 182.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(-70.dp)
+                        ) {
+                            if (recentSongs.isEmpty()) {
+                                item(key = "empty-recent") {
+                                    EmptyRecentState(palette = palette)
+                                }
+                            }
+                            itemsIndexed(
+                                items = recentSongs,
+                                key = { _, song -> song.id }
+                            ) { index, song ->
+                                val approxCenter = recentListState.firstVisibleItemIndex.toFloat() +
+                                    (recentListState.firstVisibleItemScrollOffset / itemHeightPx)
+                                val relative = index.toFloat() - approxCenter
+                                val focus = (1f - (relative.absoluteValue * 0.24f)).coerceIn(0.52f, 1f)
+                                SongSleeveCard(
+                                    song = song,
+                                    palette = palette,
+                                    isActive = song.id == uiState.currentSongId,
+                                    focus = focus,
+                                    relativeOffset = relative.coerceIn(-2f, 2f),
+                                    onClick = { onPlaySong(song) }
+                                )
+                            }
+                        }
+                        return@HorizontalPager
+                    }
+                    if (page == 1 && searchQuery.isEmpty()) {
+                        // ── every song, one sleeve each ──────────────────────
+                        LazyColumn(
+                            state = songListState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                top = 254.dp, start = 24.dp, end = 24.dp, bottom = 182.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(-70.dp)
+                        ) {
+                            if (allSongs.isEmpty()) {
+                                item(key = "empty-songs") {
+                                    EmptyAlbumBrowserState(
+                                        onCreateAlbum = onCreateAlbum, palette = palette
+                                    )
+                                }
+                            }
+                            itemsIndexed(
+                                items = allSongs,
+                                key = { _, song -> song.id }
+                            ) { index, song ->
+                                val approxCenter = songListState.firstVisibleItemIndex.toFloat() +
+                                    (songListState.firstVisibleItemScrollOffset / itemHeightPx)
+                                val relative = index.toFloat() - approxCenter
+                                val focus = (1f - (relative.absoluteValue * 0.24f)).coerceIn(0.52f, 1f)
+                                SongSleeveCard(
+                                    song = song,
+                                    palette = palette,
+                                    isActive = song.id == uiState.currentSongId,
+                                    focus = focus,
+                                    relativeOffset = relative.coerceIn(-2f, 2f),
+                                    onClick = { onPlaySong(song) }
+                                )
+                            }
+                        }
+                        return@HorizontalPager
+                    }
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
@@ -3759,6 +3943,7 @@ private fun AlbumBrowserOverlay(
                             }
                         }
                     }
+                    }
                 }
             }
 
@@ -3829,7 +4014,11 @@ private fun AlbumBrowserOverlay(
                                 fontWeight = FontWeight.ExtraBold
                             )
                             Text(
-                                text = "Tap a sleeve to view tracks",
+                                text = when (libraryPager.currentPage) {
+                                    0 -> "Tap a sleeve to view tracks"
+                                    2 -> "What you've been playing"
+                                    else -> "Tap a sleeve to play"
+                                },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = palette.textMuted
                             )
@@ -3892,6 +4081,38 @@ private fun AlbumBrowserOverlay(
                                     color = palette.textStrong,
                                     style = MaterialTheme.typography.labelLarge
                                 )
+                            }
+                        }
+
+                        // Two decks, tap or swipe between them.
+                        Row(
+                            modifier = Modifier.padding(top = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(
+                                "Albums" to albums.size,
+                                "All songs" to allSongs.size,
+                                "Recent" to recentPlays.size
+                            ).forEachIndexed { index, (label, count) ->
+                                val selected = libraryPager.currentPage == index
+                                Surface(
+                                    onClick = {
+                                        libraryScope.launch {
+                                            libraryPager.animateScrollToPage(index)
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(999.dp),
+                                    color = if (selected) palette.accent.copy(alpha = 0.30f)
+                                            else Color.White.copy(alpha = if (palette.isDark) 0.08f else 0.45f)
+                                ) {
+                                    Text(
+                                        text = "$label · $count",
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                                        color = if (selected) palette.textStrong else palette.textMuted,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
                             }
                         }
                     }
@@ -4712,6 +4933,150 @@ private fun ShuffleLibraryCard(
     }
 }
 
+/**
+ * One track as a tilted record sleeve, matching the album deck's stack so the two
+ * pages of the library feel like the same object viewed two ways.
+ */
+/** Decodes album art for the share card, downsampled to keep the bitmap sane. */
+private suspend fun loadArtwork(
+    context: android.content.Context,
+    uri: android.net.Uri?
+): android.graphics.Bitmap? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    uri ?: return@withContext null
+    runCatching {
+        context.contentResolver.openInputStream(uri).use { input ->
+            val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = 1 }
+            android.graphics.BitmapFactory.decodeStream(input, null, opts)
+        }
+    }.getOrNull()
+}
+
+@Composable
+private fun EmptyRecentState(palette: MusicPalette) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        color = (if (palette.isDark) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.55f))
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                text = "Nothing played yet",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = palette.textStrong
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Play something and it'll collect here, newest on top.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = palette.textMuted
+            )
+        }
+    }
+}
+
+@Composable
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private fun SongSleeveCard(
+    song: LocalSong,
+    palette: MusicPalette,
+    isActive: Boolean,
+    focus: Float,
+    relativeOffset: Float,
+    onClick: () -> Unit
+) {
+    val shareContext = androidx.compose.ui.platform.LocalContext.current
+    val shareScope = rememberCoroutineScope()
+    val tiltX = lerpValue(26f, 4f, focus)
+    val cardScale = lerpValue(0.86f, 1f, focus)
+    val cardAlpha = lerpValue(0.42f, 1f, focus)
+    val liftY = relativeOffset * -10f
+    val shiftX = relativeOffset * 12f
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(154.dp)
+            .graphicsLayer {
+                rotationX = tiltX
+                rotationZ = relativeOffset * 1.2f
+                scaleX = cardScale
+                scaleY = cardScale * 0.90f
+                cameraDistance = 14f
+                translationY = liftY
+                translationX = shiftX
+                shadowElevation = lerpValue(12f, 26f, focus)
+                alpha = cardAlpha
+            }
+            .combinedClickable(
+                onClick = onClick,
+                // Long-press turns the sleeve into something you can send someone.
+                onLongClick = {
+                    shareScope.launch {
+                        val art = loadArtwork(shareContext, song.albumArtUri)
+                        com.aman.gigi.ui.components.SongShareCard.share(shareContext, song, art)
+                    }
+                }
+            ),
+        shape = RoundedCornerShape(26.dp),
+        color = Color(0xFF1E1B18)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (song.albumArtUri != null) {
+                coil.compose.AsyncImage(
+                    model = song.albumArtUri,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            // Keeps the title legible over any artwork.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f))
+                        )
+                    )
+            )
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = song.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = song.artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.72f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (isActive) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Now playing",
+                        tint = palette.accent,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun EmptyAlbumBrowserState(
     onCreateAlbum: () -> Unit,
@@ -5101,6 +5466,13 @@ private fun MusicTopBar(
 private fun FullScreenSongPage(
     song: LocalSong,
     uiState: MusicUiState,
+    /**
+     * Set when the track belongs to another app. The page normally infers "is this
+     * playing?" from uiState.currentSongId, which can never match a session Gigi
+     * doesn't own — so the disc would sit still while Spotify played.
+     */
+    externalIsPlaying: Boolean? = null,
+    externalProgressMs: Long? = null,
     pageOffset: Float,
     pagePresence: Float,
     palette: MusicPalette,
@@ -5114,8 +5486,10 @@ private fun FullScreenSongPage(
     onSeek: (Long) -> Unit
 ) {
     val absolutePageOffset = pageOffset.absoluteValue.coerceIn(0f, 1f)
-    val isCurrentSong = uiState.currentSongId == song.id
-    val isPlaying = isCurrentSong && uiState.isPlaying
+    val isExternal = externalIsPlaying != null
+    val isCurrentSong = isExternal || uiState.currentSongId == song.id
+    val isPlaying = externalIsPlaying ?: (isCurrentSong && uiState.isPlaying)
+    val shownProgressMs = externalProgressMs ?: if (isCurrentSong) uiState.progressMs else 0L
 
     Box(
         modifier = Modifier
@@ -5133,9 +5507,9 @@ private fun FullScreenSongPage(
                     .height(heroHeight)
                     .align(Alignment.TopCenter),
                 song = song,
-                progressMs = if (isCurrentSong) uiState.progressMs else 0L,
+                progressMs = shownProgressMs,
                 progressFraction = progressFraction(
-                    progressMs = if (isCurrentSong) uiState.progressMs else 0L,
+                    progressMs = shownProgressMs,
                     durationMs = if (isCurrentSong && uiState.durationMs > 0L) uiState.durationMs else song.durationMs
                 ),
                 isPlaying = isPlaying,

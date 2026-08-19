@@ -47,6 +47,14 @@ services:
       #    are mounted.  Add more specific mounts below if needed.
       #
       - ./server.js:/app/server.js
+      # Mounted for the same reason as server.js: these change often and a bind-mount
+      # turns a multi-minute image rebuild (the CharacterStudio stage is heavy) into a
+      # container restart. The baked copies in the image remain the fallback.
+      - ./app_settings.js:/app/app_settings.js
+      - ./plan_catalog.js:/app/plan_catalog.js
+      - ./live_routes.js:/app/live_routes.js
+      - ./twigi_render_lpc.js:/app/twigi_render_lpc.js
+      - ./xbr.js:/app/xbr.js
       - ./public/landing.html:/app/public/landing.html
       - ./public/index.html:/app/public/index.html
       - ./public/privacy-policy.html:/app/public/privacy-policy.html
@@ -110,7 +118,12 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: screensaver-tunnel
-    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    # Forced onto HTTP/2 (TCP) instead of the default QUIC. On this network every QUIC
+    # dial to the Cloudflare edge fails with "timeout: no recent network activity" on
+    # all four connections, which takes the whole site down with 502s — the origin is
+    # healthy throughout. UDP/7844 appears to be dropped or throttled upstream, and
+    # HTTP/2 rides over TCP/443 instead. Slightly higher latency, vastly more reliable.
+    command: tunnel --no-autoupdate --protocol http2 run --token ${TUNNEL_TOKEN}
     restart: unless-stopped
     depends_on:
       - gigi-server

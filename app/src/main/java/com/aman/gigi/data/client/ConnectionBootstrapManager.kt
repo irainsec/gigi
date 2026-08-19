@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -750,6 +751,10 @@ class ConnectionBootstrapManager @Inject constructor(
             themeSongUrl = resolveServerAssetUrl(identityJson.optString("themeSongUrl")),
             dateOfBirth = sanitizeOptionalText(identityJson.optString("dateOfBirth")),
             emoji = sanitizeOptionalText(identityJson.optString("emoji")) ?: "🌻",
+            discoverable = identityJson.optBoolean("discoverable", false),
+            handle = sanitizeOptionalText(identityJson.optString("handle")),
+            bio = sanitizeOptionalText(identityJson.optString("bio")),
+            nebulaSeed = identityJson.optInt("nebulaSeed", 42),
             profileComplete = identityJson.optBoolean("profileComplete", false),
             lastBootstrapAt = System.currentTimeMillis()
         )
@@ -821,13 +826,17 @@ class ConnectionBootstrapManager @Inject constructor(
             val partnerEmoji = item.optString("partnerEmoji").ifBlank { "🌻" }
             val resolvedPartnerEmojiUrl = resolveServerAssetUrl(item.optString("partnerEmojiUrl"))
             val resolvedAvatar = resolveServerAssetUrl(item.optString("partnerAvatarUrl"))
-            Log.d(tag, "Bootstrapping connection $connectionCode: partner=$partnerName, emoji=$partnerEmoji, avatar=$resolvedAvatar")
+            val origin = item.optString("origin").ifBlank { "INVITE" }
+            val trustRing = item.optInt("trustRing", 0)
+            Log.d(tag, "Bootstrapping connection $connectionCode: partner=$partnerName, emoji=$partnerEmoji, avatar=$resolvedAvatar, origin=$origin")
 
             val relationshipType = item.optString("relationshipType").ifBlank { "ROMANTIC" }
             restored += Connection(
                 connectionId = connectionCode,
                 isGroup = item.optBoolean("isGroup", relationshipType.equals("GROUP", ignoreCase = true)),
                 relationshipType = relationshipType,
+                origin = origin,
+                trustRing = trustRing,
                 partnerName = partnerName,
                 partnerEmoji = partnerEmoji,
                 partnerEmojiUrl = resolvedPartnerEmojiUrl,
@@ -1280,7 +1289,8 @@ class ConnectionBootstrapManager @Inject constructor(
     private suspend fun requestJson(
         path: String,
         method: String = "GET",
-        body: JSONObject? = null
+        body: JSONObject? = null,
+        headers: Map<String, String>? = null
     ): HttpResponse {
         return kotlinx.coroutines.withContext(Dispatchers.IO) {
             val url = URL("$httpBaseUrl$path")
@@ -1290,6 +1300,9 @@ class ConnectionBootstrapManager @Inject constructor(
                 readTimeout = 8000
                 doInput = true
                 setRequestProperty("Accept", "application/json")
+                headers?.forEach { (k, v) ->
+                    setRequestProperty(k, v)
+                }
                 if (body != null) {
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json; charset=utf-8")
@@ -1425,4 +1438,213 @@ class ConnectionBootstrapManager @Inject constructor(
         }
     }
 
+    // ── Nebula Discovery Methods ──────────────────────────────────────────
+
+    suspend fun updateDiscoverability(
+        discoverable: Boolean,
+        handle: String?,
+        bio: String?
+    ): Result<MemberIdentity> = withContext(Dispatchers.IO) {
+        try {
+            val identity = _memberIdentity.value ?: return@withContext Result.failure(IllegalStateException("Not authenticated"))
+            val response = requestJson(
+                path = "/api/profile/discoverability",
+                method = "POST",
+                body = JSONObject().apply {
+                    put("sessionToken", identity.authToken)
+                    put("discoverable", discoverable)
+                    if (handle != null) put("handle", handle)
+                    if (bio != null) put("bio", bio)
+                }
+            )
+            if (response.code in 200..299 && response.json != null) {
+                val json = response.json
+                val updated = identity.copy(
+                    discoverable = json.optBoolean("discoverable", discoverable),
+                    handle = json.optString("handle").takeIf { it.isNotBlank() },
+                    bio = json.optString("bio").takeIf { it.isNotBlank() }
+                )
+                _memberIdentity.value = updated
+                identityStore.saveIdentity(updated)
+                Result.success(updated)
+            } else {
+                val err = response.json?.optString("error")
+                Result.failure(Exception(err ?: "Server returned code ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun fetchNebulaMotes(): List<com.aman.gigi.model.NebulaMember> = withContext(Dispatchers.IO) {
+        try {
+            val identity = _memberIdentity.value ?: return@withContext emptyList()
+            val response = requestJson(
+                path = "/api/nebula/browse",
+                method = "GET",
+                headers = mapOf("x-session-token" to identity.authToken)
+            )
+            if (response.code in 200..299 && response.json != null) {
+                val json = response.json
+                val arr = json.optJSONArray("motes") ?: return@withContext emptyList()
+                val list = mutableListOf<com.aman.gigi.model.NebulaMember>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    list += com.aman.gigi.model.NebulaMember(
+                        memberId = obj.optString("memberId"),
+                        handle = obj.optString("handle"),
+                        displayName = obj.optString("displayName"),
+                        avatarUrl = resolveServerAssetUrl(obj.optString("avatarUrl")),
+                        twigiRenderUrl = resolveServerAssetUrl(obj.optString("twigiRenderUrl")),
+                        profileEmojiUrl = resolveServerAssetUrl(obj.optString("profileEmojiUrl")),
+                        bio = sanitizeOptionalText(obj.optString("bio")),
+                        nebulaSeed = obj.optInt("nebulaSeed", 42),
+                        isRecentlyActive = obj.optBoolean("isRecentlyActive", false),
+                        inviteStatus = obj.optString("inviteStatus", "NONE")
+                    )
+                }
+                list
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to browse nebula", e)
+            emptyList()
+        }
+    }
+
+    suspend fun searchNebula(query: String): List<com.aman.gigi.model.NebulaMember> = withContext(Dispatchers.IO) {
+        if (query.isBlank()) return@withContext emptyList()
+        try {
+            val identity = _memberIdentity.value ?: return@withContext emptyList()
+            val encodedQ = java.net.URLEncoder.encode(query.trim(), "UTF-8")
+            val response = requestJson(
+                path = "/api/nebula/search?q=$encodedQ",
+                method = "GET",
+                headers = mapOf("x-session-token" to identity.authToken)
+            )
+            if (response.code in 200..299 && response.json != null) {
+                val json = response.json
+                val arr = json.optJSONArray("results") ?: return@withContext emptyList()
+                val list = mutableListOf<com.aman.gigi.model.NebulaMember>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    list += com.aman.gigi.model.NebulaMember(
+                        memberId = obj.optString("memberId"),
+                        handle = obj.optString("handle"),
+                        displayName = obj.optString("displayName"),
+                        avatarUrl = resolveServerAssetUrl(obj.optString("avatarUrl")),
+                        twigiRenderUrl = resolveServerAssetUrl(obj.optString("twigiRenderUrl")),
+                        profileEmojiUrl = resolveServerAssetUrl(obj.optString("profileEmojiUrl")),
+                        bio = sanitizeOptionalText(obj.optString("bio")),
+                        nebulaSeed = obj.optInt("nebulaSeed", 42),
+                        isRecentlyActive = obj.optBoolean("isRecentlyActive", false),
+                        inviteStatus = obj.optString("inviteStatus", "NONE")
+                    )
+                }
+                list
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to search nebula", e)
+            emptyList()
+        }
+    }
+
+    suspend fun sendNebulaInvite(
+        targetMemberId: String?,
+        targetHandle: String?
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val identity = _memberIdentity.value ?: return@withContext Result.failure(IllegalStateException("Not authenticated"))
+            val response = requestJson(
+                path = "/api/nebula/invite",
+                method = "POST",
+                body = JSONObject().apply {
+                    put("sessionToken", identity.authToken)
+                    if (targetMemberId != null) put("targetMemberId", targetMemberId)
+                    if (targetHandle != null) put("targetHandle", targetHandle)
+                }
+            )
+            if (response.code in 200..299 && response.json != null) {
+                val json = response.json
+                Result.success(json.optString("inviteId"))
+            } else {
+                val err = response.json?.optString("error")
+                Result.failure(Exception(err ?: "Server error ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun respondNebulaInvite(
+        inviteId: String,
+        accept: Boolean
+    ): Result<String?> = withContext(Dispatchers.IO) {
+        try {
+            val identity = _memberIdentity.value ?: return@withContext Result.failure(IllegalStateException("Not authenticated"))
+            val response = requestJson(
+                path = "/api/nebula/invite/respond",
+                method = "POST",
+                body = JSONObject().apply {
+                    put("sessionToken", identity.authToken)
+                    put("inviteId", inviteId)
+                    put("accept", accept)
+                }
+            )
+            if (response.code in 200..299 && response.json != null) {
+                val json = response.json
+                val connectionCode = json.optString("connectionCode").takeIf { it.isNotBlank() }
+                if (connectionCode != null) {
+                    refreshFromServer("nebula_invite_accepted")
+                }
+                Result.success(connectionCode)
+            } else {
+                val err = response.json?.optString("error")
+                Result.failure(Exception(err ?: "Server error ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun blockMember(targetMemberId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val identity = _memberIdentity.value ?: return@withContext Result.failure(IllegalStateException("Not authenticated"))
+            val response = requestJson(
+                path = "/api/nebula/block",
+                method = "POST",
+                body = JSONObject().apply {
+                    put("sessionToken", identity.authToken)
+                    put("targetMemberId", targetMemberId)
+                }
+            )
+            if (response.code in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Failed to block"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun reportMember(targetMemberId: String, reason: String, note: String?): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val identity = _memberIdentity.value ?: return@withContext Result.failure(IllegalStateException("Not authenticated"))
+            val response = requestJson(
+                path = "/api/nebula/report",
+                method = "POST",
+                body = JSONObject().apply {
+                    put("sessionToken", identity.authToken)
+                    put("targetMemberId", targetMemberId)
+                    put("reason", reason)
+                    if (note != null) put("note", note)
+                }
+            )
+            if (response.code in 200..299) Result.success(Unit)
+            else Result.failure(Exception("Failed to report"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

@@ -181,16 +181,97 @@ app.get(['/download', '/downloads'], (req, res) => {
 </html>`);
 });
 
-app.all(['/download/gigi-latest.apk', '/downloads/gigi-latest.apk'], (req, res) => {
-    const apk = path.resolve(path.join(DOWNLOADS_DIR, 'gigi-latest.apk'));
+// Serves the universal APK plus the per-ABI builds the in-app updater prefers
+// (gigi-arm64-v8a.apk and friends — roughly half the size of the universal one).
+// The filename is matched against a fixed set rather than taken from the path, so
+// this can never be walked out of DOWNLOADS_DIR.
+// Two shapes of APK filename are served:
+//
+//   gigi-latest.apk / gigi-<abi>.apk        stable aliases — contents change per
+//                                           release, so they must NOT be cached hard
+//   gigi-<version>-<abi>.apk                immutable — a given name is always the
+//                                           same bytes, so it can live at the edge
+//                                           for a year
+//
+// The in-app updater is pointed at the immutable names. That is what lets Cloudflare
+// actually hold the file: previously every phone pulled 25 MB from this machine over a
+// residential uplink, because a mutable `gigi-arm64-v8a.apk` can't safely be cached.
+const STABLE_APKS = new Set([
+    'gigi-latest.apk',
+    'gigi-arm64-v8a.apk', 'gigi-armeabi-v7a.apk', 'gigi-x86.apk', 'gigi-x86_64.apk'
+]);
+const VERSIONED_APK = /^gigi-v?[0-9][0-9A-Za-z._-]*-(arm64-v8a|armeabi-v7a|x86_64|x86|universal)\.apk$/;
+
+app.all(['/download/:file', '/downloads/:file'], (req, res, next) => {
+    const file = req.params.file;
+    const stable = STABLE_APKS.has(file);
+    const versioned = VERSIONED_APK.test(file);
+    if (!stable && !versioned) return next();
+
+    const apk = path.resolve(path.join(DOWNLOADS_DIR, file));
+    if (!apk.startsWith(path.resolve(DOWNLOADS_DIR))) return res.status(400).end();
     if (!fs.existsSync(apk)) return res.status(404).send('No build published yet.');
-    const stat = fs.statSync(apk);
+
     res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-    res.setHeader('Content-Disposition', 'attachment; filename="gigi.apk"');
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Content-Length', stat.size);
-    if (req.method === 'HEAD') return res.status(200).end();
+    res.setHeader('Content-Disposition', `attachment; filename="${file}"`);
+    res.setHeader('Cache-Control', versioned
+        ? 'public, max-age=31536000, immutable'
+        : 'public, max-age=300');
+
+    if (req.method === 'HEAD') {
+        // Only set Content-Length ourselves on HEAD. On GET, sendFile owns it —
+        // presetting the full size breaks 206 responses, whose body is shorter.
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Content-Length', fs.statSync(apk).size);
+        return res.status(200).end();
+    }
+    // sendFile handles Range/206 and sets Accept-Ranges itself.
     res.sendFile(apk);
+});
+
+// ── Map tile proxy ────────────────────────────────────────────────────────────
+// The app used to hit tile.openstreetmap.org directly from every phone. That is slow
+// (origin round trip per tile, ~0.5-2s) and outside OSM's tile usage policy, which
+// does not permit app-scale direct use. Going through here means Cloudflare edge-caches
+// each tile, users get a nearby PoP instead of OSM's origin, and OSM sees one polite
+// server with a real User-Agent rather than a swarm of handsets.
+const TILE_UPSTREAM = process.env.TILE_UPSTREAM || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const tileMemo = new Map();                 // z/x/y -> Buffer, small hot cache
+const TILE_MEMO_MAX = 500;
+
+app.get('/tiles/:z/:x/:y.png', async (req, res) => {
+    const z = parseInt(req.params.z, 10);
+    const x = parseInt(req.params.x, 10);
+    const y = parseInt(req.params.y, 10);
+    const n = 2 ** z;
+    if (!Number.isInteger(z) || z < 0 || z > 19 ||
+        !Number.isInteger(x) || !Number.isInteger(y) ||
+        x < 0 || y < 0 || x >= n || y >= n) {
+        return res.status(400).send('Bad tile');
+    }
+
+    const key = `${z}/${x}/${y}`;
+    // Tiles are effectively immutable, so cache hard and let the edge do the work.
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+
+    const hot = tileMemo.get(key);
+    if (hot) return res.end(hot);
+
+    try {
+        const upstream = TILE_UPSTREAM
+            .replace('{z}', z).replace('{x}', x).replace('{y}', y);
+        const r = await fetch(upstream, {
+            headers: { 'User-Agent': 'GigiServer/1.0 (+https://gigi.iamanraj.com; aman.raj@alticyber.com)' }
+        });
+        if (!r.ok) return res.status(502).send('Tile upstream error');
+        const buf = Buffer.from(await r.arrayBuffer());
+        if (tileMemo.size >= TILE_MEMO_MAX) tileMemo.delete(tileMemo.keys().next().value);
+        tileMemo.set(key, buf);
+        res.end(buf);
+    } catch (e) {
+        res.status(502).send('Tile fetch failed');
+    }
 });
 
 app.get(['/download/latest.json', '/downloads/latest.json'], (req, res) => {
@@ -212,6 +293,7 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
 });
 
 app.use('/captures', express.static(path.join(__dirname, 'captures')));
+app.use('/app/captures', express.static(path.join(__dirname, 'captures')));
 app.use('/avatars', express.static(path.join(__dirname, 'avatars')));
 app.use('/notifications/icons', express.static(path.join(__dirname, 'notifications', 'icons')));
 
@@ -1413,7 +1495,7 @@ app.post('/api/auth/google-signin', async (req, res) => {
 
 app.post('/api/auth/profile', async (req, res) => {
     try {
-        const sessionToken = sanitizeText(req.body?.sessionToken || '', 256);
+        const sessionToken = sanitizeText(req.body?.sessionToken || '', SESSION_TOKEN_MAX);
         const displayName = sanitizeText(req.body?.displayName || '', 80);
         const gender = normalizeGender(req.body?.gender);
         const themeSongTitle = sanitizeText(req.body?.themeSongTitle || '', 120);
@@ -1469,7 +1551,7 @@ app.post('/api/auth/profile', async (req, res) => {
 
 app.post('/api/auth/fcm-token', async (req, res) => {
     try {
-        const sessionToken = sanitizeText(req.body?.sessionToken || '', 256);
+        const sessionToken = sanitizeText(req.body?.sessionToken || '', SESSION_TOKEN_MAX);
         const fcmToken = sanitizeText(req.body?.fcmToken || '', 512);
 
         if (!sessionToken || !fcmToken) {
@@ -1497,7 +1579,7 @@ app.post('/api/client/bootstrap', async (req, res) => {
     try {
         const deviceId = sanitizeText(req.body?.deviceId || '', 120);
         const deviceName = sanitizeText(req.body?.deviceName || 'Unknown device', 80);
-        const sessionToken = sanitizeText(req.body?.sessionToken || '', 256);
+        const sessionToken = sanitizeText(req.body?.sessionToken || '', SESSION_TOKEN_MAX);
         const restoreToken = sanitizeText(req.body?.restoreToken || '', 256);
 
         if (!deviceId) {
@@ -1875,6 +1957,356 @@ app.post('/api/client/twigi', async (req, res) => {
     } catch (error) {
         logEvent('twigi.save.failed', { error: error.message });
         res.status(500).json({ error: error.message });
+    }
+});
+
+async function haveCommonActiveConnection(memberIdA, memberIdB) {
+    if (!memberIdA || !memberIdB) return false;
+    const codesA = await ConnectionMembership.find({ memberId: memberIdA, archivedAt: null }).distinct('connectionCode');
+    if (codesA.length === 0) return false;
+    const count = await ConnectionMembership.countDocuments({
+        memberId: memberIdB,
+        connectionCode: { $in: codesA },
+        archivedAt: null
+    });
+    return count > 0;
+}
+
+// ── Nebula Discovery Endpoints ────────────────────────────────────────
+
+app.post('/api/profile/discoverability', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const member = auth.member;
+
+        const { discoverable, handle, bio } = req.body || {};
+        let normalizedHandle = member.handle || null;
+
+        if (handle !== undefined) {
+            const rawHandle = String(handle || '').trim().toLowerCase().replace(/^@/, '');
+            if (rawHandle.length > 0) {
+                if (!/^[a-z0-9_]{3,20}$/.test(rawHandle)) {
+                    return res.status(400).json({ error: 'Handle must be 3-20 characters long and contain only lowercase letters, numbers, and underscores.' });
+                }
+                const existing = await Member.findOne({ handle: rawHandle, memberId: { $ne: member.memberId } });
+                if (existing) {
+                    return res.status(409).json({ error: 'This handle is already taken by someone else.' });
+                }
+                normalizedHandle = rawHandle;
+            } else if (discoverable) {
+                return res.status(400).json({ error: 'A valid handle is required to become discoverable in the Nebula.' });
+            } else {
+                normalizedHandle = null;
+            }
+        }
+
+        const isDiscoverable = Boolean(discoverable);
+        if (isDiscoverable && !normalizedHandle) {
+            return res.status(400).json({ error: 'You must set a handle before making your profile public.' });
+        }
+
+        const cleanBio = bio !== undefined ? (sanitizeText(bio, 80) || null) : member.bio;
+
+        member.discoverable = isDiscoverable;
+        member.handle = normalizedHandle;
+        member.bio = cleanBio;
+        if (isDiscoverable && !member.discoverableSince) {
+            member.discoverableSince = new Date();
+        } else if (!isDiscoverable) {
+            member.discoverableSince = null;
+        }
+        await member.save();
+
+        res.json({
+            success: true,
+            discoverable: member.discoverable,
+            handle: member.handle,
+            bio: member.bio
+        });
+    } catch (err) {
+        console.error('Error updating discoverability:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/nebula/browse', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const member = auth.member;
+
+        const blocks = await MemberBlock.find({ memberId: member.memberId }).select('blockedMemberId').lean();
+        const blockedIds = blocks.map(b => b.blockedMemberId);
+
+        const pendingInvites = await NebulaInvite.find({
+            $or: [{ fromMemberId: member.memberId }, { toMemberId: member.memberId }],
+            status: 'PENDING'
+        }).lean();
+        const pendingMap = new Map();
+        pendingInvites.forEach(inv => {
+            const otherId = inv.fromMemberId === member.memberId ? inv.toMemberId : inv.fromMemberId;
+            pendingMap.set(otherId, inv.fromMemberId === member.memberId ? 'SENT' : 'RECEIVED');
+        });
+
+        // Query ALL public members with discoverable: true (except blocked accounts)
+        const publicMembers = await Member.find({
+            discoverable: true,
+            memberId: { $nin: blockedIds },
+            revokedAt: null
+        })
+        .select('memberId handle displayName googleDisplayName avatarUrl twigiRenderUrl profileEmojiUrl avatarMode bio nebulaSeed lastSeenAt')
+        .limit(100)
+        .lean();
+
+        const now = Date.now();
+        const motes = publicMembers.map(m => ({
+            memberId: m.memberId,
+            handle: m.handle || 'star',
+            displayName: m.displayName || m.googleDisplayName || `@${m.handle}`,
+            avatarUrl: m.avatarUrl || null,
+            twigiRenderUrl: m.avatarMode === 'TWIGI' ? (m.twigiRenderUrl || null) : null,
+            profileEmojiUrl: m.profileEmojiUrl || null,
+            avatarMode: m.avatarMode || 'EMOJI',
+            bio: m.bio || null,
+            nebulaSeed: typeof m.nebulaSeed === 'number' ? m.nebulaSeed : (m.memberId ? m.memberId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) : 42),
+            isRecentlyActive: m.lastSeenAt ? (now - new Date(m.lastSeenAt).getTime() < 30 * 60 * 1000) : false,
+            inviteStatus: m.memberId === member.memberId ? 'SELF' : (pendingMap.get(m.memberId) || 'NONE')
+        }));
+
+        res.json({ motes });
+    } catch (err) {
+        console.error('Error browsing nebula:', err);
+        res.status(500).json({ error: 'Failed to load nebula' });
+    }
+});
+
+app.get('/api/nebula/search', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const member = auth.member;
+
+        const q = String(req.query.q || '').trim().toLowerCase().replace(/^@/, '');
+        if (!q) return res.json({ results: [] });
+
+        const blocks = await MemberBlock.find({ memberId: member.memberId }).select('blockedMemberId').lean();
+        const blockedIds = blocks.map(b => b.blockedMemberId);
+        blockedIds.push(member.memberId);
+
+        const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedQuery, 'i');
+
+        const matches = await Member.find({
+            discoverable: true,
+            memberId: { $nin: blockedIds },
+            revokedAt: null,
+            $or: [
+                { handle: { $regex: '^' + escapedQuery, $options: 'i' } },
+                { displayName: { $regex: regex } }
+            ]
+        })
+        .select('memberId handle displayName googleDisplayName avatarUrl twigiRenderUrl profileEmojiUrl avatarMode bio nebulaSeed lastSeenAt')
+        .limit(20)
+        .lean();
+
+        const pendingInvites = await NebulaInvite.find({
+            $or: [{ fromMemberId: member.memberId }, { toMemberId: member.memberId }],
+            status: 'PENDING'
+        }).lean();
+        const pendingMap = new Map();
+        pendingInvites.forEach(inv => {
+            const otherId = inv.fromMemberId === member.memberId ? inv.toMemberId : inv.fromMemberId;
+            pendingMap.set(otherId, inv.fromMemberId === member.memberId ? 'SENT' : 'RECEIVED');
+        });
+
+        const now = Date.now();
+        const results = matches.map(m => ({
+            memberId: m.memberId,
+            handle: m.handle || 'star',
+            displayName: m.displayName || m.googleDisplayName || `@${m.handle}`,
+            avatarUrl: m.avatarUrl || null,
+            twigiRenderUrl: m.avatarMode === 'TWIGI' ? (m.twigiRenderUrl || null) : null,
+            profileEmojiUrl: m.profileEmojiUrl || null,
+            bio: m.bio || null,
+            nebulaSeed: typeof m.nebulaSeed === 'number' ? m.nebulaSeed : 42,
+            isRecentlyActive: m.lastSeenAt ? (now - new Date(m.lastSeenAt).getTime() < 30 * 60 * 1000) : false,
+            inviteStatus: pendingMap.get(m.memberId) || 'NONE'
+        }));
+
+        res.json({ results });
+    } catch (err) {
+        console.error('Error searching nebula:', err);
+        res.status(500).json({ error: 'Failed to search nebula' });
+    }
+});
+
+app.post('/api/nebula/invite', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const member = auth.member;
+
+        const { targetMemberId, targetHandle } = req.body || {};
+        let target = null;
+        if (targetMemberId) {
+            target = await Member.findOne({ memberId: targetMemberId, revokedAt: null });
+        } else if (targetHandle) {
+            target = await Member.findOne({ handle: String(targetHandle).trim().toLowerCase().replace(/^@/, ''), revokedAt: null });
+        }
+        if (!target) return res.status(404).json({ error: 'Target member not found' });
+        if (target.memberId === member.memberId) return res.status(400).json({ error: 'Cannot invite yourself' });
+
+        const alreadyConnected = await haveCommonActiveConnection(member.memberId, target.memberId);
+        if (alreadyConnected) return res.status(400).json({ error: 'Already connected with this member' });
+
+        let invite = await NebulaInvite.findOne({
+            fromMemberId: member.memberId,
+            toMemberId: target.memberId,
+            status: 'PENDING'
+        });
+
+        if (!invite) {
+            invite = new NebulaInvite({
+                inviteId: 'ninv_' + crypto.randomBytes(8).toString('hex'),
+                fromMemberId: member.memberId,
+                toMemberId: target.memberId,
+                fromHandle: member.handle,
+                toHandle: target.handle,
+                fromDisplayName: member.displayName || member.googleDisplayName || `@${member.handle}`,
+                fromAvatarUrl: member.avatarUrl || null,
+                fromTwigiUrl: member.avatarMode === 'TWIGI' ? member.twigiRenderUrl : null,
+                fromProfileEmojiUrl: member.profileEmojiUrl || null,
+                status: 'PENDING'
+            });
+            await invite.save();
+
+            sendFcmPushToPartner(target.memberId, {
+                type: 'nebula_invite',
+                inviteId: invite.inviteId,
+                fromHandle: member.handle,
+                fromDisplayName: member.displayName || `@${member.handle}`,
+                actionType: 'nebula_invite'
+            });
+        }
+
+        res.json({ success: true, inviteId: invite.inviteId, status: invite.status });
+    } catch (err) {
+        console.error('Error sending nebula invite:', err);
+        res.status(500).json({ error: 'Failed to send invite' });
+    }
+});
+
+app.post('/api/nebula/invite/respond', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const member = auth.member;
+
+        const { inviteId, accept } = req.body || {};
+        const invite = await NebulaInvite.findOne({ inviteId });
+        if (!invite) return res.status(404).json({ error: 'Invite not found' });
+        if (invite.toMemberId !== member.memberId) return res.status(403).json({ error: 'Unauthorized to respond to this invite' });
+        if (invite.status !== 'PENDING') return res.json({ success: true, status: invite.status });
+
+        if (accept) {
+            const sender = await Member.findOne({ memberId: invite.fromMemberId });
+            if (!sender) return res.status(404).json({ error: 'Sender no longer exists' });
+
+            const connectionCode = generateConnectionCode();
+            const session = new Session({
+                connectionCode,
+                creatorDeviceId: sender.primaryDeviceId || 'nebula_creator',
+                relationshipType: 'ROMANTIC',
+                participants: [
+                    { memberId: sender.memberId, deviceId: sender.primaryDeviceId || 'nebula_p1', role: 'CREATOR', partnerLabel: sender.displayName },
+                    { memberId: member.memberId, deviceId: member.primaryDeviceId || 'nebula_p2', role: 'PARTNER', partnerLabel: member.displayName }
+                ]
+            });
+            await session.save();
+
+            await ConnectionMembership.create([
+                {
+                    memberId: sender.memberId,
+                    connectionCode,
+                    role: 'CREATOR',
+                    origin: 'NEBULA',
+                    trustRing: 3,
+                    partnerDisplayNameCache: member.displayName || member.googleDisplayName || `@${member.handle}`
+                },
+                {
+                    memberId: member.memberId,
+                    connectionCode,
+                    role: 'PARTNER',
+                    origin: 'NEBULA',
+                    trustRing: 3,
+                    partnerDisplayNameCache: sender.displayName || sender.googleDisplayName || `@${sender.handle}`
+                }
+            ]);
+
+            invite.status = 'ACCEPTED';
+            invite.connectionCode = connectionCode;
+            invite.respondedAt = new Date();
+            await invite.save();
+
+            sendFcmPushToPartner(sender.memberId, {
+                type: 'nebula_invite_accepted',
+                connectionId: connectionCode,
+                partnerName: member.displayName || `@${member.handle}`,
+                actionType: 'nebula_invite_accepted'
+            });
+
+            res.json({ success: true, status: 'ACCEPTED', connectionCode });
+        } else {
+            invite.status = 'DECLINED';
+            invite.respondedAt = new Date();
+            await invite.save();
+            res.json({ success: true, status: 'DECLINED' });
+        }
+    } catch (err) {
+        console.error('Error responding to nebula invite:', err);
+        res.status(500).json({ error: 'Failed to respond to invite' });
+    }
+});
+
+app.post('/api/nebula/block', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const member = auth.member;
+        const { targetMemberId } = req.body || {};
+        if (!targetMemberId || targetMemberId === member.memberId) return res.status(400).json({ error: 'Invalid target' });
+
+        await MemberBlock.findOneAndUpdate(
+            { memberId: member.memberId, blockedMemberId: targetMemberId },
+            { memberId: member.memberId, blockedMemberId: targetMemberId, createdAt: new Date() },
+            { upsert: true }
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error blocking member:', err);
+        res.status(500).json({ error: 'Failed to block' });
+    }
+});
+
+app.post('/api/nebula/report', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const member = auth.member;
+        const { targetMemberId, reason, note } = req.body || {};
+        if (!targetMemberId || !reason) return res.status(400).json({ error: 'Missing reason or target' });
+
+        await MemberReport.create({
+            reporterId: member.memberId,
+            reportedId: targetMemberId,
+            reason: sanitizeText(reason, 120),
+            note: sanitizeText(note || '', 300)
+        });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error reporting member:', err);
+        res.status(500).json({ error: 'Failed to report' });
     }
 });
 
@@ -2473,7 +2905,13 @@ const MemberSchema = new mongoose.Schema({
     // { maxConnections, maxGroupMembers, maxStrokes, maxReminders, maxCardsPerStack,
     //   historyDays, features: { ... } }.
     planOverrides: { type: Object, default: {} },
-    planExpiresAt: { type: Date, default: null }
+    planExpiresAt: { type: Date, default: null },
+    // ── Nebula Discovery (Public Mode) ───────────────────────────────────
+    discoverable: { type: Boolean, default: false, index: true },
+    handle: { type: String, unique: true, sparse: true, index: true, lowercase: true, trim: true },
+    bio: { type: String, default: null, maxlength: 80 },
+    discoverableSince: { type: Date, default: null },
+    nebulaSeed: { type: Number, default: () => Math.floor(Math.random() * 10000) }
 }, { timestamps: true });
 MemberSchema.index({ knownDeviceIds: 1 });
 
@@ -2481,11 +2919,49 @@ const ConnectionMembershipSchema = new mongoose.Schema({
     memberId: { type: String, index: true },
     connectionCode: { type: String, index: true },
     role: { type: String, enum: ['CREATOR', 'PARTNER'], default: 'PARTNER' },
+    origin: { type: String, enum: ['INVITE', 'NEBULA'], default: 'INVITE' },
+    trustRing: { type: Number, default: 0 },
     partnerDisplayNameCache: String,
     archivedAt: { type: Date, default: null },
     lastConnectedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 ConnectionMembershipSchema.index({ memberId: 1, connectionCode: 1 }, { unique: true });
+
+const NebulaInviteSchema = new mongoose.Schema({
+    inviteId: { type: String, unique: true, index: true },
+    fromMemberId: { type: String, required: true, index: true },
+    toMemberId: { type: String, required: true, index: true },
+    fromHandle: { type: String, default: null },
+    toHandle: { type: String, default: null },
+    fromDisplayName: { type: String, default: null },
+    fromAvatarUrl: { type: String, default: null },
+    fromTwigiUrl: { type: String, default: null },
+    fromProfileEmojiUrl: { type: String, default: null },
+    status: { type: String, enum: ['PENDING', 'ACCEPTED', 'DECLINED', 'CANCELED'], default: 'PENDING', index: true },
+    connectionCode: { type: String, default: null },
+    createdAt: { type: Date, default: Date.now, expires: 14 * 24 * 3600 },
+    respondedAt: { type: Date, default: null }
+}, { timestamps: true });
+NebulaInviteSchema.index({ fromMemberId: 1, toMemberId: 1, status: 1 });
+
+const MemberBlockSchema = new mongoose.Schema({
+    memberId: { type: String, required: true, index: true },
+    blockedMemberId: { type: String, required: true, index: true },
+    createdAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+MemberBlockSchema.index({ memberId: 1, blockedMemberId: 1 }, { unique: true });
+
+const MemberReportSchema = new mongoose.Schema({
+    reporterId: { type: String, required: true, index: true },
+    reportedId: { type: String, required: true, index: true },
+    reason: { type: String, required: true },
+    note: { type: String, default: null },
+    createdAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+const NebulaInvite = mongoose.models.NebulaInvite || mongoose.model('NebulaInvite', NebulaInviteSchema);
+const MemberBlock = mongoose.models.MemberBlock || mongoose.model('MemberBlock', MemberBlockSchema);
+const MemberReport = mongoose.models.MemberReport || mongoose.model('MemberReport', MemberReportSchema);
 
 const SharedAlarmSchema = new mongoose.Schema({
     alarmId: { type: String, unique: true, index: true },
@@ -2601,27 +3077,15 @@ const DeletionRequest = gigiConn.model('DeletionRequest', DeletionRequestSchema)
 // ─────────────────────────────────────────────────────────────────────────────
 // MONETIZATION: plan tiers + per-member limits (admin-controlled)
 // ─────────────────────────────────────────────────────────────────────────────
-const PLAN_NUMERIC_KEYS = ['maxConnections', 'maxGroupMembers', 'maxStrokes', 'maxReminders', 'maxCardsPerStack', 'historyDays', 'maxLivePosts'];
-const PLAN_FEATURE_KEYS = ['gifPicker', 'premiumBrushes', 'timeCapsule', 'animatedCards', 'groupConnections', 'customTheme', 'allThemes', 'recurringAlarms', 'liveTracking', 'tabReminders', 'tabLive', 'tabSweetCorner', 'tabMusic'];
+const PLAN_CATALOG = require('./plan_catalog');
+const PLAN_NUMERIC_KEYS = PLAN_CATALOG.NUMERIC_KEYS;
+const PLAN_FEATURE_KEYS = PLAN_CATALOG.FEATURE_KEYS;
 const PLAN_TIERS = ['free', 'plus', 'pro'];
 const DEFAULT_TIER_PLANS_UPGRADE_URL = 'https://gigi.iamanraj.com/upgrade';
 
 // Default limits for each tier. The admin can override these live via /admin/data/plan-config.
 // A numeric limit of 0 means "unlimited" (never blocked).
-const DEFAULT_TIER_PLANS = {
-    free: {
-        maxConnections: 2, maxGroupMembers: 0, maxStrokes: 50, maxReminders: 5, maxCardsPerStack: 1, historyDays: 3, maxLivePosts: 1,
-        features: { gifPicker: false, premiumBrushes: false, timeCapsule: false, animatedCards: false, groupConnections: false, customTheme: false, allThemes: false, recurringAlarms: false, liveTracking: true, tabReminders: true, tabLive: true, tabSweetCorner: true, tabMusic: true }
-    },
-    plus: {
-        maxConnections: 5, maxGroupMembers: 8, maxStrokes: 200, maxReminders: 25, maxCardsPerStack: 5, historyDays: 30, maxLivePosts: 3,
-        features: { gifPicker: true, premiumBrushes: true, timeCapsule: false, animatedCards: true, groupConnections: true, customTheme: true, allThemes: false, recurringAlarms: true, liveTracking: true, tabReminders: true, tabLive: true, tabSweetCorner: true, tabMusic: true }
-    },
-    pro: {
-        maxConnections: 0, maxGroupMembers: 50, maxStrokes: 1000, maxReminders: 200, maxCardsPerStack: 20, historyDays: 365, maxLivePosts: 0,
-        features: { gifPicker: true, premiumBrushes: true, timeCapsule: true, animatedCards: true, groupConnections: true, customTheme: true, allThemes: true, recurringAlarms: true, liveTracking: true, tabReminders: true, tabLive: true, tabSweetCorner: true, tabMusic: true }
-    }
-};
+const DEFAULT_TIER_PLANS = PLAN_CATALOG.DEFAULT_TIER_PLANS;
 
 
 const PlanConfigSchema = new mongoose.Schema({
@@ -2632,19 +3096,72 @@ const PlanConfigSchema = new mongoose.Schema({
 }, { timestamps: true });
 const PlanConfig = gigiConn.model('PlanConfig', PlanConfigSchema);
 
+// ── Remote app settings (API keys, kill switches, release gating) ─────────────
+const AppSettingsLib = require('./app_settings');
+const AppSettingsSchema = new mongoose.Schema({
+    singletonKey: { type: String, unique: true, default: 'global' },
+    values: { type: Object, default: () => AppSettingsLib.defaults() }
+}, { timestamps: true });
+const AppSettings = gigiConn.model('AppSettings', AppSettingsSchema);
+
+let appSettingsCache = null;
+async function getAppSettings(force = false) {
+    if (appSettingsCache && !force) return appSettingsCache;
+    let doc = null;
+    if (isMongoReady(gigiConn)) {
+        try {
+            doc = await AppSettings.findOneAndUpdate(
+                { singletonKey: 'global' },
+                { $setOnInsert: { singletonKey: 'global', values: AppSettingsLib.defaults() } },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            ).lean();
+        } catch (e) {
+            logEvent('app_settings.read_failed', { error: e.message });
+        }
+    }
+    appSettingsCache = { ...AppSettingsLib.defaults(), ...(doc?.values || {}) };
+    return appSettingsCache;
+}
+
+/** Push new settings to every live client so kill switches land without a restart. */
+async function broadcastAppSettings() {
+    try {
+        const values = AppSettingsLib.forClient(await getAppSettings(true));
+        const msg = JSON.stringify({ type: 'app_settings_update', settings: values });
+        wss.clients.forEach(ws => { if (ws.readyState === WebSocket.OPEN) ws.send(msg); });
+    } catch (e) {
+        console.error('[broadcastAppSettings] failed:', e.message);
+    }
+}
+
 /** Merge a stored (possibly partial) tier definition over the defaults so callers always get every key. */
 function normalizeTierPlan(tier, stored) {
     const base = DEFAULT_TIER_PLANS[tier] || DEFAULT_TIER_PLANS.free;
     const s = stored && typeof stored === 'object' ? stored : {};
     const out = {};
+
+    // Presentation + pricing. A tier the admin invented has no defaults to fall back
+    // on, so the id doubles as its display name until they set one.
+    out.meta = {};
+    for (const m of PLAN_CATALOG.META) {
+        const v = s.meta?.[m.key];
+        const fallback = base.meta?.[m.key] !== undefined ? base.meta[m.key] : m.default;
+        if (m.type === 'bool') out.meta[m.key] = typeof v === 'boolean' ? v : !!fallback;
+        else if (m.type === 'number') out.meta[m.key] = Number.isFinite(Number(v)) ? Number(v) : Number(fallback) || 0;
+        else out.meta[m.key] = typeof v === 'string' && v.trim() ? v.trim() : String(fallback || '');
+    }
+    if (!out.meta.displayName) {
+        out.meta.displayName = tier.charAt(0).toUpperCase() + tier.slice(1);
+    }
     for (const k of PLAN_NUMERIC_KEYS) {
         const v = Number(s[k]);
         out[k] = Number.isFinite(v) ? v : (base[k] !== undefined ? base[k] : 0);
     }
     out.features = {};
     for (const k of PLAN_FEATURE_KEYS) {
-        const isTab = k.startsWith('tab');
-        const defaultVal = isTab ? true : (base.features?.[k] || false);
+        const defaultVal = base.features?.[k] !== undefined
+            ? base.features[k]
+            : PLAN_CATALOG.DEFAULT_ON_FEATURES.has(k);
         out.features[k] = typeof s?.features?.[k] === 'boolean' ? s.features[k] : defaultVal;
     }
     return out;
@@ -2665,12 +3182,22 @@ async function getPlanConfig() {
             logEvent('plan_config.read_failed', { error: e.message });
         }
     }
-    const rawTiers = { ...DEFAULT_TIER_PLANS, ...(doc?.tiers || {}) };
+    // Seed from the built-in tiers ONLY when nothing has been saved yet. Merging them
+    // in on every read is what made deleting `plus`/`pro` impossible — the row went
+    // away in Mongo and was immediately resurrected here.
+    const stored = doc?.tiers && Object.keys(doc.tiers).length ? doc.tiers : null;
+    const rawTiers = stored || DEFAULT_TIER_PLANS;
     const tiers = {};
     for (const t of Object.keys(rawTiers)) {
         tiers[t] = normalizeTierPlan(t, rawTiers[t]);
     }
-    return { tiers, upgradeUrl: doc?.upgradeUrl || DEFAULT_TIER_PLANS_UPGRADE_URL };
+    // `free` is the fallback every member resolves to, so it must always exist.
+    if (!tiers.free) tiers.free = normalizeTierPlan('free', DEFAULT_TIER_PLANS.free);
+
+    const order = Array.isArray(doc?.tiers_order) ? doc.tiers_order.filter(t => tiers[t]) : [];
+    for (const t of Object.keys(tiers)) if (!order.includes(t)) order.push(t);
+
+    return { tiers, tiers_order: order, upgradeUrl: doc?.upgradeUrl || DEFAULT_TIER_PLANS_UPGRADE_URL };
 }
 
 /** Broadcast plan config updates to all live WebSocket connections */
@@ -2690,6 +3217,19 @@ async function broadcastPlanConfigUpdate() {
 
 /** Resolve the effective plan for a member: tier defaults merged with any per-member overrides. */
 async function resolvePlanForMember(member) {
+    // The global "free for everyone" switch short-circuits the whole tier system, so
+    // nothing downstream has to know it's on — every limit and gate simply opens.
+    const settings = await getAppSettings();
+    if (settings?.freeForAll) {
+        const open = PLAN_CATALOG.unlimitedPlan();
+        return {
+            tier: member?.tier || 'free',
+            expiresAt: null,
+            freeForAll: true,
+            ...Object.fromEntries(PLAN_NUMERIC_KEYS.map(k => [k, open[k]])),
+            features: open.features
+        };
+    }
     const cfg = await getPlanConfig();
     const availableTiers = Object.keys(cfg.tiers);
     let tier = availableTiers.includes(member?.tier) ? member.tier : 'free';
@@ -2723,7 +3263,35 @@ async function buildAppConfig(member) {
     const cfg = await getPlanConfig();
     const plan = await resolvePlanForMember(member);
     const appConfig = { plan, upgradeUrl: cfg.upgradeUrl };
-    const giphyKey = process.env.GIPHY_API_KEY || process.env.GIPHY_KEY;
+
+    const settings = AppSettingsLib.forClient(await getAppSettings());
+
+    // What the app is allowed to offer. Previously the upgrade sheet hardcoded
+    // "Plus"/"Pro" and two Play product ids, so deleting a tier here left the app
+    // still selling it. Now the sheet renders from exactly this list.
+    const currentRank = cfg.tiers[plan.tier]?.meta?.sortOrder ?? 0;
+    appConfig.monetizationEnabled = !settings.freeForAll;
+    appConfig.upgradeOptions = settings.freeForAll ? [] : Object.entries(cfg.tiers)
+        .filter(([id, t]) =>
+            t.meta?.purchasable &&
+            t.meta?.productId &&
+            id !== plan.tier &&
+            (t.meta?.sortOrder ?? 0) > currentRank
+        )
+        .sort((a, b) => (a[1].meta.sortOrder ?? 0) - (b[1].meta.sortOrder ?? 0))
+        .map(([id, t]) => ({
+            tierId: id,
+            displayName: t.meta.displayName,
+            emoji: t.meta.emoji,
+            tagline: t.meta.tagline,
+            priceLabel: t.meta.priceLabel,
+            productId: t.meta.productId
+        }));
+    appConfig.settings = settings;
+
+    // The admin-panel value wins; the env var stays as a fallback so nothing breaks
+    // for anyone who hasn't filled the field in yet.
+    const giphyKey = settings.giphyApiKey || process.env.GIPHY_API_KEY || process.env.GIPHY_KEY;
     if (giphyKey) appConfig.giphyApiKey = giphyKey;
     return appConfig;
 }
@@ -2981,6 +3549,12 @@ function normalizePhoneNumber(value) {
     return raw.startsWith('+') ? `+${digits}` : `+${digits}`;
 }
 
+// Session tokens come in two flavours: our own opaque one (32 chars, see
+// issueAuthSession) and a Firebase ID token, which is a ~1 KB JWT. The old 256-char
+// cap silently truncated the latter into something that verified as neither, so every
+// request authenticated with a Firebase token was rejected as "Session expired".
+const SESSION_TOKEN_MAX = 4096;
+
 function sanitizeText(value, maxLength = 160) {
     return String(value || '').trim().slice(0, maxLength);
 }
@@ -3087,18 +3661,18 @@ async function resolveMemberBySessionToken(sessionToken) {
     try {
         const decodedToken = await admin.auth().verifyIdToken(sessionToken);
         if (decodedToken && decodedToken.uid) {
-            // Find member by firebase UID (we use memberId for this in our logic)
-            // Or look up by phone number if available in token
+            const email = (decodedToken.email || '').toLowerCase().trim();
+            const queryConditions = [{ memberId: decodedToken.uid }];
+            if (decodedToken.phone_number) queryConditions.push({ phoneNumber: decodedToken.phone_number });
+            if (email) queryConditions.push({ googleEmail: email });
+
             let member = await Member.findOne({
-                $or: [
-                    { memberId: decodedToken.uid },
-                    { phoneNumber: decodedToken.phone_number }
-                ],
+                $or: queryConditions,
                 revokedAt: null
             });
 
             if (member) {
-                // Ensure UID is set as memberId if we found by phone
+                // Ensure UID is set as memberId if we found by phone or email
                 if (!member.memberId || member.memberId !== decodedToken.uid) {
                     member.memberId = decodedToken.uid;
                     await member.save();
@@ -3136,14 +3710,48 @@ async function revokeAuthSessions(memberId, deviceId = null) {
     await AuthSession.updateMany(filter, { $set: { revokedAt: new Date() } });
 }
 
+/**
+ * Keeps a device's session list from growing without bound, without ever touching the
+ * tokens still in active use. Only sessions well past their usefulness are dropped —
+ * the newest few always survive so a client holding a slightly older token keeps working.
+ */
+const KEEP_SESSIONS_PER_DEVICE = 5;
+async function pruneOldAuthSessions(memberId, deviceId) {
+    if (!memberId || !isMongoReady(gigiConn)) return;
+    try {
+        const filter = { memberId, revokedAt: null };
+        if (deviceId) filter.deviceId = deviceId;
+        const stale = await AuthSession.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(KEEP_SESSIONS_PER_DEVICE)
+            .select('_id')
+            .lean();
+        if (stale.length) {
+            await AuthSession.deleteMany({ _id: { $in: stale.map(s => s._id) } });
+        }
+    } catch (e) {
+        logEvent('auth.session_prune_failed', { memberId, error: e.message });
+    }
+}
+
 async function issueAuthSession(member, { deviceId, deviceName } = {}) {
     if (!member?.memberId) return null;
     const token = generateSessionToken();
     const normalizedDeviceId = normalizeId(deviceId);
 
-    if (normalizedDeviceId) {
-        await revokeAuthSessions(member.memberId, normalizedDeviceId);
-    }
+    // Deliberately NOT revoking the device's previous sessions here.
+    //
+    // This used to revoke every earlier session for the same device before minting the
+    // new one, which meant each bootstrap invalidated the token the app was still
+    // holding. Any in-flight request, socket reconnect or component that had already
+    // read `authToken` then got a 401 and surfaced "Session expired. Please sign in
+    // again." to a perfectly signed-in user. The database showed the damage plainly:
+    // 296 sessions for one member, 295 of them revoked, several within the same second.
+    //
+    // Old tokens now simply age out via AUTH_SESSION_TTL_MS (90 days). Revocation
+    // stays available through revokeAuthSessions() for an explicit sign-out or a
+    // security event — which is what it was always meant for.
+    await pruneOldAuthSessions(member.memberId, normalizedDeviceId);
 
     await AuthSession.create({
         memberId: member.memberId,
@@ -3496,6 +4104,10 @@ function buildMemberIdentityPayload(member, authToken) {
         prefsBlob: (member.prefsBlob && typeof member.prefsBlob === 'object') ? member.prefsBlob : {},
         themeSongTitle: sanitizeText(member.themeSongTitle || '', 120) || null,
         themeSongUrl: sanitizeText(member.themeSongUrl || '', 512) || null,
+        discoverable: Boolean(member.discoverable),
+        handle: member.handle || null,
+        bio: member.bio || null,
+        nebulaSeed: typeof member.nebulaSeed === 'number' ? member.nebulaSeed : 42,
         profileComplete: isProfileComplete(member)
     };
 }
@@ -3874,6 +4486,8 @@ async function buildBootstrapConnections(member, requesterDeviceId) {
             creatorDeviceId: session.creatorDeviceId || null,
             members,
             isArchived: false,
+            origin: membership.origin || 'INVITE',
+            trustRing: typeof membership.trustRing === 'number' ? membership.trustRing : 0,
             lastSeenAt: presence.lastSeenAt || null,
             transportHint: presence.isOnline ? 'CONNECTED' : 'CONNECTING',
             partnerPresence: presence.isOnline ? 'ONLINE' : 'OFFLINE'
@@ -3927,14 +4541,21 @@ async function requireAuthenticatedMember(req, res) {
         req.body?.sessionToken
         || req.headers['x-session-token']
         || '',
-        256
+        SESSION_TOKEN_MAX
     );
     if (!sessionToken) {
+        console.warn('[auth] 401 no token on %s %s', req.method, req.path);
         res.status(401).json({ error: 'Session token required.' });
         return null;
     }
     const member = await resolveMemberBySessionToken(sessionToken);
     if (!member) {
+        // Log the shape, never the token. A 3-part value is a Firebase ID token;
+        // anything else is our opaque one. Length matters: a value sitting exactly on
+        // SESSION_TOKEN_MAX is the signature of truncation rather than a bad token.
+        console.warn('[auth] 401 %s %s len=%d kind=%s',
+            req.method, req.path, sessionToken.length,
+            sessionToken.split('.').length === 3 ? 'firebase-jwt' : 'opaque');
         res.status(401).json({ error: 'Session expired. Please sign in again.' });
         return null;
     }
@@ -4010,7 +4631,8 @@ function broadcastToConnection(connectionCode, builder) {
 // fan-out that are all defined above. See plans/live_nearby_implementation.md
 require('./live_routes')({
     app, gigiConn, mongoose, sanitizeText, requireAuthenticatedMember,
-    ConnectionMembership, Member, broadcastToConnection, normalizeId, logEvent
+    ConnectionMembership, Member, broadcastToConnection, normalizeId, logEvent,
+    resolvePlanForMember, getAppSettings, admin
 });
 
 async function broadcastSharedAlarmUpsert(alarm) {
@@ -4115,6 +4737,8 @@ async function sendFcmPushToPartner(senderMemberId, payload) {
         const seenPartners = new Set();
         for (const membership of memberships) {
             const code = membership.connectionCode.toLowerCase();
+            const liveConn = connections.get(code);
+
             const partners = await ConnectionMembership.find({
                 connectionCode: code,
                 memberId: { $ne: senderMemberId },
@@ -4125,13 +4749,25 @@ async function sendFcmPushToPartner(senderMemberId, payload) {
                 if (seenPartners.has(partner.memberId)) continue;
                 seenPartners.add(partner.memberId);
 
+                // Skip sending FCM push if partner is actively connected live on WebSocket
+                if (liveConn && liveConn.clients) {
+                    const isPartnerLive = liveConn.clients.some(c => 
+                        String(c.memberId || '') === String(partner.memberId || '') && 
+                        c.ws && c.ws.readyState === 1
+                    );
+                    if (isPartnerLive) {
+                        console.log(`[FCM] Partner ${partner.memberId} is live on WebSocket, skipping FCM push`);
+                        continue;
+                    }
+                }
+
                 const partnerMember = await Member.findOne({
                     memberId: partner.memberId,
                     revokedAt: null
                 }).lean();
 
                 if (partnerMember && partnerMember.fcmToken) {
-                    console.log(`[FCM] Sending push to ${partner.memberId} from ${senderName} for event ${payload.actionType || payload.type}`);
+                    console.log(`[FCM] Sending data push to ${partner.memberId} from ${senderName} for event ${payload.actionType || payload.type}`);
                     const stringData = { senderName };
                     Object.entries(payload).forEach(([key, value]) => {
                         if (value !== null && value !== undefined) {
@@ -4140,18 +4776,13 @@ async function sendFcmPushToPartner(senderMemberId, payload) {
                     });
                     stringData.timestamp = new Date().toISOString();
 
+                    // Send data-only payload so Android client handles debounced background notification
                     const message = {
                         data: stringData,
                         token: partnerMember.fcmToken,
                         android: {
                             priority: 'high',
-                            ttl: 86400 * 1000,
-                            notification: {
-                                title: payload.type === 'scribble' ? `${senderName} sent a doodle! 🎨` : (payload.type === 'chat_message' ? `${senderName} 💬` : `Notification from ${senderName} 💜`),
-                                body: payload.type === 'scribble' ? `Tap to view ${senderName}'s live drawing` : (payload.text || `Tap to open Gigi`),
-                                channelId: 'scribble_alerts_v3',
-                                sound: 'default'
-                            }
+                            ttl: 86400 * 1000
                         }
                     };
 
@@ -5537,8 +6168,16 @@ app.put('/admin/data/members/:memberId', requireAdminTokenOrBasic, async (req, r
 app.get('/admin/data/plan-config', requireAdminTokenOrBasic, async (req, res) => {
     try {
         const cfg = await getPlanConfig();
-        const activeTiers = Object.keys(cfg.tiers);
-        res.json({ ...cfg, numericKeys: PLAN_NUMERIC_KEYS, featureKeys: PLAN_FEATURE_KEYS, tiers_order: activeTiers, defaults: DEFAULT_TIER_PLANS });
+        res.json({
+            ...cfg,
+            numericKeys: PLAN_NUMERIC_KEYS,
+            featureKeys: PLAN_FEATURE_KEYS,
+            limitCatalog: PLAN_CATALOG.LIMITS,
+            featureCatalog: PLAN_CATALOG.FEATURES,
+            metaCatalog: PLAN_CATALOG.META,
+            tiers_order: cfg.tiers_order,
+            defaults: DEFAULT_TIER_PLANS
+        });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -5566,6 +6205,29 @@ app.put('/admin/data/plan-config', requireAdminTokenOrBasic, async (req, res) =>
         
         await broadcastPlanConfigUpdate();
         res.json({ tiers: out, tiers_order: Object.keys(out), upgradeUrl: doc?.upgradeUrl || DEFAULT_TIER_PLANS_UPGRADE_URL });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/admin/data/app-settings', requireAdminTokenOrBasic, async (req, res) => {
+    try {
+        const stored = await getAppSettings(true);
+        res.json({ values: AppSettingsLib.forAdmin(stored), catalog: AppSettingsLib.SETTINGS_CATALOG });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/admin/data/app-settings', requireAdminTokenOrBasic, async (req, res) => {
+    try {
+        const stored = await getAppSettings(true);
+        const next = AppSettingsLib.applyPatch(stored, req.body?.values || {});
+        await AppSettings.findOneAndUpdate(
+            { singletonKey: 'global' },
+            { $set: { values: next }, $setOnInsert: { singletonKey: 'global' } },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+        appSettingsCache = next;
+        await broadcastAppSettings();
+        logEvent('app_settings.updated', { keys: Object.keys(req.body?.values || {}) });
+        res.json({ ok: true, values: AppSettingsLib.forAdmin(next) });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -6092,7 +6754,7 @@ wss.on('connection', (ws, req) => {
                         }
                     });
                 }
-                const assetPath = result?.filePath;
+                const assetPath = result?.assetPath || (result?.fileName ? toCaptureAssetPath(connectionCode, result.fileName) : null);
 
                 // FCM Notification for new Scribble
                 sendFcmPushToPartner(client?.memberId, {
@@ -6420,6 +7082,10 @@ async function handleTextMessage(ws, message, normalizedMessage = normalizeIncom
         case 'chat_message': {
             const code = String(message.connectionId || message.connectionCode || client.connectionCode || '').toLowerCase();
             if (!code) return;
+            const textContent = String(message.text || '').trim();
+            const gifUrlContent = String(message.gifUrl || '').trim();
+            if (!textContent && !gifUrlContent) return; // Ignore blank messages
+
             const senderDeviceId = client?.deviceId || message.senderDeviceId || '';
             const outbound = {
                 type: 'chat_message',
@@ -6427,14 +7093,26 @@ async function handleTextMessage(ws, message, normalizedMessage = normalizeIncom
                 senderDeviceId,
                 senderName: message.senderName || client?.partnerLabel || 'Partner',
                 msgType: message.msgType || 'text',
-                text: message.text || '',
-                gifUrl: message.gifUrl || '',
+                text: textContent,
+                gifUrl: gifUrlContent,
                 clientMsgId: message.clientMsgId || '',
                 sentAt: Date.now()
             };
+            const chatConnected = new Set();
             broadcastToConnection(code, (clientWs, c) => {
+                if (c?.memberId && clientWs.readyState === WebSocket.OPEN) chatConnected.add(normalizeId(c.memberId));
                 if (c && senderDeviceId && normalizeId(c.deviceId) === normalizeId(senderDeviceId)) return null;
                 return outbound;
+            });
+            // Wake offline peers via FCM only for real non-empty messages
+            sendFcmToConnectionPeers(code, client?.memberId, chatConnected, {
+                type: 'chat_message',
+                connectionId: code,
+                senderName: outbound.senderName,
+                msgType: outbound.msgType,
+                text: outbound.text,
+                gifUrl: outbound.gifUrl,
+                clientMsgId: outbound.clientMsgId
             });
             break;
         }
@@ -6531,21 +7209,9 @@ async function handleTextMessage(ws, message, normalizedMessage = normalizeIncom
                     { $set: { profileEmojiUrl: String(message.emojiUrl).slice(0, 512) } }
                 ).catch((e) => console.warn('[profile_update] emoji persist failed:', e?.message));
             }
-            const chatConnected = new Set();
             broadcastToConnection(code, (clientWs, c) => {
-                if (c?.memberId && clientWs.readyState === WebSocket.OPEN) chatConnected.add(normalizeId(c.memberId));
                 if (c && senderDeviceId && normalizeId(c.deviceId) === normalizeId(senderDeviceId)) return null;
                 return outbound;
-            });
-            // Wake offline peers via FCM so the chat pill can show even when the app is killed.
-            sendFcmToConnectionPeers(code, client?.memberId, chatConnected, {
-                type: 'chat_message',
-                connectionId: code,
-                senderName: outbound.senderName,
-                msgType: outbound.msgType,
-                text: outbound.text,
-                gifUrl: outbound.gifUrl,
-                clientMsgId: outbound.clientMsgId
             });
             break;
         }

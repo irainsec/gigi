@@ -38,10 +38,16 @@ object AppModule {
                 ReminderDatabase.MIGRATION_6_7,
                 ReminderDatabase.MIGRATION_7_8,
                 ReminderDatabase.MIGRATION_8_9,
-                ReminderDatabase.MIGRATION_9_10
+                ReminderDatabase.MIGRATION_9_10,
+                ReminderDatabase.MIGRATION_10_11
             )
             .fallbackToDestructiveMigration()
             .build()
+    }
+
+    @Provides
+    fun provideRecentPlayDao(database: ReminderDatabase): com.aman.gigi.db.RecentPlayDao {
+        return database.recentPlayDao()
     }
 
     @Provides

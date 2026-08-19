@@ -20,6 +20,16 @@ data class PlanFeatures(
     val tabMusic: Boolean = true
 )
 
+/** A tier the server says we may sell, with the copy and price it wants shown. */
+data class UpgradeOption(
+    val tierId: String,
+    val displayName: String,
+    val emoji: String,
+    val tagline: String,
+    val priceLabel: String,
+    val productId: String
+)
+
 data class UserPlan(
     val tier: String = "free",
     val expiresAt: String? = null,
@@ -30,13 +40,50 @@ data class UserPlan(
     val maxCardsPerStack: Int = 1,
     val historyDays: Int = 3,
     val maxLivePosts: Int = 1,
-    val features: PlanFeatures = PlanFeatures()
+    val features: PlanFeatures = PlanFeatures(),
+    /**
+     * What the app may offer as an upgrade, straight from the server's tier list.
+     * The names, prices and product ids used to be hardcoded here, which meant
+     * deleting a tier in the admin panel left the app still advertising it.
+     */
+    val upgradeOptions: List<UpgradeOption> = emptyList(),
+    /** False when the admin has switched everything to free — hide all upsell. */
+    val monetizationEnabled: Boolean = true
 ) {
-    val isPro: Boolean get() = tier == "pro"
-    val isPlus: Boolean get() = tier == "plus" || isPro
     val isFree: Boolean get() = tier == "free"
-    val upgradeTarget: String get() = if (isFree) "Plus" else "Pro"
+    /** On any tier above free. Tier-agnostic — no hardcoded "plus"/"pro" names. */
+    val isPaid: Boolean get() = tier != "free"
+    /** The cheapest tier above this one, or null when there's nothing to sell. */
+    val nextUpgrade: UpgradeOption? get() = upgradeOptions.firstOrNull()
+    val canUpgrade: Boolean get() = monetizationEnabled && upgradeOptions.isNotEmpty()
+    val upgradeTarget: String get() = nextUpgrade?.displayName ?: "Gigi"
 }
+
+/**
+ * Settings the admin panel can change without shipping a build. Defaults match the
+ * server's, so the app behaves sensibly if it can't reach it.
+ */
+data class RemoteSettings(
+    val osmTileUrl: String = "https://gigi.iamanraj.com/tiles/{z}/{x}/{y}.png",
+    /**
+     * Blank until a Spotify app is registered, and blank is meaningful: it hides the
+     * whole Spotify surface rather than showing a Connect button that cannot work.
+     * Set from the admin panel so it needs no app release.
+     */
+    val spotifyClientId: String = "",
+    val minSupportedVersionCode: Int = 0,
+    val forceUpdate: Boolean = false,
+    val maintenanceMode: Boolean = false,
+    val announcement: String = "",
+    val killReminders: Boolean = false,
+    val killLive: Boolean = false,
+    val killSweetCorner: Boolean = false,
+    val killMusic: Boolean = false,
+    val killLiveTracking: Boolean = false,
+    val killCosmicNebula: Boolean = false,
+    val supportEmail: String = "aman.raj@alticyber.com",
+    val privacyUrl: String = "https://gigi.iamanraj.com/privacy"
+)
 
 object AppConfig {
     @Volatile var giphyApiKey: String? = null
@@ -45,6 +92,32 @@ object AppConfig {
     private val _planFlow = MutableStateFlow(UserPlan())
     val planFlow: StateFlow<UserPlan> = _planFlow.asStateFlow()
     val userPlan: UserPlan get() = _planFlow.value
+
+    private val _settingsFlow = MutableStateFlow(RemoteSettings())
+    val settingsFlow: StateFlow<RemoteSettings> = _settingsFlow.asStateFlow()
+    val settings: RemoteSettings get() = _settingsFlow.value
+
+    /** Parses the `settings` block from bootstrap or a live `app_settings_update`. */
+    fun applySettingsJson(s: org.json.JSONObject?) {
+        s ?: return
+        val cur = _settingsFlow.value
+        _settingsFlow.value = RemoteSettings(
+            osmTileUrl = s.optString("osmTileUrl").ifBlank { cur.osmTileUrl },
+            spotifyClientId = s.optString("spotifyClientId").ifBlank { cur.spotifyClientId },
+            minSupportedVersionCode = s.optInt("minSupportedVersionCode", cur.minSupportedVersionCode),
+            forceUpdate = s.optBoolean("forceUpdate", cur.forceUpdate),
+            maintenanceMode = s.optBoolean("maintenanceMode", cur.maintenanceMode),
+            announcement = s.optString("announcement", cur.announcement),
+            killReminders = s.optBoolean("killReminders", cur.killReminders),
+            killLive = s.optBoolean("killLive", cur.killLive),
+            killSweetCorner = s.optBoolean("killSweetCorner", cur.killSweetCorner),
+            killMusic = s.optBoolean("killMusic", cur.killMusic),
+            killLiveTracking = s.optBoolean("killLiveTracking", cur.killLiveTracking),
+            killCosmicNebula = s.optBoolean("killCosmicNebula", cur.killCosmicNebula),
+            supportEmail = s.optString("supportEmail").ifBlank { cur.supportEmail },
+            privacyUrl = s.optString("privacyUrl").ifBlank { cur.privacyUrl }
+        )
+    }
 
     fun applyServerConfig(
         giphyKey: String? = null,
@@ -61,6 +134,23 @@ object AppConfig {
         cfg ?: return
         val giphyKey = cfg.optString("giphyApiKey").takeIf { it.isNotBlank() }
         val url = cfg.optString("upgradeUrl").takeIf { it.isNotBlank() }
+        applySettingsJson(cfg.optJSONObject("settings"))
+        val options = cfg.optJSONArray("upgradeOptions")?.let { arr ->
+            (0 until arr.length()).mapNotNull { i ->
+                arr.optJSONObject(i)?.let { o ->
+                    UpgradeOption(
+                        tierId = o.optString("tierId"),
+                        displayName = o.optString("displayName").ifBlank { o.optString("tierId") },
+                        emoji = o.optString("emoji").ifBlank { "✨" },
+                        tagline = o.optString("tagline"),
+                        priceLabel = o.optString("priceLabel"),
+                        productId = o.optString("productId")
+                    )
+                }?.takeIf { it.productId.isNotBlank() }
+            }
+        } ?: emptyList()
+        val monetization = cfg.optBoolean("monetizationEnabled", true)
+
         val plan = cfg.optJSONObject("plan")?.let { p ->
             val f = p.optJSONObject("features")
             UserPlan(
@@ -87,7 +177,9 @@ object AppConfig {
                     tabLive = f?.optBoolean("tabLive", true) ?: true,
                     tabSweetCorner = f?.optBoolean("tabSweetCorner", true) ?: true,
                     tabMusic = f?.optBoolean("tabMusic", true) ?: true
-                )
+                ),
+                upgradeOptions = options,
+                monetizationEnabled = monetization
             )
         }
         applyServerConfig(giphyKey, plan, url)

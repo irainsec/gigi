@@ -933,14 +933,10 @@ fun LoveCardComposerOverlay(
 
             // Main Card Area
             Box(
-                modifier = (if (isKeyboardOpen) {
-                    Modifier
-                        .fillMaxSize()
-                        .imePadding()
-                } else {
-                    Modifier
-                        .fillMaxSize()
-                }).padding(top = if (isKeyboardOpen) 0.dp else 75.dp).zIndex(100f),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = if (isKeyboardOpen) 0.dp else 75.dp)
+                    .zIndex(100f),
                 contentAlignment = Alignment.Center
             ) {
                 if (activeCard != null) {
@@ -3890,6 +3886,9 @@ fun LoveCardDeckDialog(
         CardSoundEngine.playReveal()
     }
 
+    val isKeyboardOpen = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -3902,7 +3901,8 @@ fun LoveCardDeckDialog(
                     )
                 )
             )
-            .safeDrawingPadding()
+            .statusBarsPadding()
+            .padding(bottom = if (isKeyboardOpen) 4.dp else navBottom)
             .clickable(enabled = false) { }, // Consume clicks
         contentAlignment = Alignment.Center
     ) {
@@ -3917,50 +3917,56 @@ fun LoveCardDeckDialog(
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    AnimatedVisibility(
+                        visible = !isKeyboardOpen,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = deck.stack.title,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color(0xFF5120CC),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = "Card ${currentIndex + 1} of ${cards.size}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF6C6882)
-                            )
-                        }
-                        Surface(
-                            modifier = Modifier.clickable(onClick = onDismiss),
-                            shape = RoundedCornerShape(999.dp),
-                            color = Color.White.copy(alpha = 0.72f),
-                            shadowElevation = 0.dp,
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Close",
-                                    tint = Color(0xFF6C3CF0),
-                                    modifier = Modifier.size(18.dp)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = deck.stack.title,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF5120CC),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    text = "Close",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF6C3CF0)
+                                    text = "Card ${currentIndex + 1} of ${cards.size}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color(0xFF6C6882)
                                 )
+                            }
+                            Surface(
+                                modifier = Modifier.clickable(onClick = onDismiss),
+                                shape = RoundedCornerShape(999.dp),
+                                color = Color.White.copy(alpha = 0.72f),
+                                shadowElevation = 0.dp,
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Close",
+                                        tint = Color(0xFF6C3CF0),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = "Close",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF6C3CF0)
+                                    )
+                                }
                             }
                         }
                     }

@@ -95,7 +95,15 @@ class HttpUploader @Inject constructor() {
     fun downloadFile(assetPath: String, destFile: File, progressListener: OnProgressListener? = null): Boolean {
         // Ensure assetPath is URL friendly
         val cleanPath = assetPath.replace("\\", "/")
-        val url = "$BASE_URL/captures/$cleanPath"
+            .trimStart('/')
+            .removePrefix("app/")
+            .removePrefix("captures/")
+            .trimStart('/')
+        val url = if (assetPath.startsWith("http://", ignoreCase = true) || assetPath.startsWith("https://", ignoreCase = true)) {
+            assetPath.replace("/app/captures/", "/captures/").replace("/captures/captures/", "/captures/")
+        } else {
+            "$BASE_URL/captures/$cleanPath"
+        }
         
         Log.i(TAG, "📥 Downloading file from $url to ${destFile.absolutePath}")
 

@@ -9,11 +9,24 @@ import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+
 @AndroidEntryPoint
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     @Inject
     lateinit var syncManager: ScribbleSyncManager
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
+    }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         Log.d(TAG, "🔔 [GIGI-FCM] Push notification received from: ${remoteMessage.from}")
@@ -72,6 +85,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error handling FCM push message", e)
         } finally {
+            serviceScope.launch {
+                runCatching {
+                    com.aman.gigi.widget.TwigiStatusWidget.refresh(applicationContext)
+                }
+            }
             if (wakeLock?.isHeld == true) {
                 wakeLock.release()
             }

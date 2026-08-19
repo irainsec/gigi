@@ -573,25 +573,18 @@ class ScreensaverViewModel @Inject constructor(
     
     // Navigation state
     // (Moved to top of class to fix initialization order NPE)    
-    // All active connections (filtering out unjoined placeholders, self-referential connections, and expired invites >30 mins)
+    // All active connections (filtering out unjoined placeholders and expired invites >30 mins)
     val activeConnections: StateFlow<List<Connection>> = connectionRepository.getActiveConnections()
-        .combine(memberIdentity) { list, identity ->
-            val selfMemberId = identity?.memberId.orEmpty()
-            val selfName = identity?.displayName.orEmpty()
+        .combine(memberIdentity) { list, _ ->
             val now = System.currentTimeMillis()
             val thirtyMinsMs = 30 * 60 * 1000L
 
             list.filter { conn ->
                 val pId = conn.partnerDeviceId
-                val pName = conn.partnerName
-                val mId = conn.memberId
                 val isPlaceholder = pId.isBlank() || pId == "waiting..." || pId == "joining..."
                 val isExpired = isPlaceholder && (now - conn.createdAt > thirtyMinsMs)
 
-                !isPlaceholder &&
-                !isExpired &&
-                (selfMemberId.isBlank() || !mId.equals(selfMemberId, ignoreCase = true)) &&
-                (selfName.isBlank() || !pName.equals(selfName, ignoreCase = true) || conn.isGroup)
+                !isPlaceholder && !isExpired
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -1091,7 +1084,7 @@ class ScreensaverViewModel @Inject constructor(
         activeConnections,
         com.aman.gigi.utils.AppConfig.planFlow
     ) { connections, plan ->
-        if (plan.maxConnections <= 0 || plan.isPro) true
+        if (plan.maxConnections <= 0) true
         else connections.size < plan.maxConnections
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     
@@ -1823,6 +1816,85 @@ class ScreensaverViewModel @Inject constructor(
 
     fun deleteAccount() {
         bootstrapManager.deleteAccount()
+    }
+
+    // ── Nebula Discovery State & Operations ───────────────────────────────
+
+    private val _nebulaMotes = MutableStateFlow<List<com.aman.gigi.model.NebulaMember>>(emptyList())
+    val nebulaMotes: StateFlow<List<com.aman.gigi.model.NebulaMember>> = _nebulaMotes.asStateFlow()
+
+    private val _nebulaSearchResults = MutableStateFlow<List<com.aman.gigi.model.NebulaMember>>(emptyList())
+    val nebulaSearchResults: StateFlow<List<com.aman.gigi.model.NebulaMember>> = _nebulaSearchResults.asStateFlow()
+
+    private val _isNebulaLoading = MutableStateFlow(false)
+    val isNebulaLoading: StateFlow<Boolean> = _isNebulaLoading.asStateFlow()
+
+    private val _nebulaSearchQuery = MutableStateFlow("")
+    val nebulaSearchQuery: StateFlow<String> = _nebulaSearchQuery.asStateFlow()
+
+    private val _pendingGhostInvites = MutableStateFlow<Set<String>>(emptySet())
+    val pendingGhostInvites: StateFlow<Set<String>> = _pendingGhostInvites.asStateFlow()
+
+    fun loadNebulaMotes() {
+        viewModelScope.launch {
+            _isNebulaLoading.value = true
+            val motes = bootstrapManager.fetchNebulaMotes()
+            _nebulaMotes.value = motes
+            _isNebulaLoading.value = false
+        }
+    }
+
+    fun setNebulaSearchQuery(query: String) {
+        _nebulaSearchQuery.value = query
+        if (query.isBlank()) {
+            _nebulaSearchResults.value = emptyList()
+            return
+        }
+        viewModelScope.launch {
+            val results = bootstrapManager.searchNebula(query)
+            _nebulaSearchResults.value = results
+        }
+    }
+
+    fun toggleDiscoverability(discoverable: Boolean, handle: String?, bio: String?, onResult: (Result<Unit>) -> Unit = {}) {
+        viewModelScope.launch {
+            val res = bootstrapManager.updateDiscoverability(discoverable, handle, bio)
+            if (res.isSuccess) {
+                onResult(Result.success(Unit))
+            } else {
+                onResult(Result.failure(res.exceptionOrNull() ?: Exception("Unknown error")))
+            }
+        }
+    }
+
+    fun sendNebulaInvite(target: com.aman.gigi.model.NebulaMember, onResult: (Result<String>) -> Unit = {}) {
+        viewModelScope.launch {
+            _pendingGhostInvites.value = _pendingGhostInvites.value + target.memberId
+            val res = bootstrapManager.sendNebulaInvite(target.memberId, target.handle)
+            if (res.isSuccess) {
+                _nebulaMotes.value = _nebulaMotes.value.map {
+                    if (it.memberId == target.memberId) it.copy(inviteStatus = "SENT") else it
+                }
+                _nebulaSearchResults.value = _nebulaSearchResults.value.map {
+                    if (it.memberId == target.memberId) it.copy(inviteStatus = "SENT") else it
+                }
+            }
+            onResult(res)
+        }
+    }
+
+    fun blockMember(memberId: String) {
+        viewModelScope.launch {
+            bootstrapManager.blockMember(memberId)
+            _nebulaMotes.value = _nebulaMotes.value.filter { it.memberId != memberId }
+            _nebulaSearchResults.value = _nebulaSearchResults.value.filter { it.memberId != memberId }
+        }
+    }
+
+    fun reportMember(memberId: String, reason: String, note: String?) {
+        viewModelScope.launch {
+            bootstrapManager.reportMember(memberId, reason, note)
+        }
     }
 }
 

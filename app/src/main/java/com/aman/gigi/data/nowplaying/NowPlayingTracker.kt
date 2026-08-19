@@ -15,7 +15,14 @@ data class NowPlaying(
     val artist: String,
     val app: String = "",          // human label of the source player
     val isPlaying: Boolean = true,
-    val at: Long = System.currentTimeMillis()
+    val at: Long = System.currentTimeMillis(),
+    val durationMs: Long = 0L,
+    /**
+     * Album art as a content:// URI when the player publishes one. Deliberately a URI
+     * and not a Bitmap: this object is also sent to the user's people over the socket,
+     * and artwork is a local handle that means nothing on someone else's phone.
+     */
+    val artworkUri: String? = null
 ) {
     val label: String get() = if (artist.isBlank()) title else "$title · $artist"
 }

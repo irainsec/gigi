@@ -28,7 +28,7 @@ import com.aman.gigi.model.Scribble
         com.aman.gigi.model.ChatMessage::class,
         com.aman.gigi.model.BreakCardSessionMirror::class
     ],
-    version = 25,
+    version = 26,
     exportSchema = false
 )
 @TypeConverters(StrokeListConverter::class)
@@ -41,7 +41,14 @@ abstract class ScreensaverDatabase : RoomDatabase() {
     abstract fun breakCardDao(): com.aman.gigi.data.dao.BreakCardDao
 
     companion object {
-                val MIGRATION_24_25: Migration = object : Migration(24, 25) {
+        val MIGRATION_25_26: Migration = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE connections ADD COLUMN origin TEXT NOT NULL DEFAULT 'INVITE'")
+                db.execSQL("ALTER TABLE connections ADD COLUMN trustRing INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_24_25: Migration = object : Migration(24, 25) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE TABLE IF NOT EXISTS `break_card_sessions` (`sessionId` TEXT NOT NULL, `cardId` TEXT NOT NULL, `cardName` TEXT NOT NULL, `connectionId` TEXT NOT NULL, `senderDeviceId` TEXT NOT NULL, `senderName` TEXT NOT NULL, `animatedSvgUrl` TEXT, `responsesJson` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `isActive` INTEGER NOT NULL, PRIMARY KEY(`sessionId`))")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_break_card_sessions_connectionId_updatedAt` ON `break_card_sessions` (`connectionId`, `updatedAt`)")

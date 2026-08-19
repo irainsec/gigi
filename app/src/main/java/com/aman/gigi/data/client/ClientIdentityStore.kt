@@ -38,6 +38,10 @@ class ClientIdentityStore @Inject constructor(
         val twigiRenderUrl = stringPreferencesKey("twigi_render_url")
         val themeSongTitle = stringPreferencesKey("theme_song_title")
         val themeSongUrl = stringPreferencesKey("theme_song_url")
+        val discoverable = androidx.datastore.preferences.core.booleanPreferencesKey("discoverable")
+        val handle = stringPreferencesKey("handle")
+        val bio = stringPreferencesKey("bio")
+        val nebulaSeed = androidx.datastore.preferences.core.intPreferencesKey("nebula_seed")
         val selectedAlarmConnectionId = stringPreferencesKey("selected_alarm_connection_id")
         val selectedSweetConnectionId = stringPreferencesKey("selected_sweet_connection_id")
         val lastBootstrapAt = longPreferencesKey("last_bootstrap_at")
@@ -80,6 +84,12 @@ class ClientIdentityStore @Inject constructor(
                 ?: preferences.remove(Keys.themeSongTitle)
             sanitizeStoredText(identity.themeSongUrl)?.let { preferences[Keys.themeSongUrl] = it }
                 ?: preferences.remove(Keys.themeSongUrl)
+            preferences[Keys.discoverable] = identity.discoverable
+            sanitizeStoredText(identity.handle)?.let { preferences[Keys.handle] = it }
+                ?: preferences.remove(Keys.handle)
+            sanitizeStoredText(identity.bio)?.let { preferences[Keys.bio] = it }
+                ?: preferences.remove(Keys.bio)
+            preferences[Keys.nebulaSeed] = identity.nebulaSeed
             preferences[Keys.lastBootstrapAt] = identity.lastBootstrapAt
         }
     }
@@ -113,6 +123,10 @@ class ClientIdentityStore @Inject constructor(
             preferences.remove(Keys.twigiRenderUrl)
             preferences.remove(Keys.themeSongTitle)
             preferences.remove(Keys.themeSongUrl)
+            preferences.remove(Keys.discoverable)
+            preferences.remove(Keys.handle)
+            preferences.remove(Keys.bio)
+            preferences.remove(Keys.nebulaSeed)
             preferences.remove(Keys.selectedAlarmConnectionId)
             preferences.remove(Keys.selectedSweetConnectionId)
             preferences.remove(Keys.lastBootstrapAt)
@@ -146,6 +160,10 @@ class ClientIdentityStore @Inject constructor(
             twigiRenderUrl = sanitizeStoredText(this[Keys.twigiRenderUrl]),
             themeSongTitle = sanitizeStoredText(this[Keys.themeSongTitle]),
             themeSongUrl = sanitizeStoredText(this[Keys.themeSongUrl]),
+            discoverable = this[Keys.discoverable] ?: false,
+            handle = sanitizeStoredText(this[Keys.handle]),
+            bio = sanitizeStoredText(this[Keys.bio]),
+            nebulaSeed = this[Keys.nebulaSeed] ?: 42,
             profileComplete = !sanitizeStoredText(this[Keys.displayName]).isNullOrBlank() &&
                 !sanitizeStoredText(this[Keys.gender]).isNullOrBlank(),
             lastBootstrapAt = this[Keys.lastBootstrapAt] ?: 0L

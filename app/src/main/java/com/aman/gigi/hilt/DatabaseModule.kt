@@ -45,6 +45,8 @@ object DatabaseModule {
             .addMigrations(ScreensaverDatabase.MIGRATION_17_18)
             .addMigrations(ScreensaverDatabase.MIGRATION_18_19)
             .addMigrations(ScreensaverDatabase.MIGRATION_19_20)
+            .addMigrations(ScreensaverDatabase.MIGRATION_24_25)
+            .addMigrations(ScreensaverDatabase.MIGRATION_25_26)
             .fallbackToDestructiveMigration()
             .build()
     }

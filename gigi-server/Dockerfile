@@ -35,7 +35,7 @@ RUN npm install --production --legacy-peer-deps
 
 # Copy server code, Twigi render engine (server.js requires ./twigi_render_lpc)
 # and Firebase key
-COPY server.js twigi_render_lpc.js xbr.js ./
+COPY server.js live_routes.js plan_catalog.js app_settings.js twigi_render_lpc.js xbr.js ./
 COPY serviceAccountKey.json* ./
 
 # Twigi assets (LPC frames + manifest + credits). Also bind-mounted in compose so

@@ -128,7 +128,7 @@ fun TwigiCreatorScreen(
         }.build()
     }
     var catalog by remember { mutableStateOf<TwigiCatalog?>(null) }
-    var loadError by remember { mutableStateOf(false) }
+    var loadErrorMsg by remember { mutableStateOf<String?>(null) }
     val cfg = remember { mutableStateMapOf<String, String>() }
     var selectedTab by remember { mutableStateOf<String?>(null) }
     var staticUrl by remember { mutableStateOf<String?>(null) }
@@ -139,13 +139,28 @@ fun TwigiCreatorScreen(
     var showPaywallSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        val parsed = withContext(Dispatchers.IO) {
-            runCatching { parseCatalog(java.net.URL("$base/twigi/catalog.json").readText()) }.getOrNull()
-                ?: runCatching {
+        val (parsed, isNetworkError) = withContext(Dispatchers.IO) {
+            val netResult = runCatching { parseCatalog(java.net.URL("$base/twigi/catalog.json").readText()) }
+            val netParsed = netResult.getOrNull()
+            if (netParsed != null) {
+                netParsed to false
+            } else {
+                val assetParsed = runCatching {
                     context.assets.open("twigi_catalog.json").bufferedReader().use { parseCatalog(it.readText()) }
                 }.getOrNull()
+                assetParsed to true
+            }
         }
-        if (parsed == null || parsed.parts.isEmpty()) { loadError = true; return@LaunchedEffect }
+        if (parsed == null) {
+            loadErrorMsg = "Couldn't reach Twigi Studio.\nCheck your connection."
+            return@LaunchedEffect
+        }
+        if (parsed.parts.isEmpty()) {
+            loadErrorMsg = if (isNetworkError) "Couldn't reach Twigi Studio.\nCheck your connection."
+            else "Twigi assets aren't installed on the server."
+            return@LaunchedEffect
+        }
+        loadErrorMsg = null
         catalog = parsed
         val seed = runCatching { initialConfigJson?.let { JSONObject(it) } }.getOrNull()
         parsed.default.forEach { (k, v) -> cfg[k] = v }
@@ -184,9 +199,7 @@ fun TwigiCreatorScreen(
                 }
             }
 
-            BoxWithConstraints(
-                modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center
-            ) {
+            BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 val density = LocalDensity.current
                 val availPx = with(density) { minOf(maxWidth, maxHeight).toPx() } * 0.92f
                 val px = ((availPx / 64f).toInt()).coerceIn(3, 8) * 64
@@ -199,7 +212,7 @@ fun TwigiCreatorScreen(
                     )
                 )
                 when {
-                    loadError -> Text("Couldn't reach Twigi Studio.\nCheck your connection.",
+                    loadErrorMsg != null -> Text(loadErrorMsg!!,
                         color = StageLight, fontSize = 14.sp, textAlign = TextAlign.Center)
                     staticUrl != null -> Box(modifier = Modifier.size(charSize), contentAlignment = Alignment.BottomCenter) {
                         Box(
@@ -266,7 +279,7 @@ fun TwigiCreatorScreen(
                     Box(modifier = Modifier.height(258.dp)) {
                         when {
                             cat == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                if (!loadError) CircularProgressIndicator(color = Lavender, modifier = Modifier.size(28.dp))
+                                if (loadErrorMsg == null) CircularProgressIndicator(color = Lavender, modifier = Modifier.size(28.dp))
                             }
                             else -> {
                                 val key = selectedTab ?: cat.order.first { it !in META_KEYS }

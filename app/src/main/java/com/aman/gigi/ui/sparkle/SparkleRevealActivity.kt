@@ -115,12 +115,29 @@ fun SparkleRevealContent(
 
     var bitmap by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
     
-    LaunchedEffect(scribble.mediaBase64) {
-        if (scribble.mediaBase64 != null) {
+    LaunchedEffect(scribble.mediaBase64, scribble.mediaUrl) {
+        val mediaStr = scribble.mediaBase64?.takeIf { it.isNotBlank() }
+            ?: scribble.mediaUrl?.takeIf { it.isNotBlank() }
+
+        if (mediaStr != null) {
             val decoded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 try {
-                    val bytes = android.util.Base64.decode(scribble.mediaBase64, android.util.Base64.DEFAULT)
-                    android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                    if (mediaStr.startsWith("http://", ignoreCase = true) ||
+                        mediaStr.startsWith("https://", ignoreCase = true)) {
+                        java.net.URL(mediaStr).openStream().use {
+                            android.graphics.BitmapFactory.decodeStream(it)?.asImageBitmap()
+                        }
+                    } else if (mediaStr.startsWith("file://", ignoreCase = true) ||
+                        ((mediaStr.startsWith("/data/") || mediaStr.startsWith("/storage/") || mediaStr.startsWith("/sdcard/")) && java.io.File(mediaStr).exists())) {
+                        val filePath = mediaStr.removePrefix("file://")
+                        java.io.FileInputStream(java.io.File(filePath)).use {
+                            android.graphics.BitmapFactory.decodeStream(it)?.asImageBitmap()
+                        }
+                    } else {
+                        val cleanBase64 = if (mediaStr.contains(",")) mediaStr.substringAfter(",") else mediaStr
+                        val bytes = android.util.Base64.decode(cleanBase64.replace("\n", "").replace("\r", "").trim(), android.util.Base64.DEFAULT)
+                        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                    }
                 } catch (e: Exception) {
                     android.util.Log.e("SparkleReveal", "Error decoding bitmap", e)
                     null
