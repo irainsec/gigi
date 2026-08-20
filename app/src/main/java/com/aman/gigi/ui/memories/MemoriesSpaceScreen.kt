@@ -1,6 +1,7 @@
 package com.aman.gigi.ui.memories
 
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -51,8 +52,8 @@ import kotlin.math.*
 
 /**
  * Cosmic Memories Space:
- * An ethereal sanctuary where you drag your avatar to your connections to reveal
- * all shared sparkles, photos, scribbles, and love notes in an animated timeline.
+ * Full-screen in-tree overlay with instant zero-lag notch insets, rich celestial sanctuary,
+ * magnetic drag-to-partner interaction, and living animated starlight timeline.
  */
 @Composable
 fun MemoriesSpaceScreen(
@@ -69,6 +70,15 @@ fun MemoriesSpaceScreen(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
+    // In-tree back handling
+    BackHandler {
+        if (selectedConnection != null && selectedConnection.connectionId.isNotBlank()) {
+            onSelectConnection(selectedConnection.copy(connectionId = ""))
+        } else {
+            onBack()
+        }
+    }
+
     val imageLoader = remember {
         coil.ImageLoader.Builder(context).components {
             if (android.os.Build.VERSION.SDK_INT >= 28) add(coil.decode.ImageDecoderDecoder.Factory())
@@ -76,243 +86,254 @@ fun MemoriesSpaceScreen(
         }.build()
     }
 
-    // Resolve user avatar using exact same preference hierarchy as GalaxyView
+    // Reactively track emoji_self directly from SharedPreferences (exact same as GalaxyView)
     val prefs = remember { context.getSharedPreferences("galaxy_orbits", Context.MODE_PRIVATE) }
-    val emojiSelfPref = remember { prefs.getString("emoji_self", null) }
+    var emojiSelfPref by remember { mutableStateOf(prefs.getString("emoji_self", null)) }
+    DisposableEffect(Unit) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
+            if (key == "emoji_self") emojiSelfPref = sp.getString("emoji_self", null)
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
 
     val userAvatarUrl = if (identity?.avatarMode == "TWIGI" && !identity.twigiRenderUrl.isNullOrBlank()) {
         identity.twigiRenderUrl
     } else {
         emojiSelfPref?.takeIf { it.isNotBlank() }
-            ?: identity?.avatarUrl?.takeIf { it.isNotBlank() }
             ?: identity?.profileEmojiUrl?.takeIf { it.isNotBlank() }
-            ?: TELEGRAM_EMOJIS.first()
+            ?: identity?.avatarUrl?.takeIf { it.isNotBlank() }
+            ?: "file:///android_asset/galaxy/emoji/jack_o_lantern.png"
     }
 
-    // Detail modal for viewing full-screen media
+    // Detail modal for viewing full-screen media lightbox
     var selectedMediaScribble by remember { mutableStateOf<Scribble?>(null) }
 
-    Dialog(
-        onDismissRequest = onBack,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.radialGradient(
+                    listOf(
+                        Color(0xFF1F0F3D),
+                        Color(0xFF120726),
+                        Color(0xFF070210)
+                    )
+                )
+            )
     ) {
-        Box(
-            modifier = modifier
+        // Ambient Cosmic Glowing Dust & Auroras
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(Color(0xFFEC4899).copy(alpha = 0.22f), Color.Transparent),
+                    center = Offset(w * 0.25f, h * 0.28f),
+                    radius = w * 0.70f
+                )
+            )
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(Color(0xFF8B5CF6).copy(alpha = 0.25f), Color.Transparent),
+                    center = Offset(w * 0.75f, h * 0.68f),
+                    radius = w * 0.75f
+                )
+            )
+        }
+
+        Column(
+            modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        listOf(
-                            Color(0xFF1E1038),
-                            Color(0xFF120726),
-                            Color(0xFF070210)
-                        )
-                    )
-                )
+                .displayCutoutPadding()
+                .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
-            // Ambient Cosmic Dust & Auroras
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val w = size.width
-                val h = size.height
-
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        listOf(Color(0xFFEC4899).copy(alpha = 0.22f), Color.Transparent),
-                        center = Offset(w * 0.28f, h * 0.30f),
-                        radius = w * 0.70f
-                    )
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        listOf(Color(0xFF8B5CF6).copy(alpha = 0.25f), Color.Transparent),
-                        center = Offset(w * 0.72f, h * 0.70f),
-                        radius = w * 0.75f
-                    )
-                )
-            }
-
-            Column(
+            // Top Header Bar
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .displayCutoutPadding()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Top Header Bar
-                Row(
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFF281845).copy(alpha = 0.94f),
+                    border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.45f)),
+                    shadowElevation = 8.dp,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .size(40.dp)
+                        .clickable {
+                            if (selectedConnection != null && selectedConnection.connectionId.isNotBlank()) {
+                                onSelectConnection(selectedConnection.copy(connectionId = ""))
+                            } else {
+                                onBack()
+                            }
+                        }
                 ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (selectedConnection != null && selectedConnection.connectionId.isNotBlank()) {
+                                Icons.AutoMirrored.Filled.ArrowBack
+                            } else {
+                                Icons.Default.Close
+                            },
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                // Title Pill
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = Color(0xFF1E1035).copy(alpha = 0.94f),
+                    border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.45f)),
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("🌌", fontSize = 14.sp)
+                        Text(
+                            text = if (selectedConnection != null && selectedConnection.connectionId.isNotBlank()) {
+                                "${selectedConnection.partnerName}'s Memories"
+                            } else {
+                                "Memories Space"
+                            },
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text("✨", fontSize = 14.sp)
+                    }
+                }
+
+                // Total count badge or balance spacer
+                if (selectedConnection != null && selectedConnection.connectionId.isNotBlank()) {
                     Surface(
                         shape = CircleShape,
-                        color = Color(0xFF281845).copy(alpha = 0.92f),
-                        border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.45f)),
-                        shadowElevation = 8.dp,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clickable {
-                                if (selectedConnection != null) {
-                                    onSelectConnection(selectedConnection.copy(connectionId = ""))
-                                } else {
-                                    onBack()
-                                }
-                            }
+                        color = Color(0xFFEC4899),
+                        shadowElevation = 6.dp,
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = if (selectedConnection != null) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close,
-                                contentDescription = "Back",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-
-                    // Title Pill
-                    Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = Color(0xFF1E1035).copy(alpha = 0.94f),
-                        border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.45f)),
-                        shadowElevation = 8.dp
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text("🌌", fontSize = 14.sp)
                             Text(
-                                text = if (selectedConnection != null) "${selectedConnection.partnerName}'s Memories" else "Memories Space",
+                                text = "${sparkles.size}",
                                 color = Color.White,
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.ExtraBold
                             )
-                            Text("✨", fontSize = 14.sp)
                         }
                     }
+                } else {
+                    Spacer(Modifier.size(40.dp))
+                }
+            }
 
-                    // Total count badge or balance spacer
-                    if (selectedConnection != null) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Color(0xFFEC4899).copy(alpha = 0.85f),
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "${sparkles.size}",
-                                    color = Color.White,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.ExtraBold
+            // Main Stage: Sanctuary Drag & Drop OR Animated Timeline View
+            AnimatedContent(
+                targetState = selectedConnection,
+                transitionSpec = {
+                    fadeIn(tween(350)) + scaleIn(tween(350, easing = EaseOutBack), initialScale = 0.92f) togetherWith
+                            fadeOut(tween(250)) + scaleOut(tween(250), targetScale = 1.05f)
+                },
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                label = "memoriesStageTransition"
+            ) { conn ->
+                if (conn == null || conn.connectionId.isBlank()) {
+                    // Stage 1: Rich Celestial Sanctuary Stage
+                    MemoriesSanctuaryStage(
+                        connections = connections,
+                        userAvatarUrl = userAvatarUrl,
+                        imageLoader = imageLoader,
+                        onConnect = { targetConn ->
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onSelectConnection(targetConn)
+                        }
+                    )
+                } else {
+                    // Stage 2: Living Animated Starlight Timeline
+                    AnimatedMemoriesTimeline(
+                        partner = conn,
+                        userAvatarUrl = userAvatarUrl,
+                        sparkles = sparkles,
+                        imageLoader = imageLoader,
+                        onReplayScribble = onReplayScribble,
+                        onOpenMedia = { selectedMediaScribble = it },
+                        onSendSparkle = { onSendSparkle(conn) }
+                    )
+                }
+            }
+        }
+
+        // Lightbox Modal for Photo/Video Sparkle
+        if (selectedMediaScribble != null) {
+            val sc = selectedMediaScribble!!
+            Dialog(
+                onDismissRequest = { selectedMediaScribble = null },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.95f))
+                        .clickable { selectedMediaScribble = null },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        val resolvedMedia = sc.mediaUrl?.takeIf { it.isNotBlank() } ?: sc.mediaBase64
+                        if (!resolvedMedia.isNullOrBlank()) {
+                            val parsed = ImageUtils.parseEmojiModel(resolvedMedia)
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                border = BorderStroke(2.dp, Color(0xFFEC4899).copy(alpha = 0.75f)),
+                                shadowElevation = 24.dp
+                            ) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context).data(parsed).crossfade(true).build(),
+                                    imageLoader = imageLoader,
+                                    contentDescription = "Sparkle",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.92f)
+                                        .aspectRatio(0.80f)
+                                        .clip(RoundedCornerShape(20.dp))
                                 )
                             }
                         }
-                    } else {
-                        Spacer(Modifier.size(38.dp))
-                    }
-                }
 
-                // Main Stage: Sanctuary Drag & Drop OR Animated Timeline View
-                AnimatedContent(
-                    targetState = selectedConnection,
-                    transitionSpec = {
-                        fadeIn(tween(350)) + scaleIn(tween(350, easing = EaseOutBack), initialScale = 0.92f) togetherWith
-                                fadeOut(tween(250)) + scaleOut(tween(250), targetScale = 1.05f)
-                    },
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    label = "memoriesStageTransition"
-                ) { conn ->
-                    if (conn == null || conn.connectionId.isBlank()) {
-                        // Stage 1: Celestial Sanctuary Stage
-                        MemoriesSanctuaryStage(
-                            connections = connections,
-                            userAvatarUrl = userAvatarUrl,
-                            imageLoader = imageLoader,
-                            onConnect = { targetConn ->
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                onSelectConnection(targetConn)
+                        if (!sc.secretMessage.isNullOrBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = Color(0xFF1E1035).copy(alpha = 0.92f),
+                                border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.45f)),
+                                modifier = Modifier.fillMaxWidth(0.92f)
+                            ) {
+                                Text(
+                                    text = "💌 ${sc.secretMessage}",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(14.dp)
+                                )
                             }
-                        )
-                    } else {
-                        // Stage 2: Animated Timeline Gallery
-                        AnimatedMemoriesTimeline(
-                            partner = conn,
-                            userAvatarUrl = userAvatarUrl,
-                            sparkles = sparkles,
-                            imageLoader = imageLoader,
-                            onReplayScribble = onReplayScribble,
-                            onOpenMedia = { selectedMediaScribble = it },
-                            onSendSparkle = { onSendSparkle(conn) }
-                        )
-                    }
-                }
-            }
-
-            // Lightbox Modal for Photo/Video Sparkle
-            if (selectedMediaScribble != null) {
-                val sc = selectedMediaScribble!!
-                Dialog(
-                    onDismissRequest = { selectedMediaScribble = null },
-                    properties = DialogProperties(usePlatformDefaultWidth = false)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.95f))
-                            .clickable { selectedMediaScribble = null },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
-                            val resolvedMedia = sc.mediaUrl?.takeIf { it.isNotBlank() } ?: sc.mediaBase64
-                            if (!resolvedMedia.isNullOrBlank()) {
-                                val parsed = ImageUtils.parseEmojiModel(resolvedMedia)
-                                Surface(
-                                    shape = RoundedCornerShape(20.dp),
-                                    border = BorderStroke(2.dp, Color(0xFFEC4899).copy(alpha = 0.75f)),
-                                    shadowElevation = 24.dp
-                                ) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(context).data(parsed).crossfade(true).build(),
-                                        imageLoader = imageLoader,
-                                        contentDescription = "Sparkle",
-                                        contentScale = ContentScale.Fit,
-                                        modifier = Modifier
-                                            .fillMaxWidth(0.92f)
-                                            .aspectRatio(0.80f)
-                                            .clip(RoundedCornerShape(20.dp))
-                                    )
-                                }
-                            }
-
-                            if (!sc.secretMessage.isNullOrBlank()) {
-                                Surface(
-                                    shape = RoundedCornerShape(14.dp),
-                                    color = Color(0xFF1E1035).copy(alpha = 0.92f),
-                                    border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.45f)),
-                                    modifier = Modifier.fillMaxWidth(0.92f)
-                                ) {
-                                    Text(
-                                        text = "💌 ${sc.secretMessage}",
-                                        color = Color.White,
-                                        fontSize = 14.sp,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.padding(14.dp)
-                                    )
-                                }
-                            }
-
-                            Text(
-                                text = "Tap anywhere to close",
-                                color = Color(0xFF94A3B8),
-                                fontSize = 12.sp
-                            )
                         }
+
+                        Text(
+                            text = "Tap anywhere to close",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 12.sp
+                        )
                     }
                 }
             }
@@ -321,8 +342,8 @@ fun MemoriesSpaceScreen(
 }
 
 /**
- * Beautiful, cute, rich celestial sanctuary where connections float in constellation circles
- * and user drags their star from the cradle onto a partner to unlock shared memories.
+ * Rich, vibrant, adorable celestial sanctuary:
+ * Uses Alignment.TopStart on BoxWithConstraints so that Canvas and Composables match coordinates.
  */
 @Composable
 private fun MemoriesSanctuaryStage(
@@ -339,8 +360,8 @@ private fun MemoriesSanctuaryStage(
 
     val infiniteTransition = rememberInfiniteTransition(label = "sanctuaryPulse")
     val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
+        initialValue = 0.96f,
+        targetValue = 1.04f,
         animationSpec = infiniteRepeatable(
             animation = tween(2200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -352,48 +373,47 @@ private fun MemoriesSanctuaryStage(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(24000, easing = LinearEasing),
+            animation = tween(26000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "portalRotation"
     )
 
     BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.Center
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopStart
     ) {
         val stageWidthPx = with(density) { maxWidth.toPx() }
         val stageHeightPx = with(density) { maxHeight.toPx() }
+
+        // Center orbit hub in the upper 42% of the screen
         val centerX = stageWidthPx / 2f
-        val centerY = stageHeightPx * 0.44f
+        val centerY = stageHeightPx * 0.42f
+        val orbitRadius = min(stageWidthPx, stageHeightPx) * 0.32f
 
-        val orbitRadius = min(stageWidthPx, stageHeightPx) * 0.34f
-
-        // Initial resting position for User's Avatar Cradle (bottom center)
+        // Resting position for User's Avatar Cradle (bottom center)
         val userRestXPx = centerX
-        val userRestYPx = stageHeightPx * 0.78f
+        val userRestYPx = stageHeightPx * 0.74f
 
         val currentUserXPx = userRestXPx + userDragOffset.x
         val currentUserYPx = userRestYPx + userDragOffset.y
 
-        // 1. Constellation Connection Canvas (Orbit rings, nexus glow, starlight links)
+        // 1. Constellation Connection Canvas (Orbit paths, nexus glow, starlight links)
         Canvas(modifier = Modifier.fillMaxSize()) {
             // Central Memory Nexus Halo
             drawCircle(
                 brush = Brush.radialGradient(
-                    listOf(Color(0xFFC084FC).copy(alpha = 0.25f), Color(0xFF8B5CF6).copy(alpha = 0.08f), Color.Transparent),
+                    listOf(Color(0xFFC084FC).copy(alpha = 0.28f), Color(0xFF8B5CF6).copy(alpha = 0.09f), Color.Transparent),
                     center = Offset(centerX, centerY),
-                    radius = orbitRadius * 1.25f
+                    radius = orbitRadius * 1.35f
                 ),
                 center = Offset(centerX, centerY),
-                radius = orbitRadius * 1.25f
+                radius = orbitRadius * 1.35f
             )
 
             // Dotted Celestial Orbit Path
             drawCircle(
-                color = Color(0xFFC084FC).copy(alpha = 0.28f),
+                color = Color(0xFFC084FC).copy(alpha = 0.35f),
                 center = Offset(centerX, centerY),
                 radius = orbitRadius,
                 style = androidx.compose.ui.graphics.drawscope.Stroke(
@@ -402,7 +422,7 @@ private fun MemoriesSanctuaryStage(
                 )
             )
 
-            // Connecting starlight thread from user to partner nodes
+            // Connecting starlight thread from user star to partner nodes
             connections.forEachIndexed { i, _ ->
                 val angle = if (connections.size == 1) {
                     -PI.toFloat() / 2f // Top center if 1 partner
@@ -414,36 +434,77 @@ private fun MemoriesSanctuaryStage(
 
                 drawLine(
                     brush = Brush.linearGradient(
-                        listOf(Color(0xFFFDE68A).copy(alpha = if (isDragging) 0.6f else 0.25f), Color(0xFFEC4899).copy(alpha = if (isDragging) 0.6f else 0.25f)),
+                        listOf(Color(0xFFFDE68A).copy(alpha = if (isDragging) 0.7f else 0.3f), Color(0xFFEC4899).copy(alpha = if (isDragging) 0.7f else 0.3f)),
                         start = Offset(currentUserXPx, currentUserYPx),
                         end = Offset(nodeXPx, nodeYPx)
                     ),
                     start = Offset(currentUserXPx, currentUserYPx),
                     end = Offset(nodeXPx, nodeYPx),
-                    strokeWidth = if (isDragging) 2.5.dp.toPx() else 1.5.dp.toPx()
+                    strokeWidth = if (isDragging) 3.dp.toPx() else 1.5.dp.toPx()
                 )
             }
         }
 
-        // 2. Center Celestial Nexus Emblem
+        // 2. Center Celestial Nexus Core (Rotating Emblem & Status Message)
+        val nexusSizeDp = 86.dp
+        val nexusSizePx = with(density) { nexusSizeDp.toPx() }
         Box(
             modifier = Modifier
                 .offset {
-                    IntOffset((centerX - with(density) { 45.dp.toPx() }).roundToInt(), (centerY - with(density) { 45.dp.toPx() }).roundToInt())
+                    IntOffset(
+                        (centerX - nexusSizePx / 2).roundToInt(),
+                        (centerY - nexusSizePx / 2).roundToInt()
+                    )
                 }
-                .size(90.dp)
-                .graphicsLayer { rotationZ = portalRotation },
+                .size(nexusSizeDp),
             contentAlignment = Alignment.Center
         ) {
             Surface(
                 shape = CircleShape,
-                color = Color(0xFF1E1035).copy(alpha = 0.85f),
-                border = BorderStroke(1.5.dp, Color(0xFFC084FC).copy(alpha = 0.35f)),
-                modifier = Modifier.fillMaxSize()
+                color = Color(0xFF1E1035).copy(alpha = 0.88f),
+                border = BorderStroke(1.5.dp, Color(0xFFC084FC).copy(alpha = 0.40f)),
+                shadowElevation = 12.dp,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { rotationZ = portalRotation }
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text("💫", fontSize = 28.sp)
                 }
+            }
+        }
+
+        // Status text below the center nexus
+        Column(
+            modifier = Modifier
+                .offset {
+                    IntOffset(
+                        (centerX - with(density) { 140.dp.toPx() }).roundToInt(),
+                        (centerY + nexusSizePx / 2 + with(density) { 12.dp.toPx() }).roundToInt()
+                    )
+                }
+                .width(280.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = Color(0xFF180B2E).copy(alpha = 0.92f),
+                border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.35f))
+            ) {
+                Text(
+                    text = if (connections.size == 1) {
+                        "✨ ${connections.first().partnerName}'s Constellation 💖"
+                    } else if (connections.size > 1) {
+                        "✨ Constellation of ${connections.size} Connections 💖"
+                    } else {
+                        "✨ Connect with a partner to unlock memories ✨"
+                    },
+                    color = Color(0xFFF9A8D4),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    textAlign = TextAlign.Center
+                )
             }
         }
 
@@ -463,15 +524,15 @@ private fun MemoriesSanctuaryStage(
                 ?: TELEGRAM_EMOJIS.first()
 
             val dist = hypot(currentUserXPx - nodeXPx, currentUserYPx - nodeYPx)
-            val isTargeted = isDragging && dist < with(density) { 68.dp.toPx() }
+            val isTargeted = isDragging && dist < with(density) { 72.dp.toPx() }
 
             val nodeScale by animateFloatAsState(
-                targetValue = if (isTargeted) 1.25f else 1.0f,
+                targetValue = if (isTargeted) 1.28f else 1.0f,
                 animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
                 label = "nodeScale"
             )
 
-            val nodeSizeDp = 72.dp
+            val nodeSizeDp = 76.dp
             val nodeSizePx = with(density) { nodeSizeDp.toPx() }
 
             Box(
@@ -547,7 +608,7 @@ private fun MemoriesSanctuaryStage(
         }
 
         // 4. User Draggable Star & Starlight Cradle
-        val userStarSizeDp = 76.dp
+        val userStarSizeDp = 82.dp
         val userStarSizePx = with(density) { userStarSizeDp.toPx() }
 
         // Pedestal halo at rest position
@@ -564,8 +625,8 @@ private fun MemoriesSanctuaryStage(
         ) {
             Surface(
                 shape = CircleShape,
-                color = Color(0xFF281845).copy(alpha = 0.4f),
-                border = BorderStroke(1.dp, Color(0xFFFDE68A).copy(alpha = 0.25f)),
+                color = Color(0xFF281845).copy(alpha = 0.45f),
+                border = BorderStroke(1.5.dp, Color(0xFFFDE68A).copy(alpha = 0.35f)),
                 modifier = Modifier.fillMaxSize()
             ) {}
         }
@@ -579,7 +640,7 @@ private fun MemoriesSanctuaryStage(
                         (currentUserYPx - userStarSizePx / 2).roundToInt()
                     )
                 }
-                .scale(if (isDragging) 1.15f else pulseScale)
+                .scale(if (isDragging) 1.18f else pulseScale)
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragStart = { isDragging = true },
@@ -600,7 +661,7 @@ private fun MemoriesSanctuaryStage(
                                 val nodeXPx = centerX + orbitRadius * cos(angle)
                                 val nodeYPx = centerY + orbitRadius * sin(angle)
                                 val dist = hypot(currentUserXPx - nodeXPx, currentUserYPx - nodeYPx)
-                                if (dist < with(density) { 72.dp.toPx() }) {
+                                if (dist < with(density) { 76.dp.toPx() }) {
                                     matched = conn
                                 }
                             }
@@ -629,7 +690,7 @@ private fun MemoriesSanctuaryStage(
                             Brush.radialGradient(
                                 listOf(
                                     Color(0xFFFDE68A).copy(alpha = 0.95f),
-                                    Color(0xFFF59E0B).copy(alpha = 0.7f),
+                                    Color(0xFFF59E0B).copy(alpha = 0.75f),
                                     Color.Transparent
                                 )
                             )
@@ -656,7 +717,12 @@ private fun MemoriesSanctuaryStage(
                     shadowElevation = 10.dp
                 ) {
                     Text(
-                        text = if (isDragging) "Drop on partner! ✨" else "Drag me to partner ✨",
+                        text = if (isDragging) {
+                            "Drop on partner! ✨"
+                        } else {
+                            val partnerFirst = connections.firstOrNull()?.partnerName?.takeIf { it.isNotBlank() } ?: "partner"
+                            "Drag to $partnerFirst ✨"
+                        },
                         color = Color.Black,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.ExtraBold,
@@ -669,7 +735,7 @@ private fun MemoriesSanctuaryStage(
 }
 
 /**
- * Animated Starlight Timeline View:
+ * Living Animated Starlight Timeline View:
  * Vertical timeline thread with milestone date headers, alternating memory cards,
  * interactive stroke drawing replay, and high-res lightbox previews.
  */
@@ -713,7 +779,7 @@ private fun AnimatedMemoriesTimeline(
             // Hero Bridge Banner
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = Color(0xFF1E1238).copy(alpha = 0.90f),
+                color = Color(0xFF1E1238).copy(alpha = 0.92f),
                 border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.35f)),
                 modifier = Modifier.fillMaxWidth()
             ) {

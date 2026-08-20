@@ -1,22 +1,22 @@
 {
-  "updatedAt": "2026-08-20T22:04:03Z",
-  "versionCode": 83,
-  "versionName": "v2.4.0",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.4.0-universal.apk",
+  "updatedAt": "2026-08-20T22:16:56Z",
+  "versionCode": 84,
+  "versionName": "v2.4.1",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.4.1-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "4763837a42bde45c85c8c2b2d27fadff0832c8ff4610afce121cfc51d071cac2",
+  "sha256": "330fe73c767a00d4bedc1e0981813cae5c8445cd683b07c4e0021e80a24bd8ff",
   "sizeMb": 50.4,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.4.0-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.4.0-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.4.0-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.4.0-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.4.1-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.4.1-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.4.1-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.4.1-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "5fe82cf80f946588bff6852a7d24678608a9c5f835bddbcdcc02b1b099efdb09",
-    "armeabi-v7a": "00e35135c50b3a5b655866754433594ee2177c4856bbb6a0f0b342122742ac53",
-    "x86": "4de5e2c5232a905e792ea84b15d21766f0316019c01e91b10ea4adea2237188b",
-    "x86_64": "344b189f7560c04303f6e82a42c40c4d8dfb0c180376b726907eef032d611704"
+    "arm64-v8a": "b33b54aa25a51a2b0a877254be77a17d2d99bb0eb67e02ea4a3fc1f9964ca3fc",
+    "armeabi-v7a": "8bad8de416f38eff2a50005a18653169f6f6177dcc119f2966dd9029448cb329",
+    "x86": "22cc06a6ab9fbfa7753b72ea2f4689a688682571a05067dcb74a31319f0529a3",
+    "x86_64": "3a2e335e333461d0b67cd0d068f526f94643b31fc27ec3808fd58a6115f5e4b8"
   },
   "abiSizeMb": {
     "arm64-v8a": 25.6,
@@ -25,5 +25,5 @@
     "x86_64": 26.7
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Memories Space: Exact profile emoji matching, camera notch safe insets, cute celestial sanctuary, and living animated timeline."
+  "releaseNotes": "Memories Space: Instant zero-lag notch insets, pixel-perfect celestial alignment, and reactive emoji sync."
 }
