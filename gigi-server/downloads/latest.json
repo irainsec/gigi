@@ -1,22 +1,22 @@
 {
-  "updatedAt": "2026-08-20T12:56:07Z",
-  "versionCode": 74,
-  "versionName": "v2.3.1",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.1-universal.apk",
+  "updatedAt": "2026-08-20T13:05:54Z",
+  "versionCode": 75,
+  "versionName": "v2.3.2",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.2-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "febb2864d732b29345ba1513567bb47c21693b03b0d8935cbc69f4e5507e67cd",
+  "sha256": "e9f85c3f65b668c5af37483a28989b1ffe0d2ad4b2c6e111f7e503e879ed69b4",
   "sizeMb": 50.4,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.1-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.1-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.1-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.1-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.2-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.2-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.2-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.2-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "08fa0be94eb4c7d669a76f04508babf2ac4293d47d457f113a59b2fa2237edcf",
-    "armeabi-v7a": "3170ac8af470088a79b2b5a5e9d3e06203ea26c3fd67bc5cc2de6480e56970c6",
-    "x86": "fd823044e83200c5820504e4bc0cf245096d9d1064e832a8bc0840e07c4fddf1",
-    "x86_64": "4370a347e93293bdb27ee43e53e44d4cf83289de4b5ae89598def739044be15e"
+    "arm64-v8a": "119172824f6eb09de0da5115c0fe0c61d7aac2649bec37982956718a70109c5c",
+    "armeabi-v7a": "ac67274a810e9c329d1ec927ee5452e5afd42094c264afafce872d5e81c16e79",
+    "x86": "3749926fd590c7d2f618854de81a90f2a0c9fea9bd0954aedbd9b0300d07bd98",
+    "x86_64": "4f2ccd53e26a96f4ac289bc1f32d5b4dca96c12d5c8691a35ece4bb65b176ec0"
   },
   "abiSizeMb": {
     "arm64-v8a": 25.6,
@@ -25,5 +25,5 @@
     "x86_64": 26.7
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Fix package installer parse errors with full v1/v2/v3/v4 multi-scheme signing, harden background startup collectors, and resolve Cosmic Nebula discovery."
+  "releaseNotes": "Fix GalaxyView startup shader crash, bound radial gradient radii, and guarantee universal compatibility across all Android devices."
 }

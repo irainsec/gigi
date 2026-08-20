@@ -1120,30 +1120,31 @@ fun GalaxyView(
 
         // ── COSMIC NEBULA REGION (GPU Procedural Multi-Octave FBM Cloud & Starfield) ──
         val isNebulaEnabled = !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula
-        if (isNebulaEnabled) {
+        if (isNebulaEnabled && zoom > 0.01f) {
             val nebulaScreenX = pcx
             val nebulaScreenY = pcy + 1800f * zoom + 150f * zoom
 
             val tSec = frame / 1_000_000_000f
 
             // 1. Deep Space Ambient Space Glow
+            val glowRadius = (1350f * zoom).coerceAtLeast(1f)
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(Color(0xFF1E1035).copy(alpha = 0.55f), Color(0xFF0A0416).copy(alpha = 0.25f), Color.Transparent),
                     center = Offset(nebulaScreenX, nebulaScreenY - 100f * zoom),
-                    radius = 1350f * zoom
+                    radius = glowRadius
                 ),
-                radius = 1350f * zoom,
+                radius = glowRadius,
                 center = Offset(nebulaScreenX, nebulaScreenY - 100f * zoom)
             )
 
-            // 2. Procedural FBM Volumetric Gas Clouds (Additive Soft Blending)
+            // 2. Procedural FBM Volumetric Gas Clouds (Safe Alpha Blending)
             fbmNebulaPuffs.forEach { puff ->
                 val driftX = sin(tSec * 0.18f * puff.driftMul + puff.pulsePhase) * 18f * zoom
                 val driftY = cos(tSec * 0.15f * puff.driftMul + puff.pulsePhase) * 14f * zoom
                 val pulse = 0.88f + 0.12f * sin(tSec * 0.4f * puff.driftMul + puff.pulsePhase)
                 val center = Offset(nebulaScreenX + (puff.relX * zoom) + driftX, nebulaScreenY + (puff.relY * zoom) + driftY)
-                val r = puff.radius * zoom * pulse
+                val r = (puff.radius * zoom * pulse).coerceAtLeast(1f)
                 val alpha = (puff.alpha * pulse).coerceIn(0f, 1f)
 
                 drawCircle(
@@ -1153,8 +1154,7 @@ fun GalaxyView(
                         radius = r
                     ),
                     radius = r,
-                    center = center,
-                    blendMode = androidx.compose.ui.graphics.BlendMode.Plus
+                    center = center
                 )
             }
 
@@ -1162,42 +1162,42 @@ fun GalaxyView(
             fbmNebulaStars.forEach { s ->
                 val sx = nebulaScreenX + s.relX * zoom
                 val sy = nebulaScreenY + s.relY * zoom
-                val twinkle = 0.65f + 0.35f * sin(tSec * s.speed + s.phase)
-                val r = s.size * zoom
+                val twinkle = (0.65f + 0.35f * sin(tSec * s.speed + s.phase)).coerceIn(0f, 1f)
+                val r = (s.size * zoom).coerceAtLeast(0.5f)
 
                 when (s.tier) {
                     0 -> { // Tiny background pinprick
                         drawCircle(s.color.copy(alpha = 0.85f * twinkle), r, Offset(sx, sy))
                     }
                     1 -> { // Medium star with glowing halo
+                        val haloR = (r * 4.5f).coerceAtLeast(1f)
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(s.color.copy(alpha = 0.45f * twinkle), Color.Transparent),
                                 center = Offset(sx, sy),
-                                radius = r * 4.5f
+                                radius = haloR
                             ),
-                            radius = r * 4.5f,
-                            center = Offset(sx, sy),
-                            blendMode = androidx.compose.ui.graphics.BlendMode.Plus
+                            radius = haloR,
+                            center = Offset(sx, sy)
                         )
                         drawCircle(s.color.copy(alpha = twinkle), r, Offset(sx, sy))
-                        drawCircle(Color.White.copy(alpha = twinkle), r * 0.5f, Offset(sx, sy))
+                        drawCircle(Color.White.copy(alpha = twinkle), (r * 0.5f).coerceAtLeast(0.5f), Offset(sx, sy))
                     }
                     2, 3 -> { // Massive Core Giants with 4-point cross diffraction spikes
                         // Large luminous halo
+                        val haloR = (r * 7f).coerceAtLeast(1f)
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(s.color.copy(alpha = 0.65f * twinkle), s.color.copy(alpha = 0.2f * twinkle), Color.Transparent),
                                 center = Offset(sx, sy),
-                                radius = r * 7f
+                                radius = haloR
                             ),
-                            radius = r * 7f,
-                            center = Offset(sx, sy),
-                            blendMode = androidx.compose.ui.graphics.BlendMode.Plus
+                            radius = haloR,
+                            center = Offset(sx, sy)
                         )
                         // Core diamond
                         drawCircle(s.color.copy(alpha = twinkle), r, Offset(sx, sy))
-                        drawCircle(Color.White, r * 0.6f, Offset(sx, sy))
+                        drawCircle(Color.White, (r * 0.6f).coerceAtLeast(0.5f), Offset(sx, sy))
 
                         // Cross diffraction spikes
                         val spikeLen = (if (s.tier == 3) 58f else 38f) * zoom * twinkle
@@ -1640,7 +1640,7 @@ fun GalaxyView(
             val isNebulaOverlayEnabled = !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula
             val allNebulaMotes = remember(nebulaMotes, identity) {
                 if (identity?.discoverable == true) {
-                    val myId = identity.memberId
+                    val myId = identity.memberId.takeIf { it.isNotBlank() } ?: "self_user"
                     val alreadyHasMe = nebulaMotes.any { it.memberId == myId }
                     if (!alreadyHasMe) {
                         val myMote = com.aman.gigi.model.NebulaMember(
