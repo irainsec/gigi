@@ -1616,6 +1616,43 @@ class ConnectionBootstrapManager @Inject constructor(
         }
     }
 
+    suspend fun fetchPendingNebulaInvites(): List<com.aman.gigi.model.IncomingNebulaInvite> = withContext(Dispatchers.IO) {
+        try {
+            val identity = _memberIdentity.value ?: return@withContext emptyList()
+            val token = com.aman.gigi.data.auth.SessionTokenProvider.current(identity.authToken) ?: identity.authToken
+            val response = requestJson(
+                path = "/api/nebula/invites/pending",
+                method = "GET",
+                headers = mapOf("x-session-token" to token)
+            )
+            if (response.code in 200..299 && response.json != null) {
+                val arr = response.json.optJSONArray("invites") ?: return@withContext emptyList()
+                val list = mutableListOf<com.aman.gigi.model.IncomingNebulaInvite>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    list += com.aman.gigi.model.IncomingNebulaInvite(
+                        inviteId = obj.optString("inviteId"),
+                        fromMemberId = obj.optString("fromMemberId"),
+                        handle = obj.optString("handle"),
+                        displayName = obj.optString("displayName"),
+                        avatarUrl = resolveServerAssetUrl(obj.optString("avatarUrl")),
+                        twigiRenderUrl = resolveServerAssetUrl(obj.optString("twigiRenderUrl")),
+                        profileEmojiUrl = resolveServerAssetUrl(obj.optString("profileEmojiUrl")),
+                        avatarMode = obj.optString("avatarMode", "EMOJI"),
+                        bio = sanitizeOptionalText(obj.optString("bio")),
+                        createdAt = obj.optString("createdAt")
+                    )
+                }
+                list
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to fetch pending nebula invites", e)
+            emptyList()
+        }
+    }
+
     suspend fun blockMember(targetMemberId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val identity = _memberIdentity.value ?: return@withContext Result.failure(IllegalStateException("Not authenticated"))

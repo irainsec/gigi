@@ -131,3 +131,19 @@ data class NebulaMember(
     val isRecentlyActive: Boolean = false,
     val inviteStatus: String = "NONE" // NONE, SENT, RECEIVED
 )
+
+/**
+ * Represents an incoming invitation from a cosmic soul requesting to join the user's Galaxy.
+ */
+data class IncomingNebulaInvite(
+    val inviteId: String = "",
+    val fromMemberId: String = "",
+    val handle: String = "",
+    val displayName: String = "",
+    val avatarUrl: String? = null,
+    val twigiRenderUrl: String? = null,
+    val profileEmojiUrl: String? = null,
+    val avatarMode: String = "EMOJI",
+    val bio: String? = null,
+    val createdAt: String = ""
+)

@@ -362,6 +362,9 @@ class ScreensaverViewModel @Inject constructor(
     private val _pendingGhostInvites = MutableStateFlow<Set<String>>(emptySet())
     val pendingGhostInvites: StateFlow<Set<String>> = _pendingGhostInvites.asStateFlow()
 
+    private val _incomingNebulaInvites = MutableStateFlow<List<com.aman.gigi.model.IncomingNebulaInvite>>(emptyList())
+    val incomingNebulaInvites: StateFlow<List<com.aman.gigi.model.IncomingNebulaInvite>> = _incomingNebulaInvites.asStateFlow()
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val isPartnerTyping: StateFlow<Boolean> = _partnerConnectionId.flatMapLatest { id ->
         if (id == null) flowOf(false)
@@ -1847,8 +1850,21 @@ class ScreensaverViewModel @Inject constructor(
         viewModelScope.launch {
             _isNebulaLoading.value = true
             val motes = bootstrapManager.fetchNebulaMotes()
+            val incoming = bootstrapManager.fetchPendingNebulaInvites()
             _nebulaMotes.value = motes
+            _incomingNebulaInvites.value = incoming
             _isNebulaLoading.value = false
+        }
+    }
+
+    fun respondToNebulaInvite(inviteId: String, accept: Boolean, onResult: (Result<String?>) -> Unit = {}) {
+        viewModelScope.launch {
+            val res = bootstrapManager.respondNebulaInvite(inviteId, accept)
+            if (res.isSuccess) {
+                _incomingNebulaInvites.value = _incomingNebulaInvites.value.filter { it.inviteId != inviteId }
+                loadNebulaMotes()
+            }
+            onResult(res)
         }
     }
 

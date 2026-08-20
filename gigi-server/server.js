@@ -2277,6 +2277,44 @@ app.post('/api/nebula/invite/respond', async (req, res) => {
     }
 });
 
+app.get('/api/nebula/invites/pending', async (req, res) => {
+    try {
+        const auth = await requireAuthenticatedMember(req, res);
+        if (!auth) return;
+        const member = auth.member;
+
+        const incoming = await NebulaInvite.find({
+            toMemberId: member.memberId,
+            status: 'PENDING'
+        }).sort({ createdAt: -1 }).limit(20).lean();
+
+        const senderIds = incoming.map(i => i.fromMemberId);
+        const senders = await Member.find({ memberId: { $in: senderIds } }).lean();
+        const senderMap = new Map(senders.map(s => [s.memberId, s]));
+
+        const results = incoming.map(inv => {
+            const s = senderMap.get(inv.fromMemberId);
+            return {
+                inviteId: inv.inviteId,
+                fromMemberId: inv.fromMemberId,
+                handle: inv.fromHandle || s?.handle || 'visitor',
+                displayName: inv.fromDisplayName || s?.displayName || 'Cosmic Visitor',
+                avatarUrl: inv.fromAvatarUrl || s?.avatarUrl || null,
+                twigiRenderUrl: inv.fromTwigiUrl || (s?.avatarMode === 'TWIGI' ? s.twigiRenderUrl : null),
+                profileEmojiUrl: inv.fromProfileEmojiUrl || s?.profileEmojiUrl || null,
+                avatarMode: s?.avatarMode || 'EMOJI',
+                bio: s?.bio || 'Reached out to join your galaxy ✨',
+                createdAt: inv.createdAt
+            };
+        });
+
+        res.json({ success: true, invites: results });
+    } catch (err) {
+        console.error('Error fetching pending nebula invites:', err);
+        res.status(500).json({ error: 'Failed to get invites' });
+    }
+});
+
 app.post('/api/nebula/block', async (req, res) => {
     try {
         const auth = await requireAuthenticatedMember(req, res);

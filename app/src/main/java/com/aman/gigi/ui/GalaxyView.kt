@@ -204,10 +204,13 @@ fun GalaxyView(
     // connectionId → a sweet quote just sent to / received from that person
     quotes: Map<String, String> = emptyMap(),
     nebulaMotes: List<com.aman.gigi.model.NebulaMember> = emptyList(),
+    incomingInvites: List<com.aman.gigi.model.IncomingNebulaInvite> = emptyList(),
     searchQuery: String = "",
     onSearchQueryChange: (String) -> Unit = {},
     pendingGhostInvites: Set<String> = emptySet(),
     onInviteMote: (com.aman.gigi.model.NebulaMember) -> Unit = {},
+    onAcceptInvite: (com.aman.gigi.model.IncomingNebulaInvite) -> Unit = {},
+    onDeclineInvite: (com.aman.gigi.model.IncomingNebulaInvite) -> Unit = {},
     onBlockMote: (String) -> Unit = {},
     onReportMote: (String, String, String?) -> Unit = { _, _, _ -> },
     camera: GalaxyCamera,
@@ -219,6 +222,12 @@ fun GalaxyView(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val imageLoader = remember {
+        coil.ImageLoader.Builder(context).components {
+            if (android.os.Build.VERSION.SDK_INT >= 28) add(coil.decode.ImageDecoderDecoder.Factory())
+            else add(coil.decode.GifDecoder.Factory())
+        }.build()
+    }
     val prefs = remember { context.getSharedPreferences(GALAXY_PREFS, Context.MODE_PRIVATE) }
 
     // Reactively track emoji_self from SharedPreferences so galaxy updates immediately when user picks a new emoji
@@ -575,6 +584,122 @@ fun GalaxyView(
                 }
             }
         )
+    }
+
+    var selectedIncomingInvite by remember { mutableStateOf<com.aman.gigi.model.IncomingNebulaInvite?>(null) }
+    val curInvite = selectedIncomingInvite
+    if (curInvite != null) {
+        val inviteAvatar = if (curInvite.avatarMode == "TWIGI" && !curInvite.twigiRenderUrl.isNullOrBlank()) {
+            curInvite.twigiRenderUrl
+        } else {
+            curInvite.profileEmojiUrl?.takeIf { it.isNotBlank() }
+                ?: curInvite.avatarUrl?.takeIf { it.isNotBlank() }
+                ?: com.aman.gigi.ui.components.TELEGRAM_EMOJIS.first()
+        }
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { selectedIncomingInvite = null }
+        ) {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = Color(0xFF160D2E),
+                border = BorderStroke(1.5.dp, Color(0xFFEC4899).copy(alpha = 0.7f)),
+                shadowElevation = 24.dp,
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(
+                                        Color(0xFFEC4899).copy(alpha = 0.85f),
+                                        Color(0xFFC084FC).copy(alpha = 0.45f),
+                                        Color.Transparent
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val parsed = com.aman.gigi.utils.ImageUtils.parseEmojiModel(inviteAvatar)
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(parsed).crossfade(true).build(),
+                            imageLoader = imageLoader,
+                            contentDescription = curInvite.displayName,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(5.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF0F0728))
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = curInvite.displayName,
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "@${curInvite.handle.replace("@", "")}",
+                            color = Color(0xFFF472B6),
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF1F123B),
+                        border = BorderStroke(1.dp, Color(0xFFEC4899).copy(alpha = 0.35f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = curInvite.bio?.takeIf { it.isNotBlank() } ?: "Sent you a galaxy invitation! ✨",
+                            color = Color(0xFFE2E8F0),
+                            fontSize = 13.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        androidx.compose.material3.OutlinedButton(
+                            onClick = {
+                                onDeclineInvite(curInvite)
+                                selectedIncomingInvite = null
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.7f)),
+                            modifier = Modifier.weight(1f).height(44.dp)
+                        ) {
+                            Text("✕ Decline", color = Color(0xFFEF4444), fontSize = 13.sp)
+                        }
+
+                        androidx.compose.material3.Button(
+                            onClick = {
+                                onAcceptInvite(curInvite)
+                                selectedIncomingInvite = null
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFEC4899)),
+                            modifier = Modifier.weight(1f).height(44.dp)
+                        ) {
+                            Text("💖 Accept", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // emoji_self prefs key wins (user's latest pick); fall back to identity fields
@@ -1110,9 +1235,9 @@ fun GalaxyView(
                 } else if (hm != null) {
                     if (totalMove < 16f) {
                         selectedMote = hm
-                    } else {
+                        val isSelf = (hm.memberId == identity?.memberId || hm.inviteStatus == "SELF")
                         val isInsideGalaxy = dragMotePos.y < (pcy + 900f * zoom)
-                        if (isInsideGalaxy) {
+                        if (isInsideGalaxy && !isSelf) {
                             val ux = (dragMotePos.x - pcx) / zoom
                             val uy = (dragMotePos.y - pcy) / (zoom * tilt)
                             val dist = hypot(ux, uy)
@@ -1515,12 +1640,6 @@ fun GalaxyView(
             items.sortBy { it.depth }
 
             val density = androidx.compose.ui.platform.LocalDensity.current
-            val imageLoader = remember {
-                coil.ImageLoader.Builder(context).components {
-                    if (android.os.Build.VERSION.SDK_INT >= 28) add(coil.decode.ImageDecoderDecoder.Factory())
-                    else add(coil.decode.GifDecoder.Factory())
-                }.build()
-            }
 
             items.forEach { item ->
                 val p = item.planet
@@ -1831,6 +1950,105 @@ fun GalaxyView(
                                     fontSize = (mFontSizeSp.value * 0.72f).sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Overlay Incoming Galaxy Invitations (Cosmic Visitors) ──
+            if (incomingInvites.isNotEmpty()) {
+                val visitorOrbitR = orbitRadiusPx(3, minDim) + with(density) { 48.dp.toPx() } * zoom
+                incomingInvites.forEachIndexed { idx, invite ->
+                    val angleOffset = (idx.toFloat() * (6.2831853f / incomingInvites.size.coerceAtLeast(1).toFloat())) + (currentFrame.toFloat() / 15_000_000_000f)
+                    val vx = pcx + visitorOrbitR * kotlin.math.cos(angleOffset)
+                    val vy = pcy + visitorOrbitR * tilt * kotlin.math.sin(angleOffset)
+                    val vRad = pr * 1.4f
+                    val vSizeDp = with(density) { (vRad * 2f).toDp() }
+
+                    val avatar = if (invite.avatarMode == "TWIGI" && !invite.twigiRenderUrl.isNullOrBlank()) {
+                        invite.twigiRenderUrl
+                    } else {
+                        invite.profileEmojiUrl?.takeIf { it.isNotBlank() } ?: invite.avatarUrl ?: com.aman.gigi.ui.components.TELEGRAM_EMOJIS.first()
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .offset { IntOffset(vx.roundToInt() - vRad.roundToInt(), vy.roundToInt() - vRad.roundToInt()) }
+                            .size(vSizeDp)
+                            .clip(CircleShape)
+                            .clickable { selectedIncomingInvite = invite }
+                    ) {
+                        // Pulsing Cosmic Visitor Halo
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(
+                                            Color(0xFFEC4899).copy(alpha = 0.95f),
+                                            Color(0xFFF472B6).copy(alpha = 0.55f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+
+                        val parsedUrl = com.aman.gigi.utils.ImageUtils.parseEmojiModel(avatar)
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(parsedUrl).crossfade(true).build(),
+                            imageLoader = imageLoader,
+                            contentDescription = invite.displayName,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(4.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1E1035))
+                        )
+
+                        // Notification Badge
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(Color(0xFFEC4899))
+                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                        ) {
+                            Text("💖", fontSize = 8.sp)
+                        }
+                    }
+
+                    // Label: "✨ Invite: Name"
+                    val vLabelY = vy + vRad + (3f * zoom)
+                    val vLabelWidthDp = 180.dp
+                    val vLabelWidthPx = with(density) { vLabelWidthDp.roundToPx() }
+                    Column(
+                        modifier = Modifier
+                            .offset { IntOffset(vx.roundToInt() - vLabelWidthPx / 2, vLabelY.roundToInt()) }
+                            .width(vLabelWidthDp)
+                            .clickable { selectedIncomingInvite = invite },
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = Color(0xFF1E1035).copy(alpha = 0.92f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEC4899).copy(alpha = 0.6f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text("✨", fontSize = 10.sp)
+                                Text(
+                                    text = invite.displayName,
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
                                 )
                             }
                         }

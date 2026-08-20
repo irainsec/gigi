@@ -160,6 +160,10 @@ fun Screensaver(
                 val galaxyNowPlaying by viewModel.nowPlayingByConnection.collectAsState()
                 val galaxyMyNowPlaying by viewModel.myNowPlaying.collectAsState()
                 val galaxyQuotes by viewModel.quotesByConnection.collectAsState()
+                val nebulaMotes by viewModel.nebulaMotes.collectAsState()
+                val incomingInvites by viewModel.incomingNebulaInvites.collectAsState()
+                val nebulaSearchQuery by viewModel.nebulaSearchQuery.collectAsState()
+                val pendingGhostInvites by viewModel.pendingGhostInvites.collectAsState()
 
                 GalaxyView(
                     identity = identity,
@@ -168,6 +172,16 @@ fun Screensaver(
                     nowPlaying = galaxyNowPlaying,
                     myNowPlaying = galaxyMyNowPlaying,
                     quotes = galaxyQuotes,
+                    nebulaMotes = nebulaMotes,
+                    incomingInvites = incomingInvites,
+                    searchQuery = nebulaSearchQuery,
+                    onSearchQueryChange = { viewModel.setNebulaSearchQuery(it) },
+                    pendingGhostInvites = pendingGhostInvites,
+                    onInviteMote = { m -> viewModel.sendNebulaInvite(m) },
+                    onAcceptInvite = { inv -> viewModel.respondToNebulaInvite(inv.inviteId, accept = true) },
+                    onDeclineInvite = { inv -> viewModel.respondToNebulaInvite(inv.inviteId, accept = false) },
+                    onBlockMote = { id -> viewModel.blockMember(id) },
+                    onReportMote = { id, r, n -> viewModel.reportMember(id, r, n) },
                     camera = viewModel.galaxyCamera,
                     onOpenConnection = { connectionId ->
                         if (serverStatus.mode != com.aman.gigi.model.ServerMode.MAINTENANCE) {

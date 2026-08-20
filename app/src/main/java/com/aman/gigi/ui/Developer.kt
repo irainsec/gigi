@@ -193,6 +193,7 @@ fun Developer(
     val nebulaSearchResults by viewModel.nebulaSearchResults.collectAsState()
     val nebulaSearchQuery by viewModel.nebulaSearchQuery.collectAsState()
     val pendingGhostInvites by viewModel.pendingGhostInvites.collectAsState()
+    val incomingNebulaInvites by viewModel.incomingNebulaInvites.collectAsState()
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -330,11 +331,18 @@ fun Developer(
                     myNowPlaying = galaxyMyNowPlaying,
                     quotes = galaxyQuotes,
                     nebulaMotes = if (nebulaSearchQuery.isNotBlank()) nebulaSearchResults else nebulaMotes,
+                    incomingInvites = incomingNebulaInvites,
                     searchQuery = nebulaSearchQuery,
                     onSearchQueryChange = { viewModel.setNebulaSearchQuery(it) },
                     pendingGhostInvites = pendingGhostInvites,
                     onInviteMote = { mote ->
                         viewModel.sendNebulaInvite(mote)
+                    },
+                    onAcceptInvite = { inv ->
+                        viewModel.respondToNebulaInvite(inv.inviteId, accept = true)
+                    },
+                    onDeclineInvite = { inv ->
+                        viewModel.respondToNebulaInvite(inv.inviteId, accept = false)
                     },
                     onBlockMote = { id ->
                         viewModel.blockMember(id)
