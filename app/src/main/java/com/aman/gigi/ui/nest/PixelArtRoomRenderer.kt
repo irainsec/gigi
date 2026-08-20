@@ -276,21 +276,23 @@ object PixelArtRoomRenderer {
         notesCount: Int
     ) {
         with(drawScope) {
-            when (item.type) {
-                "desk_computer" -> drawDualMonitorDesk(baseX, baseY)
-                "office_chair" -> drawOfficeChair(baseX, baseY)
-                "bookshelf_large" -> drawBookshelf(baseX, baseY)
-                "bulletin_board" -> drawBulletinBoard(baseX, baseY)
-                "cozy_bed" -> drawCozyBed(baseX, baseY)
-                "nightstand_lamp" -> drawNightstand(baseX, baseY)
-                "sweetheart_sofa" -> drawSweetheartSofa(baseX, baseY)
-                "coffee_table" -> drawCoffeeTable(baseX, baseY)
-                "turntable_station" -> drawTurntable(baseX, baseY, isPlayingMusic, vinylRotation)
-                "heart_rug" -> drawHeartRug(baseX, baseY)
-                "mini_fridge" -> drawMiniFridge(baseX, baseY, notesCount)
-                "potted_plant" -> drawPottedPlant(baseX, baseY)
-                "wall_clock" -> drawWallClock(baseX, baseY)
-                else -> drawGenericTable(baseX, baseY, item.name)
+            val key = (item.type + "_" + item.id + "_" + item.name).lowercase()
+            when {
+                key.contains("desk") || key.contains("workstation") || key.contains("computer") -> drawDualMonitorDesk(baseX, baseY)
+                key.contains("chair") || key.contains("swivel") || key.contains("seat") -> drawOfficeChair(baseX, baseY)
+                key.contains("bookshelf") || key.contains("library") || key.contains("shelf") -> drawBookshelf(baseX, baseY)
+                key.contains("bulletin") || key.contains("pinboard") || key.contains("board") -> drawBulletinBoard(baseX, baseY)
+                key.contains("bed") || key.contains("canopy") || key.contains("sleep") -> drawCozyBed(baseX, baseY)
+                key.contains("nightstand") || key.contains("lamp") -> drawNightstand(baseX, baseY)
+                key.contains("sofa") || key.contains("couch") || key.contains("loveseat") -> drawSweetheartSofa(baseX, baseY)
+                key.contains("coffee_table") || key.contains("table") || key.contains("dining") || key.contains("snack") -> drawCoffeeTable(baseX, baseY)
+                key.contains("turntable") || key.contains("vinyl") || key.contains("music") || key.contains("record") -> drawTurntable(baseX, baseY, isPlayingMusic, vinylRotation)
+                key.contains("rug") || key.contains("carpet") || key.contains("mat") -> drawHeartRug(baseX, baseY)
+                key.contains("fridge") || key.contains("refrigerator") -> drawMiniFridge(baseX, baseY, notesCount)
+                key.contains("plant") || key.contains("monstera") || key.contains("pot") -> drawPottedPlant(baseX, baseY)
+                key.contains("clock") || key.contains("wall_clock") -> drawWallClock(baseX, baseY)
+                key.contains("ac") || key.contains("conditioner") -> Unit
+                else -> drawCoffeeTable(baseX, baseY)
             }
         }
     }

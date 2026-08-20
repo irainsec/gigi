@@ -49,22 +49,30 @@ fun NestScreen(
     val activeEmote by viewModel.activeEmote.collectAsStateWithLifecycle()
 
     val activeConnections by screensaverViewModel.activeConnections.collectAsStateWithLifecycle()
-    val activeConnection = activeConnections.firstOrNull()
+    var selectedConnectionIndex by remember { mutableIntStateOf(0) }
+    val activeConnection = activeConnections.getOrNull(selectedConnectionIndex) ?: activeConnections.firstOrNull()
+    var showConnectionMenu by remember { mutableStateOf(false) }
 
     val musicUiState by musicViewModel.uiState.collectAsStateWithLifecycle()
     val isPlayingMusic = musicUiState.isPlaying
 
     // Own avatar
     val myIdentity by screensaverViewModel.memberIdentity.collectAsStateWithLifecycle()
+    val hasTwigi = !myIdentity?.twigiConfigJson.isNullOrBlank() || (!myIdentity?.twigiRenderUrl.isNullOrBlank() && myIdentity?.avatarMode == "TWIGI")
+    var showLpcStudio by remember { mutableStateOf(false) }
+
     val myAvatarUrl = if (myIdentity?.avatarMode == "TWIGI" && !myIdentity?.twigiRenderUrl.isNullOrBlank()) {
         myIdentity?.twigiRenderUrl
     } else {
-        myIdentity?.profileEmojiUrl
+        null
     }
 
     val partnerName = activeConnection?.partnerName?.takeIf { it.isNotBlank() } ?: "Partner"
-    val partnerAvatarUrl = activeConnection?.partnerTwigiUrl?.takeIf { it.isNotBlank() }
-        ?: activeConnection?.partnerEmojiUrl ?: activeConnection?.partnerAvatarUrl
+    val partnerAvatarUrl = if (activeConnection?.partnerAvatarMode == "TWIGI") {
+        activeConnection?.partnerTwigiUrl
+    } else {
+        activeConnection?.partnerTwigiUrl
+    }
 
     LaunchedEffect(activeConnection) {
         val code = activeConnection?.connectionId
@@ -100,12 +108,13 @@ fun NestScreen(
             },
             onFurnitureTapped = { f ->
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                when (f.type) {
-                    "mini_fridge" -> viewModel.setFridgeOpen(true)
-                    "sweetheart_sofa" -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.SIT_COUCH)
-                    "desk_computer", "office_chair" -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.SIT_DESK)
-                    "cozy_bed" -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.SLEEP_BED)
-                    "turntable_station" -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.JAM_MUSIC)
+                val key = (f.type + "_" + f.id + "_" + f.name).lowercase()
+                when {
+                    key.contains("fridge") -> viewModel.setFridgeOpen(true)
+                    key.contains("sofa") || key.contains("couch") -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.SIT_COUCH)
+                    key.contains("desk") || key.contains("chair") -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.SIT_DESK)
+                    key.contains("bed") -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.SLEEP_BED)
+                    key.contains("turntable") || key.contains("vinyl") -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.JAM_MUSIC)
                     else -> viewModel.moveMyTwigiTo(f.x, f.y, action = TwigiAction.IDLE)
                 }
             },
@@ -121,7 +130,7 @@ fun NestScreen(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(top = 10.dp, start = 16.dp, end = 16.dp)
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -132,37 +141,83 @@ fun NestScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Time & Mood Pill
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = Color(0xFF1E1436).copy(alpha = 0.88f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.35f)),
-                    shadowElevation = 8.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                // Connection Selector / Nest Title Pill
+                Box {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color(0xFF1E1436).copy(alpha = 0.88f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.35f)),
+                        shadowElevation = 8.dp,
+                        modifier = Modifier.clickable {
+                            if (activeConnections.size > 1) {
+                                showConnectionMenu = true
+                            }
+                        }
                     ) {
-                        Text("🏡", fontSize = 14.sp)
-                        Text(
-                            text = "${partnerName}'s Nest",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text("•", color = Color(0xFFC084FC), fontSize = 10.sp)
-                        Text(
-                            text = timeOfDay.label,
-                            color = Color(0xFFFDE68A),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text("🏡", fontSize = 14.sp)
+                            Text(
+                                text = "${partnerName}'s Nest",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (activeConnections.size > 1) {
+                                Text("▾", color = Color(0xFFC084FC), fontSize = 11.sp)
+                            }
+                            Text("•", color = Color(0xFFC084FC), fontSize = 10.sp)
+                            Text(
+                                text = timeOfDay.label,
+                                color = Color(0xFFFDE68A),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    // Multi-connection dropdown menu
+                    DropdownMenu(
+                        expanded = showConnectionMenu,
+                        onDismissRequest = { showConnectionMenu = false }
+                    ) {
+                        activeConnections.forEachIndexed { idx, conn ->
+                            val name = conn.partnerName.takeIf { it.isNotBlank() } ?: "Partner ${idx + 1}"
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text("🏡", fontSize = 14.sp)
+                                        Text(name, fontWeight = if (idx == selectedConnectionIndex) FontWeight.Bold else FontWeight.Normal)
+                                    }
+                                },
+                                onClick = {
+                                    selectedConnectionIndex = idx
+                                    showConnectionMenu = false
+                                }
+                            )
+                        }
                     }
                 }
 
                 // Action Buttons Row
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Twigi Customizer Button
+                    IconButton(
+                        onClick = { showLpcStudio = true },
+                        colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0xFF1E1436).copy(alpha = 0.88f)),
+                        modifier = Modifier
+                            .size(38.dp)
+                            .border(1.dp, Color(0xFFFBBF24).copy(alpha = 0.45f), CircleShape)
+                    ) {
+                        Text("🧙", fontSize = 16.sp)
+                    }
+
                     // Decor Shop Button
                     IconButton(
                         onClick = { viewModel.setShopOpen(true) },
@@ -263,6 +318,55 @@ fun NestScreen(
             }
         }
 
+        // ── Twigi Creation Guide Overlay for First-Time Users ──
+        if (!hasTwigi) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.82f))
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color(0xFF1E1035),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFC084FC).copy(alpha = 0.6f)),
+                    shadowElevation = 16.dp,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Text("🏡 ✨", fontSize = 38.sp)
+                        Text(
+                            text = "Create Your Twigi to enter the Nest!",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Text(
+                            text = "Only Twigi pixel characters live inside the Nest. Design your custom RPG character to walk, decorate, and hang out with ${partnerName}.",
+                            color = Color(0xFFCBD5E1),
+                            fontSize = 13.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            lineHeight = 18.sp
+                        )
+                        Button(
+                            onClick = { showLpcStudio = true },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC084FC)),
+                            modifier = Modifier.fillMaxWidth().height(48.dp)
+                        ) {
+                            Text("🎨 Create My Twigi", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        }
+                    }
+                }
+            }
+        }
+
         // ── Bottom Sheets ──
         if (isFridgeOpen) {
             FridgeNotesSheet(
@@ -284,6 +388,20 @@ fun NestScreen(
                 onDismiss = { viewModel.setShopOpen(false) },
                 onSelectWallpaper = { viewModel.updateWallpaper(it) },
                 onSelectFlooring = { viewModel.updateFlooring(it) }
+            )
+        }
+
+        // ── Twigi Character Studio Dialog ──
+        if (showLpcStudio) {
+            com.aman.gigi.ui.twigi.TwigiCreatorScreen(
+                initialConfigJson = myIdentity?.twigiConfigJson,
+                saving = false,
+                onDismiss = { showLpcStudio = false },
+                onSave = { cfgJson ->
+                    screensaverViewModel.saveTwigi(cfgJson)
+                    screensaverViewModel.setAvatarMode("TWIGI")
+                    showLpcStudio = false
+                }
             )
         }
     }

@@ -1,22 +1,22 @@
 {
-  "updatedAt": "2026-08-20T19:52:08Z",
-  "versionCode": 78,
-  "versionName": "v2.3.5",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.5-universal.apk",
+  "updatedAt": "2026-08-20T20:05:37Z",
+  "versionCode": 79,
+  "versionName": "v2.3.6",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.6-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "b33ee54d19be4f46e11ceff96344792adf28153f5d9ea558d1a10b5c0279e84a",
+  "sha256": "353d73827f280e2c51f2b28619f0d81fa5ad1c1990271e4a8a6984eb2a81c46e",
   "sizeMb": 50.4,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.5-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.5-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.5-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.5-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.6-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.6-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.6-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.6-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "dbf7b19c415fbab906c7b3962d8a087359e7ff8add513a28786c97a1ff1af073",
-    "armeabi-v7a": "0288e204c5d42ab24a6658f49905c89d9ffd0bcd6077a002221bdadb742531d1",
-    "x86": "b262bf0cec419a8d4b380c3ca6926e9e58ba7921ada44673d6137e5f8afa8b7b",
-    "x86_64": "b7017812abcf75c7726176d6ef44ccdd57d5e1dd360a4501773aa5af252bf1e4"
+    "arm64-v8a": "103a33caebd133714e5f1458735b36c26016f9e90fc35a2d1dd164cee124e2a1",
+    "armeabi-v7a": "9e9fc8a77894c47aa36ef5097f6e4803de66006ddf4d552b0e2b8463d075612e",
+    "x86": "c1d58dfc4c9c8c0ea07e6d722da7d849d65bd7d47314f475d3330e32881baf92",
+    "x86_64": "8b2377da267edea3c477c06f232c0ba13e38c693953d89600775ebde80088454"
   },
   "abiSizeMb": {
     "arm64-v8a": 25.6,
@@ -25,5 +25,5 @@
     "x86_64": 26.7
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Fix user profile badge overlapping, add free-roaming drifting public souls in Cosmic Nebula, and enable drag-to-galaxy starlight invites."
+  "releaseNotes": "Cozy Nest Living World: LPC Twigi character movement & animations, multi-connection switcher, notch fix, and furniture rendering."
 }

@@ -108,15 +108,23 @@ fun NestRoomCanvas(
         animatedPartnerY.animateTo(partnerTwigiPos.y, tween(duration, easing = LinearOutSlowInEasing))
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val animLoader = remember(context) {
+        coil.ImageLoader.Builder(context).components {
+            if (android.os.Build.VERSION.SDK_INT >= 28) add(coil.decode.ImageDecoderDecoder.Factory())
+            else add(coil.decode.GifDecoder.Factory())
+        }.build()
+    }
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                // Handle Smooth Drag-to-Walk
+                // Handle Smooth Drag-to-Walk and Direct Dragging
                 detectDragGestures(
                     onDragStart = { offset ->
-                        val normX = (offset.x / size.width).coerceIn(0.12f, 0.88f)
-                        val normY = (offset.y / size.height).coerceIn(0.20f, 0.88f)
+                        val normX = (offset.x / size.width).coerceIn(0.10f, 0.90f)
+                        val normY = (offset.y / size.height).coerceIn(0.18f, 0.90f)
                         val dx = normX - animatedMyX.value
                         val dy = normY - animatedMyY.value
                         val facing = calculateFacing(dx, dy)
@@ -124,8 +132,8 @@ fun NestRoomCanvas(
                     },
                     onDrag = { change, _ ->
                         change.consume()
-                        val normX = (change.position.x / size.width).coerceIn(0.12f, 0.88f)
-                        val normY = (change.position.y / size.height).coerceIn(0.20f, 0.88f)
+                        val normX = (change.position.x / size.width).coerceIn(0.10f, 0.90f)
+                        val normY = (change.position.y / size.height).coerceIn(0.18f, 0.90f)
                         val dx = normX - animatedMyX.value
                         val dy = normY - animatedMyY.value
                         val facing = calculateFacing(dx, dy)
@@ -138,17 +146,6 @@ fun NestRoomCanvas(
                         onMoveTarget(animatedMyX.value, animatedMyY.value, myTwigiPos.facing, false)
                     }
                 )
-            }
-            .pointerInput(Unit) {
-                // Handle Tap-to-Walk
-                detectTapGestures { offset ->
-                    val normX = (offset.x / size.width).coerceIn(0.12f, 0.88f)
-                    val normY = (offset.y / size.height).coerceIn(0.20f, 0.88f)
-                    val dx = normX - animatedMyX.value
-                    val dy = normY - animatedMyY.value
-                    val facing = calculateFacing(dx, dy)
-                    onMoveTarget(normX, normY, facing, true)
-                }
             }
     ) {
         val screenW = maxWidth
@@ -172,7 +169,7 @@ fun NestRoomCanvas(
 
         // Add Furniture Entities
         furnitureList.forEach { f ->
-            val isRug = f.type == "heart_rug"
+            val isRug = f.type == "heart_rug" || f.id.contains("rug")
             entities.add(
                 RenderableEntity(
                     id = f.id,
@@ -219,22 +216,30 @@ fun NestRoomCanvas(
                                 x = screenW * pet.x - 18.dp,
                                 y = screenH * pet.y - 18.dp
                             )
-                            .graphicsLayer { rotationZ = petWiggle }
                             .pointerInput(Unit) {
                                 detectTapGestures { onPetTapped() }
                             }
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Color(0xFF1E1436).copy(alpha = 0.85f),
-                            border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFF472B6).copy(alpha = 0.5f)),
-                            shadowElevation = 6.dp
-                        ) {
-                            Box(modifier = Modifier.padding(5.dp), contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = if (pet.type == "dog") "🐶" else "🐱",
-                                    fontSize = 22.sp
-                                )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = if (pet.isSleeping) "💤" else "🐾",
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(bottom = 1.dp)
+                            )
+                            Surface(
+                                shape = CircleShape,
+                                color = Color(0xFF1E1035).copy(alpha = 0.85f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFBBF24).copy(alpha = 0.6f)),
+                                shadowElevation = 4.dp,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = if (pet.type == "dog") "🐶" else "🐱",
+                                        fontSize = 18.sp,
+                                        modifier = Modifier.graphicsLayer { rotationZ = petWiggle }
+                                    )
+                                }
                             }
                         }
                     }
@@ -260,7 +265,8 @@ fun NestRoomCanvas(
                         emote = partnerTwigiPos.emote,
                         action = partnerTwigiPos.action,
                         isPlayingMusic = isPlayingMusic,
-                        breathScale = breathScale
+                        breathScale = breathScale,
+                        animLoader = animLoader
                     )
                 }
             )
@@ -284,7 +290,8 @@ fun NestRoomCanvas(
                         emote = myTwigiPos.emote,
                         action = myTwigiPos.action,
                         isPlayingMusic = isPlayingMusic,
-                        breathScale = breathScale
+                        breathScale = breathScale,
+                        animLoader = animLoader
                     )
                 }
             )
@@ -311,17 +318,18 @@ private fun RenderRpgCharacter(
     emote: String?,
     action: TwigiAction,
     isPlayingMusic: Boolean,
-    breathScale: Float
+    breathScale: Float,
+    animLoader: coil.ImageLoader
 ) {
-    val charWidth = 44.dp
-    val charHeight = 52.dp
+    val charWidth = 64.dp
+    val charHeight = 72.dp
     val bobOffset = if (isWalking) walkBob.dp else 0.dp
 
     Box(
         modifier = Modifier
             .offset(
                 x = x - (charWidth / 2),
-                y = y - (charHeight * 0.8f) + bobOffset
+                y = y - (charHeight * 0.82f) + bobOffset
             )
             .scale(if (!isWalking) breathScale else 1f)
     ) {
@@ -358,33 +366,48 @@ private fun RenderRpgCharacter(
                 }
             }
 
-            // Pixel Character Sprite
-            Surface(
-                shape = CircleShape,
-                color = if (isMe) Color(0xFF6366F1).copy(alpha = 0.25f) else Color(0xFFEC4899).copy(alpha = 0.25f),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.5.dp,
-                    if (isMe) Color(0xFFA5B4FC) else Color(0xFFF9A8D4)
-                ),
-                shadowElevation = 6.dp,
-                modifier = Modifier.size(42.dp)
+            // Full LPC Pixel Character Sprite (Transparent Full Body, with Floor Shadow)
+            Box(
+                modifier = Modifier.size(54.dp, 60.dp),
+                contentAlignment = Alignment.BottomCenter
             ) {
+                // Character Foot Shadow
+                Canvas(
+                    modifier = Modifier
+                        .size(32.dp, 10.dp)
+                        .align(Alignment.BottomCenter)
+                ) {
+                    drawOval(
+                        color = Color.Black.copy(alpha = 0.28f),
+                        topLeft = Offset.Zero,
+                        size = size
+                    )
+                }
+
                 if (!avatarUrl.isNullOrBlank()) {
+                    val parsedUrl = com.aman.gigi.utils.ImageUtils.parseEmojiModel(avatarUrl)
                     AsyncImage(
-                        model = avatarUrl,
+                        model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                            .data(parsedUrl)
+                            .crossfade(true)
+                            .build(),
+                        imageLoader = animLoader,
                         contentDescription = name,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(CircleShape)
                             .graphicsLayer {
                                 rotationY = if (facing == FacingDirection.LEFT) 180f else 0f
                             }
                     )
                 } else {
-                    Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = if (isMe) "🧑‍💻" else "👩‍💻",
-                            fontSize = 24.sp
+                            text = "🧙",
+                            fontSize = 28.sp
                         )
                     }
                 }
@@ -394,8 +417,8 @@ private fun RenderRpgCharacter(
             Surface(
                 shape = RoundedCornerShape(4.dp),
                 color = Color(0xFF0F172A).copy(alpha = 0.88f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
-                modifier = Modifier.padding(top = 2.dp)
+                border = androidx.compose.foundation.BorderStroke(1.dp, if (isMe) Color(0xFFA5B4FC).copy(alpha = 0.5f) else Color(0xFFF9A8D4).copy(alpha = 0.5f)),
+                modifier = Modifier.padding(top = 1.dp)
             ) {
                 Text(
                     text = name,

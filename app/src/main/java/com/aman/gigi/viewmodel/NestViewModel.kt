@@ -89,7 +89,33 @@ class NestViewModel @Inject constructor(
                 }
             }
         }
+        // Autonomous Cozy Twigi Behaviors (characters explore & hang out when idle)
+        viewModelScope.launch {
+            val random = java.util.Random()
+            while (true) {
+                kotlinx.coroutines.delay(12000L + random.nextInt(8000).toLong())
+                val now = System.currentTimeMillis()
+                if (now - lastUserInteractionTime > 12000L && !_isFridgeOpen.value && !_isShopOpen.value) {
+                    val spots = listOf(
+                        Triple(0.30f, 0.66f, TwigiAction.SIT_COUCH),
+                        Triple(0.26f, 0.38f, TwigiAction.SIT_DESK),
+                        Triple(0.80f, 0.28f, TwigiAction.SLEEP_BED),
+                        Triple(0.08f, 0.60f, TwigiAction.JAM_MUSIC),
+                        Triple(0.30f, 0.75f, TwigiAction.IDLE),
+                        Triple(0.52f, 0.72f, TwigiAction.IDLE)
+                    )
+                    val pick = spots[random.nextInt(spots.size)]
+                    val facing = if (pick.first > _myTwigiState.value.x) FacingDirection.RIGHT else FacingDirection.LEFT
+                    moveMyTwigiTo(pick.first, pick.second, facing = facing, isWalking = true, action = pick.third)
+                    kotlinx.coroutines.delay(1200L)
+                    val current = _myTwigiState.value
+                    _myTwigiState.value = current.copy(isWalking = false)
+                }
+            }
+        }
     }
+
+    private var lastUserInteractionTime = System.currentTimeMillis()
 
     fun setConnection(connectionCode: String, name: String) {
         if (_activeConnectionCode.value == connectionCode) return
@@ -122,6 +148,7 @@ class NestViewModel @Inject constructor(
         isWalking: Boolean = false,
         action: TwigiAction = if (isWalking) TwigiAction.WALK else TwigiAction.IDLE
     ) {
+        lastUserInteractionTime = System.currentTimeMillis()
         val current = _myTwigiState.value
         _myTwigiState.value = current.copy(
             x = targetX,
