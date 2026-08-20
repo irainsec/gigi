@@ -67,6 +67,18 @@ class ScreensaverViewModel @Inject constructor(
     val breakCardDao: com.aman.gigi.data.dao.BreakCardDao
 ) : ViewModel() {
     
+    // UI Screens
+    enum class ScreensaverScreen {
+        LIST,
+        CREATE,
+        CREATE_GROUP,
+        JOIN,
+        MANAGE_GROUP,
+        PARTNER_SESSIONS,
+        SPARKLE, // New Camera Feature
+        SETTINGS // Global Settings
+    }
+    
     // Sparkle Send Status
     private val _sparkleSendStatus = MutableStateFlow(SendStatus.IDLE)
     val sparkleSendStatus: StateFlow<SendStatus> = _sparkleSendStatus.asStateFlow()
@@ -334,6 +346,22 @@ class ScreensaverViewModel @Inject constructor(
     val pendingPhoneNumber: StateFlow<String?> = bootstrapManager.pendingPhoneNumber
     val devOtpHint: StateFlow<String?> = bootstrapManager.devOtpHint
 
+    // ── Nebula Discovery State Flows (Declared before init to prevent NPE) ──
+    private val _nebulaMotes = MutableStateFlow<List<com.aman.gigi.model.NebulaMember>>(emptyList())
+    val nebulaMotes: StateFlow<List<com.aman.gigi.model.NebulaMember>> = _nebulaMotes.asStateFlow()
+
+    private val _nebulaSearchResults = MutableStateFlow<List<com.aman.gigi.model.NebulaMember>>(emptyList())
+    val nebulaSearchResults: StateFlow<List<com.aman.gigi.model.NebulaMember>> = _nebulaSearchResults.asStateFlow()
+
+    private val _isNebulaLoading = MutableStateFlow(false)
+    val isNebulaLoading: StateFlow<Boolean> = _isNebulaLoading.asStateFlow()
+
+    private val _nebulaSearchQuery = MutableStateFlow("")
+    val nebulaSearchQuery: StateFlow<String> = _nebulaSearchQuery.asStateFlow()
+
+    private val _pendingGhostInvites = MutableStateFlow<Set<String>>(emptySet())
+    val pendingGhostInvites: StateFlow<Set<String>> = _pendingGhostInvites.asStateFlow()
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val isPartnerTyping: StateFlow<Boolean> = _partnerConnectionId.flatMapLatest { id ->
         if (id == null) flowOf(false)
@@ -564,18 +592,6 @@ class ScreensaverViewModel @Inject constructor(
     fun resetSparkleStatus() {
         _sparkleSendStatus.value = SendStatus.IDLE
         pendingSparkleId = null
-    }
-    
-    // UI Screens
-    enum class ScreensaverScreen {
-        LIST,
-        CREATE,
-        CREATE_GROUP,
-        JOIN,
-        MANAGE_GROUP,
-        PARTNER_SESSIONS,
-        SPARKLE, // New Camera Feature
-        SETTINGS // Global Settings
     }
     
     // Navigation state
@@ -1825,22 +1841,7 @@ class ScreensaverViewModel @Inject constructor(
         bootstrapManager.deleteAccount()
     }
 
-    // ── Nebula Discovery State & Operations ───────────────────────────────
-
-    private val _nebulaMotes = MutableStateFlow<List<com.aman.gigi.model.NebulaMember>>(emptyList())
-    val nebulaMotes: StateFlow<List<com.aman.gigi.model.NebulaMember>> = _nebulaMotes.asStateFlow()
-
-    private val _nebulaSearchResults = MutableStateFlow<List<com.aman.gigi.model.NebulaMember>>(emptyList())
-    val nebulaSearchResults: StateFlow<List<com.aman.gigi.model.NebulaMember>> = _nebulaSearchResults.asStateFlow()
-
-    private val _isNebulaLoading = MutableStateFlow(false)
-    val isNebulaLoading: StateFlow<Boolean> = _isNebulaLoading.asStateFlow()
-
-    private val _nebulaSearchQuery = MutableStateFlow("")
-    val nebulaSearchQuery: StateFlow<String> = _nebulaSearchQuery.asStateFlow()
-
-    private val _pendingGhostInvites = MutableStateFlow<Set<String>>(emptySet())
-    val pendingGhostInvites: StateFlow<Set<String>> = _pendingGhostInvites.asStateFlow()
+    // ── Nebula Discovery Operations ───────────────────────────────
 
     fun loadNebulaMotes() {
         viewModelScope.launch {

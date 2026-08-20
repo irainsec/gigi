@@ -1,22 +1,22 @@
 {
-  "updatedAt": "2026-08-20T13:05:54Z",
-  "versionCode": 75,
-  "versionName": "v2.3.2",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.2-universal.apk",
+  "updatedAt": "2026-08-20T13:24:46Z",
+  "versionCode": 76,
+  "versionName": "v2.3.3",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.3-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "e9f85c3f65b668c5af37483a28989b1ffe0d2ad4b2c6e111f7e503e879ed69b4",
+  "sha256": "00bde5c0aedff786d43b1826467132c4e6e201af7d17410b3d542cc966b6e49d",
   "sizeMb": 50.4,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.2-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.2-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.2-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.2-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.3-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.3-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.3-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.3-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "119172824f6eb09de0da5115c0fe0c61d7aac2649bec37982956718a70109c5c",
-    "armeabi-v7a": "ac67274a810e9c329d1ec927ee5452e5afd42094c264afafce872d5e81c16e79",
-    "x86": "3749926fd590c7d2f618854de81a90f2a0c9fea9bd0954aedbd9b0300d07bd98",
-    "x86_64": "4f2ccd53e26a96f4ac289bc1f32d5b4dca96c12d5c8691a35ece4bb65b176ec0"
+    "arm64-v8a": "9e13aa196c25305ecb71227ce8a66dc0e5483e2941981c021f3ae24d55ea7716",
+    "armeabi-v7a": "19416799260fdb8ec1ccf88e959d417200d3fa4defa1c511fd73b68b1161a386",
+    "x86": "9b408b3ef4f8f5fabf463b83c057f9efbf7ed9b5ff9ee23f8c0bb9109a8b42be",
+    "x86_64": "d0e6ed131d29e8432e10e639347019a9eaa71aafbfe6ca9aace70806403df487"
   },
   "abiSizeMb": {
     "arm64-v8a": 25.6,
@@ -25,5 +25,5 @@
     "x86_64": 26.7
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Fix GalaxyView startup shader crash, bound radial gradient radii, and guarantee universal compatibility across all Android devices."
+  "releaseNotes": "Fix ScreensaverViewModel initialization order NullPointerException and restore smooth startup across all devices."
 }
