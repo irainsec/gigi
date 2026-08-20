@@ -324,27 +324,71 @@ private fun RenderRpgCharacter(
     val charWidth = 64.dp
     val charHeight = 72.dp
     val bobOffset = if (isWalking) walkBob.dp else 0.dp
+    val isSleeping = action == TwigiAction.SLEEP_BED
+
+    val sleepRotZ by animateFloatAsState(targetValue = if (isSleeping) -90f else 0f, label = "sleepRot")
+    val sleepOffsetX by animateDpAsState(targetValue = if (isSleeping) (-8).dp else 0.dp, label = "sleepX")
+    val sleepOffsetY by animateDpAsState(targetValue = if (isSleeping) 14.dp else 0.dp, label = "sleepY")
+
+    val sleepingBreathScale = if (isSleeping) {
+        val infiniteTransition = rememberInfiniteTransition(label = "sleepBreath")
+        val breath by infiniteTransition.animateFloat(
+            initialValue = 0.96f,
+            targetValue = 1.04f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1800, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "breath"
+        )
+        breath
+    } else if (!isWalking) breathScale else 1f
 
     Box(
         modifier = Modifier
             .offset(
-                x = x - (charWidth / 2),
-                y = y - (charHeight * 0.82f) + bobOffset
+                x = x - (charWidth / 2) + sleepOffsetX,
+                y = y - (charHeight * 0.82f) + bobOffset + sleepOffsetY
             )
-            .scale(if (!isWalking) breathScale else 1f)
+            .scale(sleepingBreathScale)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Emote Overhead Bubble (Agent Town style)
-            if (action == TwigiAction.SLEEP_BED) {
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = Color(0xFF1E1436).copy(alpha = 0.9f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.4f)),
-                    modifier = Modifier.padding(bottom = 2.dp)
+            if (isSleeping) {
+                // Floating Animated Zzz's drifting upward
+                val infiniteTransition = rememberInfiniteTransition(label = "zzz")
+                val zProgress by infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(2200, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart
+                    ),
+                    label = "zProgress"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .height(30.dp)
+                        .width(60.dp),
+                    contentAlignment = Alignment.BottomCenter
                 ) {
-                    Text("💤", fontSize = 13.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                    listOf(0.0f, 0.33f, 0.66f).forEachIndexed { i, offsetFrac ->
+                        val p = (zProgress + offsetFrac) % 1f
+                        val pAlpha = (sin(p * 3.14159f)).coerceIn(0f, 1f)
+                        val pY = (-p * 22f).dp
+                        val pX = (sin(p * 6.283f + i * 1.6f) * 10f).dp
+                        val pSize = (10 + (1f - p) * 6).sp
+                        Text(
+                            text = if (i == 0) "Z" else "z",
+                            color = Color(0xFFC084FC).copy(alpha = pAlpha),
+                            fontSize = pSize,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.offset(x = pX, y = pY)
+                        )
+                    }
                 }
             } else if (action == TwigiAction.JAM_MUSIC || isPlayingMusic) {
                 Surface(
@@ -372,45 +416,39 @@ private fun RenderRpgCharacter(
                 contentAlignment = Alignment.BottomCenter
             ) {
                 // Character Foot Shadow
-                Canvas(
-                    modifier = Modifier
-                        .size(32.dp, 10.dp)
-                        .align(Alignment.BottomCenter)
-                ) {
-                    drawOval(
-                        color = Color.Black.copy(alpha = 0.28f),
-                        topLeft = Offset.Zero,
-                        size = size
-                    )
-                }
-
-                if (!avatarUrl.isNullOrBlank()) {
-                    val parsedUrl = com.aman.gigi.utils.ImageUtils.parseEmojiModel(avatarUrl)
-                    AsyncImage(
-                        model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
-                            .data(parsedUrl)
-                            .crossfade(true)
-                            .build(),
-                        imageLoader = animLoader,
-                        contentDescription = name,
-                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                if (!isSleeping) {
+                    Canvas(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                rotationY = if (facing == FacingDirection.LEFT) 180f else 0f
-                            }
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                            .size(32.dp, 10.dp)
+                            .align(Alignment.BottomCenter)
                     ) {
-                        Text(
-                            text = "🧙",
-                            fontSize = 28.sp
+                        drawOval(
+                            color = Color.Black.copy(alpha = 0.28f),
+                            topLeft = Offset.Zero,
+                            size = size
                         )
                     }
                 }
+
+                val fallbackAvatarUrl = "https://gigi.iamanraj.com/twigi/anim?c=eyJib2R5IjoibWFsZSIsImFuaW0iOiJ3YWxrIiwic3R5bGUiOiJwaXhlbCIsImhlYWQiOiJodW1hbl9tYWxlX2xpZ2h0In0=&size=128"
+                val resolvedAvatar = avatarUrl?.takeIf { it.isNotBlank() } ?: fallbackAvatarUrl
+                val parsedUrl = com.aman.gigi.utils.ImageUtils.parseEmojiModel(resolvedAvatar)
+
+                AsyncImage(
+                    model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                        .data(parsedUrl)
+                        .crossfade(true)
+                        .build(),
+                    imageLoader = animLoader,
+                    contentDescription = name,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            rotationZ = sleepRotZ
+                            rotationY = if (facing == FacingDirection.LEFT) 180f else 0f
+                        }
+                )
             }
 
             // Name Pill (Pixel RPG Tag)

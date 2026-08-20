@@ -177,11 +177,18 @@ fun TwigiCreatorScreen(
         }
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF241B45), Color(0xFF352866), Color(0xFF4A3585))))
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
     ) {
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+                .background(Brush.verticalGradient(listOf(Color(0xFF241B45), Color(0xFF352866), Color(0xFF4A3585))))
+        ) {
+            Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -333,6 +340,7 @@ fun TwigiCreatorScreen(
             }
         }
     }
+}
 }
 
 @Composable

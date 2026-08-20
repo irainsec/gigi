@@ -68,11 +68,9 @@ fun NestScreen(
     }
 
     val partnerName = activeConnection?.partnerName?.takeIf { it.isNotBlank() } ?: "Partner"
-    val partnerAvatarUrl = if (activeConnection?.partnerAvatarMode == "TWIGI") {
-        activeConnection?.partnerTwigiUrl
-    } else {
-        activeConnection?.partnerTwigiUrl
-    }
+    val partnerAvatarUrl = activeConnection?.partnerTwigiUrl?.takeIf { it.isNotBlank() }
+        ?: activeConnection?.partnerEmojiUrl?.takeIf { it.isNotBlank() }
+        ?: activeConnection?.partnerAvatarUrl?.takeIf { it.isNotBlank() }
 
     LaunchedEffect(activeConnection) {
         val code = activeConnection?.connectionId
@@ -129,8 +127,9 @@ fun NestScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
+                .displayCutoutPadding()
                 .statusBarsPadding()
-                .padding(top = 10.dp, start = 16.dp, end = 16.dp)
+                .padding(top = 6.dp, start = 12.dp, end = 12.dp)
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -142,10 +141,10 @@ fun NestScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Connection Selector / Nest Title Pill
-                Box {
+                Box(modifier = Modifier.weight(1f, fill = false)) {
                     Surface(
                         shape = RoundedCornerShape(999.dp),
-                        color = Color(0xFF1E1436).copy(alpha = 0.88f),
+                        color = Color(0xFF1E1436).copy(alpha = 0.92f),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.35f)),
                         shadowElevation = 8.dp,
                         modifier = Modifier.clickable {
@@ -155,16 +154,18 @@ fun NestScreen(
                         }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
-                            Text("🏡", fontSize = 14.sp)
+                            Text("🏡", fontSize = 13.sp)
                             Text(
                                 text = "${partnerName}'s Nest",
                                 color = Color.White,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                             if (activeConnections.size > 1) {
                                 Text("▾", color = Color(0xFFC084FC), fontSize = 11.sp)
@@ -174,7 +175,8 @@ fun NestScreen(
                                 text = timeOfDay.label,
                                 color = Color(0xFFFDE68A),
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
                             )
                         }
                     }
@@ -204,80 +206,93 @@ fun NestScreen(
                         }
                     }
                 }
+                Spacer(Modifier.width(8.dp))
 
-                // Action Buttons Row
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Twigi Customizer Button
-                    IconButton(
-                        onClick = { showLpcStudio = true },
-                        colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0xFF1E1436).copy(alpha = 0.88f)),
-                        modifier = Modifier
-                            .size(38.dp)
-                            .border(1.dp, Color(0xFFFBBF24).copy(alpha = 0.45f), CircleShape)
+                // Unified Action Buttons Glass Pill
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = Color(0xFF1E1436).copy(alpha = 0.92f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.35f)),
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("🧙", fontSize = 16.sp)
-                    }
-
-                    // Decor Shop Button
-                    IconButton(
-                        onClick = { viewModel.setShopOpen(true) },
-                        colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0xFF1E1436).copy(alpha = 0.88f)),
-                        modifier = Modifier
-                            .size(38.dp)
-                            .border(1.dp, Color(0xFFC084FC).copy(alpha = 0.35f), CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Palette,
-                            contentDescription = "Decorate",
-                            tint = Color(0xFFF472B6),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    // Fridge Magnet Notes Button
-                    val noteCount = roomData?.fridgeNotes?.size ?: 0
-                    Box {
-                        IconButton(
-                            onClick = { viewModel.setFridgeOpen(true) },
-                            colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0xFF1E1436).copy(alpha = 0.88f)),
+                        // Twigi Customizer Button
+                        Box(
                             modifier = Modifier
-                                .size(38.dp)
-                                .border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.35f), CircleShape)
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .clickable { showLpcStudio = true },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text("🧊", fontSize = 16.sp)
+                            Text("🧙", fontSize = 15.sp)
                         }
-                        if (noteCount > 0) {
-                            Surface(
-                                shape = CircleShape,
-                                color = Color(0xFFF43F5E),
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .align(Alignment.TopEnd)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = "$noteCount",
-                                        color = Color.White,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+
+                        // Decor Shop Button
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .clickable { viewModel.setShopOpen(true) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Palette,
+                                contentDescription = "Decorate",
+                                tint = Color(0xFFF472B6),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        // Fridge Magnet Notes Button
+                        val noteCount = roomData?.fridgeNotes?.size ?: 0
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .clickable { viewModel.setFridgeOpen(true) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("🧊", fontSize = 14.sp)
+                            if (noteCount > 0) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color(0xFFF43F5E),
+                                    modifier = Modifier
+                                        .size(11.dp)
+                                        .align(Alignment.TopEnd)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = "$noteCount",
+                                            color = Color.White,
+                                            fontSize = 7.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    // Quick Emote Trigger Button
-                    IconButton(
-                        onClick = { showEmotePicker = !showEmotePicker },
-                        colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0xFFEC4899).copy(alpha = 0.88f)),
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Favorite,
-                            contentDescription = "Send Emote",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        // Quick Emote Trigger Button
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFEC4899))
+                                .clickable { showEmotePicker = !showEmotePicker },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Send Emote",
+                                tint = Color.White,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
                     }
                 }
             }

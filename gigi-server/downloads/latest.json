@@ -1,22 +1,22 @@
 {
-  "updatedAt": "2026-08-20T20:18:14Z",
-  "versionCode": 80,
-  "versionName": "v2.3.7",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.7-universal.apk",
+  "updatedAt": "2026-08-20T21:21:28Z",
+  "versionCode": 81,
+  "versionName": "v2.3.8",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.8-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "650d598236fad541ed041e167af7fc44f5bb1d76ebd28518bda41ba650eace9a",
+  "sha256": "4d22be088d1a784d770b9e2f446b49a211572aa0052956033711ef56a11343ed",
   "sizeMb": 50.4,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.7-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.7-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.7-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.7-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.8-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.8-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.8-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.8-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "137d02a9822877bc35f379ba7dc55593b1fbcba0b82d52f0a298fd026814eacd",
-    "armeabi-v7a": "a7a3918c69549ea50953e7816ec2aeb3589df3a5f27d9c44c8c6f17bf9461609",
-    "x86": "573bf33870dd4be1a0fe9b276f830479dd2f4326507b634527efd417654bcef2",
-    "x86_64": "59e0a94d07c19bcfba0ae6d25b5ae59a84e6f57c0d794cc95c80f84f37c09de9"
+    "arm64-v8a": "61ea1aebf6c6ec63bf50c3606a07a39c84a97064580112fdb9bbcaeb92c9cda9",
+    "armeabi-v7a": "098a629f1d8bc6e00f1a566a84f7fa4aec99c5639ede68348849c609dacb7565",
+    "x86": "e3a2911dd63c92945aff1661d08ed6301f44bc881f3c1c6620b48bb18210e3bc",
+    "x86_64": "42dafa3355d69548b857acb9f2a157c66d47cb181cc731d9c98bfdfb570c356b"
   },
   "abiSizeMb": {
     "arm64-v8a": 25.6,
@@ -25,5 +25,5 @@
     "x86_64": 26.7
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Galaxy Cosmic Visitors: Interactive incoming invite cards on Galaxy View, accept/decline actions, and self-invite prevention."
+  "releaseNotes": "Cozy Nest Living: Lying-down sleeping animation with drifting Zzzs, full-screen Twigi Studio overlay, unified HUD pill, and partner avatar rendering."
 }
