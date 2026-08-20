@@ -358,6 +358,7 @@ fun Developer(
                         openedConnectionId = id
                     },
                     onSunClick = { showProfileHub = true },
+                    onOpenMemories = { viewModel.openMemoriesSpace() },
                     onNowPlayingClick = { np ->
                         val searchTrack = if (np.title.isNotBlank()) "${np.title} ${np.artist}".trim() else np.label
                         val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://open.spotify.com/search/${android.net.Uri.encode(searchTrack)}")).apply {
@@ -798,6 +799,38 @@ fun Developer(
                     }
                 )
             }
+        }
+
+        // ── Cosmic Memories Space Overlay ──
+        val isMemoriesSpaceOpen by viewModel.isMemoriesSpaceOpen.collectAsState()
+        val selectedMemoriesConnection by viewModel.selectedMemoriesConnection.collectAsState()
+        val sharedSparkles by viewModel.sharedSparkles.collectAsState()
+
+        if (isMemoriesSpaceOpen) {
+            com.aman.gigi.ui.memories.MemoriesSpaceScreen(
+                identity = memberIdentity,
+                connections = activeConnections,
+                selectedConnection = selectedMemoriesConnection,
+                sparkles = sharedSparkles,
+                onSelectConnection = { conn ->
+                    if (conn.connectionId.isBlank()) {
+                        viewModel.openMemoriesSpace(null)
+                    } else {
+                        viewModel.selectMemoriesConnection(conn)
+                    }
+                },
+                onBack = {
+                    viewModel.closeMemoriesSpace()
+                },
+                onReplayScribble = { id ->
+                    viewModel.replayScribble(id)
+                },
+                onSendSparkle = { conn ->
+                    viewModel.selectConnection(conn)
+                    viewModel.closeMemoriesSpace()
+                    viewModel.navigateTo(ScreensaverViewModel.ScreensaverScreen.SPARKLE, conn.connectionId)
+                }
+            )
         }
     }
 }

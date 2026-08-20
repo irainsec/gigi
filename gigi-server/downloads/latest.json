@@ -1,22 +1,22 @@
 {
-  "updatedAt": "2026-08-20T21:21:28Z",
-  "versionCode": 81,
-  "versionName": "v2.3.8",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.8-universal.apk",
+  "updatedAt": "2026-08-20T21:39:07Z",
+  "versionCode": 82,
+  "versionName": "v2.3.9",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.9-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "4d22be088d1a784d770b9e2f446b49a211572aa0052956033711ef56a11343ed",
+  "sha256": "e77326030c40d13fa4b57c2f5fcdf85e6afaffe0af433fb707e078073c0a656d",
   "sizeMb": 50.4,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.8-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.8-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.8-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.8-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.9-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.9-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.9-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.9-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "61ea1aebf6c6ec63bf50c3606a07a39c84a97064580112fdb9bbcaeb92c9cda9",
-    "armeabi-v7a": "098a629f1d8bc6e00f1a566a84f7fa4aec99c5639ede68348849c609dacb7565",
-    "x86": "e3a2911dd63c92945aff1661d08ed6301f44bc881f3c1c6620b48bb18210e3bc",
-    "x86_64": "42dafa3355d69548b857acb9f2a157c66d47cb181cc731d9c98bfdfb570c356b"
+    "arm64-v8a": "0070c1accd7561fdc354f8e372e815818ca412822c51472a9e21a15b58749a18",
+    "armeabi-v7a": "5a205a3483487598bcdf2f4854d052996bccb34c97e4664afcb0cf42e6389e58",
+    "x86": "2e2d0ce13be1395fff18973f67168882113d755e0c69c3fea479c33b41a996e9",
+    "x86_64": "5ab96711dfcb56e6e66f58f3b7ea1c744ae065d61ac3b1403ca69bd6ca184397"
   },
   "abiSizeMb": {
     "arm64-v8a": 25.6,
@@ -25,5 +25,5 @@
     "x86_64": 26.7
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Cozy Nest Living: Lying-down sleeping animation with drifting Zzzs, full-screen Twigi Studio overlay, unified HUD pill, and partner avatar rendering."
+  "releaseNotes": "Memories Space: Celestial drag-to-connection sanctuary, shared sparkles gallery, photo lightbox, and live stroke replay."
 }

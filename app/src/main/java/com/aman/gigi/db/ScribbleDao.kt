@@ -14,6 +14,12 @@ interface ScribbleDao {
     @Query("SELECT scribbleId, connectionId, status, createdAt, mediaType, revealType, isSent FROM scribbles WHERE connectionId = :connectionId ORDER BY createdAt DESC")
     fun getScribbleSummariesByConnection(connectionId: String): Flow<List<com.aman.gigi.model.ScribbleSummary>>
     
+    @Query("SELECT * FROM scribbles WHERE connectionId = :connectionId ORDER BY createdAt DESC")
+    fun getFullScribblesFlowByConnection(connectionId: String): Flow<List<Scribble>>
+
+    @Query("SELECT * FROM scribbles WHERE connectionId = :connectionId ORDER BY createdAt DESC")
+    suspend fun getFullScribblesByConnection(connectionId: String): List<Scribble>
+    
     @Query("SELECT scribbleId, connectionId, status, createdAt, mediaType, revealType, isSent FROM scribbles WHERE status = :status ORDER BY createdAt ASC LIMIT :limit")
     suspend fun getScribbleSummariesByStatus(status: ScribbleStatus, limit: Int = 10): List<com.aman.gigi.model.ScribbleSummary>
     

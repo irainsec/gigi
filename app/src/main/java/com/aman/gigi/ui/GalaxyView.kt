@@ -216,6 +216,7 @@ fun GalaxyView(
     camera: GalaxyCamera,
     onOpenConnection: (String) -> Unit,
     onSunClick: () -> Unit,
+    onOpenMemories: () -> Unit = {},
     onNowPlayingClick: (com.aman.gigi.data.nowplaying.NowPlaying) -> Unit = {},
     /** Shown as the call-to-action when the galaxy has no planets yet. */
     onInvite: () -> Unit = {},
@@ -2112,6 +2113,21 @@ fun GalaxyView(
                             ) {
                                 Text("🌌", fontSize = 13.sp)
                                 Text("Nebula", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Surface(
+                            onClick = { onOpenMemories() },
+                            shape = RoundedCornerShape(999.dp),
+                            color = Color.Transparent
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text("✨", fontSize = 13.sp)
+                                Text("Memories", color = Color(0xFFFDE68A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

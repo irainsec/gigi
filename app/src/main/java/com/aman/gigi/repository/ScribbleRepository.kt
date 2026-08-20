@@ -26,6 +26,14 @@ class ScribbleRepository @Inject constructor(
     fun getScribbleSummariesByConnection(connectionId: String): Flow<List<com.aman.gigi.model.ScribbleSummary>> {
         return scribbleDao.getScribbleSummariesByConnection(connectionId)
     }
+
+    fun getFullScribblesFlowByConnection(connectionId: String): Flow<List<Scribble>> {
+        return scribbleDao.getFullScribblesFlowByConnection(connectionId)
+    }
+
+    suspend fun getFullScribblesByConnection(connectionId: String): List<Scribble> {
+        return scribbleDao.getFullScribblesByConnection(connectionId)
+    }
     
     /**
      * Get pending scribbles (to be sent)

@@ -365,6 +365,16 @@ class ScreensaverViewModel @Inject constructor(
     private val _incomingNebulaInvites = MutableStateFlow<List<com.aman.gigi.model.IncomingNebulaInvite>>(emptyList())
     val incomingNebulaInvites: StateFlow<List<com.aman.gigi.model.IncomingNebulaInvite>> = _incomingNebulaInvites.asStateFlow()
 
+    // ── Memories Space (Cosmic Memory Vault) State Flows ──
+    private val _isMemoriesSpaceOpen = MutableStateFlow(false)
+    val isMemoriesSpaceOpen: StateFlow<Boolean> = _isMemoriesSpaceOpen.asStateFlow()
+
+    private val _selectedMemoriesConnection = MutableStateFlow<Connection?>(null)
+    val selectedMemoriesConnection: StateFlow<Connection?> = _selectedMemoriesConnection.asStateFlow()
+
+    private val _sharedSparkles = MutableStateFlow<List<com.aman.gigi.model.Scribble>>(emptyList())
+    val sharedSparkles: StateFlow<List<com.aman.gigi.model.Scribble>> = _sharedSparkles.asStateFlow()
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val isPartnerTyping: StateFlow<Boolean> = _partnerConnectionId.flatMapLatest { id ->
         if (id == null) flowOf(false)
@@ -1069,6 +1079,31 @@ class ScreensaverViewModel @Inject constructor(
 
     fun stopReplay() {
         _replayingScribble.value = null
+    }
+
+    // ── Memories Space Operations ─────────────────────────────────
+    fun openMemoriesSpace(connection: Connection? = null) {
+        _isMemoriesSpaceOpen.value = true
+        if (connection != null) {
+            selectMemoriesConnection(connection)
+        } else {
+            _selectedMemoriesConnection.value = null
+            _sharedSparkles.value = emptyList()
+        }
+    }
+
+    fun selectMemoriesConnection(connection: Connection) {
+        _selectedMemoriesConnection.value = connection
+        viewModelScope.launch {
+            val list = scribbleRepository.getFullScribblesByConnection(connection.connectionId)
+            _sharedSparkles.value = list
+        }
+    }
+
+    fun closeMemoriesSpace() {
+        _isMemoriesSpaceOpen.value = false
+        _selectedMemoriesConnection.value = null
+        _sharedSparkles.value = emptyList()
     }
 
 

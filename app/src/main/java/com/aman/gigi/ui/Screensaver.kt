@@ -103,6 +103,7 @@ fun Screensaver(
     val pairingState by viewModel.pairingState.collectAsState()
     val activeConnections by viewModel.activeConnections.collectAsState()
     val partnerConnectionId by viewModel.partnerConnectionId.collectAsState()
+    val memberIdentity by viewModel.memberIdentity.collectAsState()
     val selectedConnection by viewModel.selectedConnection.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val isDrawingMode by viewModel.isDrawingMode.collectAsState()
@@ -127,9 +128,11 @@ fun Screensaver(
     }
 
     val isHistoryOpen by viewModel.isHistoryOpen.collectAsState()
+    val isMemoriesSpaceOpen by viewModel.isMemoriesSpaceOpen.collectAsState()
     val isTrackingLocation by viewModel.isTrackingLocation.collectAsState()
 
     val isBackHandlerEnabled = isTrackingLocation ||
+            isMemoriesSpaceOpen ||
             isHistoryOpen ||
             isDrawingMode ||
             currentScreen != ScreensaverViewModel.ScreensaverScreen.LIST
@@ -138,6 +141,8 @@ fun Screensaver(
     BackHandler(enabled = isBackHandlerEnabled) {
         if (isTrackingLocation) {
             viewModel.setTrackingLocation(false)
+        } else if (isMemoriesSpaceOpen) {
+            viewModel.closeMemoriesSpace()
         } else if (isHistoryOpen) {
             viewModel.setHistoryOpen(false)
         } else if (isDrawingMode) {
@@ -200,6 +205,9 @@ fun Screensaver(
                     },
                     onSunClick = {
                         viewModel.navigateTo(ScreensaverViewModel.ScreensaverScreen.SETTINGS)
+                    },
+                    onOpenMemories = {
+                        viewModel.openMemoriesSpace()
                     }
                 )
 
@@ -447,6 +455,38 @@ fun Screensaver(
                 onDismiss = { viewModel.dismissConnectionLimitSheet() }
             )
         }
+
+        // ── Cosmic Memories Space Overlay ──
+        val selectedMemoriesConnection by viewModel.selectedMemoriesConnection.collectAsState()
+        val sharedSparkles by viewModel.sharedSparkles.collectAsState()
+
+        if (isMemoriesSpaceOpen) {
+            com.aman.gigi.ui.memories.MemoriesSpaceScreen(
+                identity = memberIdentity,
+                connections = activeConnections,
+                selectedConnection = selectedMemoriesConnection,
+                sparkles = sharedSparkles,
+                onSelectConnection = { conn ->
+                    if (conn.connectionId.isBlank()) {
+                        viewModel.openMemoriesSpace(null)
+                    } else {
+                        viewModel.selectMemoriesConnection(conn)
+                    }
+                },
+                onBack = {
+                    viewModel.closeMemoriesSpace()
+                },
+                onReplayScribble = { id ->
+                    viewModel.replayScribble(id)
+                },
+                onSendSparkle = { conn ->
+                    viewModel.selectConnection(conn)
+                    viewModel.closeMemoriesSpace()
+                    viewModel.navigateTo(ScreensaverViewModel.ScreensaverScreen.SPARKLE, conn.connectionId)
+                }
+            )
+        }
+
 
         // Send Failed / Partner Offline Dialog
         val sendFailedName by viewModel.sendFailedPartnerName.collectAsState()
