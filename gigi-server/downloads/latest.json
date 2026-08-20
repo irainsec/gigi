@@ -1,22 +1,22 @@
 {
-  "updatedAt": "2026-08-20T19:35:41Z",
-  "versionCode": 77,
-  "versionName": "v2.3.4",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.4-universal.apk",
+  "updatedAt": "2026-08-20T19:52:08Z",
+  "versionCode": 78,
+  "versionName": "v2.3.5",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.5-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "4fcbcf0c05997fb4d002b5664927386aa7fd95a5a1339f940b4707aa3499409f",
+  "sha256": "b33ee54d19be4f46e11ceff96344792adf28153f5d9ea558d1a10b5c0279e84a",
   "sizeMb": 50.4,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.4-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.4-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.4-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.4-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.5-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.5-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.5-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.5-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "87bd174a622b72ead098c6da18a7998732564f8d79d7482a5c19dece3d2981b1",
-    "armeabi-v7a": "09022720ad03815fff6b2db8659f824c31af6ad0ed0b87dbdae9d326135290f0",
-    "x86": "4a5418b9834d009fbcd3a7f2cde234de411c11bf25b1939f054d7aa840644d28",
-    "x86_64": "f37d19ae84bf4644135606f3ad6d650454e845f4beb509bf1906ceb6c46547a3"
+    "arm64-v8a": "dbf7b19c415fbab906c7b3962d8a087359e7ff8add513a28786c97a1ff1af073",
+    "armeabi-v7a": "0288e204c5d42ab24a6658f49905c89d9ffd0bcd6077a002221bdadb742531d1",
+    "x86": "b262bf0cec419a8d4b380c3ca6926e9e58ba7921ada44673d6137e5f8afa8b7b",
+    "x86_64": "b7017812abcf75c7726176d6ef44ccdd57d5e1dd360a4501773aa5af252bf1e4"
   },
   "abiSizeMb": {
     "arm64-v8a": 25.6,
@@ -25,5 +25,5 @@
     "x86_64": 26.7
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Fix fullscreen lockscreen doodle display, auto-generate handles for public profiles, and enhance Cosmic Nebula browsing."
+  "releaseNotes": "Fix user profile badge overlapping, add free-roaming drifting public souls in Cosmic Nebula, and enable drag-to-galaxy starlight invites."
 }

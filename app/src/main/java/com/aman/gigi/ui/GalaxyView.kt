@@ -171,6 +171,21 @@ private class MoteShootingStar(
     val name: String
 )
 
+/** Smooth wandering harmonic drift for public users roaming freely across the Cosmic Nebula. */
+private fun computeNebulaMoteOffset(seed: Int, timeSec: Float, minDim: Float, zoom: Float): Offset {
+    val s = abs(seed)
+    val speed = 0.045f + (s % 5) * 0.012f
+    val phaseA = (s % 360) * (3.14159f / 180f)
+    val phaseB = ((s / 10) % 360) * (3.14159f / 180f)
+    
+    val baseSpanX = minDim * (0.34f + (s % 7) * 0.08f) * zoom
+    val baseSpanY = minDim * (0.22f + (s % 6) * 0.07f) * zoom
+    
+    val x = cos(timeSec * speed + phaseA) * baseSpanX + sin(timeSec * speed * 0.6f + phaseB) * (baseSpanX * 0.35f)
+    val y = sin(timeSec * speed * 0.85f + phaseB) * baseSpanY + cos(timeSec * speed * 0.45f + phaseA) * (baseSpanY * 0.3f)
+    return Offset(x, y)
+}
+
 /**
  * Full-screen 3D-style galaxy rendered natively with Compose Canvas (no WebView): you are the
  * sun at the center, each connection is a planet (real textures) orbiting on tilted rings, groups
@@ -570,6 +585,36 @@ fun GalaxyView(
             ?: identity?.avatarUrl?.takeIf { it.isNotBlank() }
             ?: identity?.profileEmojiUrl?.takeIf { it.isNotBlank() }
             ?: com.aman.gigi.ui.components.TELEGRAM_EMOJIS.first()
+    }
+
+    val allNebulaMotes = remember(nebulaMotes, identity, emojiSelfPref) {
+        if (identity?.discoverable == true) {
+            val myId = identity.memberId.takeIf { it.isNotBlank() } ?: "self_user"
+            val alreadyHasMe = nebulaMotes.any { it.memberId == myId }
+            if (!alreadyHasMe) {
+                val myEmoji = emojiSelfPref?.takeIf { it.isNotBlank() }
+                    ?: identity.profileEmojiUrl?.takeIf { it.isNotBlank() }
+                    ?: sunEmojiUrl
+                val myMote = com.aman.gigi.model.NebulaMember(
+                    memberId = myId,
+                    handle = identity.handle ?: "you",
+                    displayName = identity.displayName.takeIf { !it.isNullOrBlank() } ?: "You",
+                    avatarUrl = identity.avatarUrl,
+                    twigiRenderUrl = if (identity.avatarMode == "TWIGI") identity.twigiRenderUrl else null,
+                    profileEmojiUrl = myEmoji,
+                    avatarMode = identity.avatarMode ?: "EMOJI",
+                    bio = identity.bio ?: "Exploring the cosmic realm ✨",
+                    nebulaSeed = myId.hashCode(),
+                    isRecentlyActive = true,
+                    inviteStatus = "SELF"
+                )
+                listOf(myMote) + nebulaMotes
+            } else {
+                nebulaMotes
+            }
+        } else {
+            nebulaMotes
+        }
     }
 
     // Precomputed starfield (stable across recompositions).
@@ -980,16 +1025,14 @@ fun GalaxyView(
                 var hitMote: com.aman.gigi.model.NebulaMember? = null
                 var hitMoteD = Float.MAX_VALUE
                 val isNebulaEnabled = !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula
-                if (!hitSun && hit == null && isNebulaEnabled && nebulaMotes.isNotEmpty()) {
-                    val nebulaCenterY = pcy + 1800f * zoom
-                    nebulaMotes.forEach { m ->
-                        val angleA = (m.nebulaSeed * 0.137f) + (frame / 10_000_000_000f) * 0.18f
-                        val angleB = (m.nebulaSeed * 0.281f) + (frame / 10_000_000_000f) * 0.12f
-                        val distNormX = (cos(angleA) * 0.75f + sin(angleB * 0.5f) * 0.25f)
-                        val distNormY = (sin(angleB) * 0.75f + cos(angleA * 0.5f) * 0.25f)
-                        val mx = pcx + distNormX * (minDim * 0.95f) * zoom
-                        val my = nebulaCenterY + distNormY * (minDim * 0.75f) * zoom
-                        val rad = pr * 1.5f + 32f
+                if (!hitSun && hit == null && isNebulaEnabled && allNebulaMotes.isNotEmpty()) {
+                    val nebulaCenterY = pcy + 1800f * zoom + 150f * zoom
+                    val timeSec = frame / 1_000_000_000f
+                    allNebulaMotes.forEach { m ->
+                        val offset = computeNebulaMoteOffset(m.nebulaSeed, timeSec, minDim, zoom)
+                        val mx = pcx + offset.x
+                        val my = nebulaCenterY + offset.y
+                        val rad = pr * 1.6f + 36f
                         val d = hypot(down.position.x - mx, down.position.y - my)
                         if (d < rad && d < hitMoteD) {
                             hitMoteD = d
@@ -1067,23 +1110,42 @@ fun GalaxyView(
                 } else if (hm != null) {
                     if (totalMove < 16f) {
                         selectedMote = hm
-                    } else if (dragMotePos.y < pcy + 900f * zoom) {
-                        // Dragged upward into Galaxy territory -> launch starlight arc!
-                        val rndAng = (rnd.nextFloat() * 6.2832f)
-                        val farR = orbitRadiusPx(3, minDim)
-                        val targetX = pcx + farR * cos(rndAng)
-                        val targetY = pcy + farR * tilt * sin(rndAng)
-                        moteShootingStars.add(
-                            MoteShootingStar(
-                                startX = dragMotePos.x,
-                                startY = dragMotePos.y,
-                                targetX = targetX,
-                                targetY = targetY,
-                                avatarUrl = hm.twigiRenderUrl ?: hm.avatarUrl ?: hm.profileEmojiUrl,
-                                name = hm.displayName
+                    } else {
+                        val isInsideGalaxy = dragMotePos.y < (pcy + 900f * zoom)
+                        if (isInsideGalaxy) {
+                            val ux = (dragMotePos.x - pcx) / zoom
+                            val uy = (dragMotePos.y - pcy) / (zoom * tilt)
+                            val dist = hypot(ux, uy)
+                            var bestOrbit = 3
+                            var bd = Float.MAX_VALUE
+                            for (oi in 0 until ORBIT_COUNT) {
+                                val rr = (0.17f + oi * 0.115f) * minDim
+                                val dd = abs(rr - dist)
+                                if (dd < bd) { bd = dd; bestOrbit = oi }
+                            }
+
+                            val rndAng = (rnd.nextFloat() * 6.2832f)
+                            val targetR = orbitRadiusPx(bestOrbit, minDim)
+                            val targetX = pcx + targetR * cos(rndAng)
+                            val targetY = pcy + targetR * tilt * sin(rndAng)
+                            val avatar = if (hm.avatarMode == "TWIGI" && !hm.twigiRenderUrl.isNullOrBlank()) {
+                                hm.twigiRenderUrl
+                            } else {
+                                hm.profileEmojiUrl?.takeIf { it.isNotBlank() } ?: hm.avatarUrl
+                            }
+
+                            moteShootingStars.add(
+                                MoteShootingStar(
+                                    startX = dragMotePos.x,
+                                    startY = dragMotePos.y,
+                                    targetX = targetX,
+                                    targetY = targetY,
+                                    avatarUrl = avatar,
+                                    name = hm.displayName
+                                )
                             )
-                        )
-                        onInviteMote(hm)
+                            onInviteMote(hm)
+                        }
                     }
                     draggingMote = null
                 } else if (hitSun) {
@@ -1638,40 +1700,13 @@ fun GalaxyView(
 
             // ── Overlay Public Motes in the Cosmic Nebula ──
             val isNebulaOverlayEnabled = !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula
-            val allNebulaMotes = remember(nebulaMotes, identity) {
-                if (identity?.discoverable == true) {
-                    val myId = identity.memberId.takeIf { it.isNotBlank() } ?: "self_user"
-                    val alreadyHasMe = nebulaMotes.any { it.memberId == myId }
-                    if (!alreadyHasMe) {
-                        val myMote = com.aman.gigi.model.NebulaMember(
-                            memberId = myId,
-                            handle = identity.handle ?: "you",
-                            displayName = identity.displayName.takeIf { !it.isNullOrBlank() } ?: "You",
-                            avatarUrl = identity.avatarUrl,
-                            twigiRenderUrl = identity.twigiRenderUrl,
-                            profileEmojiUrl = identity.profileEmojiUrl,
-                            bio = identity.bio ?: "Exploring the cosmic realm ✨",
-                            nebulaSeed = myId.hashCode(),
-                            isRecentlyActive = true,
-                            inviteStatus = "SELF"
-                        )
-                        listOf(myMote) + nebulaMotes
-                    } else {
-                        nebulaMotes
-                    }
-                } else {
-                    nebulaMotes
-                }
-            }
 
             if (isNebulaOverlayEnabled && allNebulaMotes.isNotEmpty()) {
                 val nebulaCenterY = pcy + 1800f * zoom + 150f * zoom
+                val timeSec = currentFrame / 1_000_000_000f
                 allNebulaMotes.forEach { mote ->
                     val isSelf = (mote.memberId == identity?.memberId)
-                    val angleA = (mote.nebulaSeed * 0.137f) + (currentFrame / 10_000_000_000f) * 0.18f
-                    val angleB = (mote.nebulaSeed * 0.281f) + (currentFrame / 10_000_000_000f) * 0.12f
-                    val distNormX = (cos(angleA) * 0.75f + sin(angleB * 0.5f) * 0.25f)
-                    val distNormY = (sin(angleB) * 0.75f + cos(angleA * 0.5f) * 0.25f)
+                    val offset = computeNebulaMoteOffset(mote.nebulaSeed, timeSec, minDim, zoom)
 
                     val isMatch = searchQuery.isBlank() ||
                         mote.displayName.contains(searchQuery, ignoreCase = true) ||
@@ -1679,33 +1714,35 @@ fun GalaxyView(
                         (mote.bio?.contains(searchQuery, ignoreCase = true) == true)
 
                     val moteAlpha = if (isMatch) 1.0f else 0.18f
-                    val moteScale = if (searchQuery.isNotBlank() && isMatch) 1.25f else if (isSelf) 1.15f else 1.0f
-
                     val isDraggingThis = draggingMote?.memberId == mote.memberId
-                    val mx = if (isDraggingThis) dragMotePos.x else pcx + distNormX * (minDim * 0.95f) * zoom
-                    val my = if (isDraggingThis) dragMotePos.y else nebulaCenterY + distNormY * (minDim * 0.75f) * zoom
+                    val moteScale = if (isDraggingThis) 1.35f else if (searchQuery.isNotBlank() && isMatch) 1.25f else if (isSelf) 1.15f else 1.0f
+
+                    val mx = if (isDraggingThis) dragMotePos.x else pcx + offset.x
+                    val my = if (isDraggingThis) dragMotePos.y else nebulaCenterY + offset.y
 
                     val moteRad = pr * 1.35f * moteScale
                     val moteSizeDp = with(density) { (moteRad * 2).toDp() }
 
                     val isSent = mote.inviteStatus == "SENT" || pendingGhostInvites.contains(mote.memberId)
-                    val moteAvatar = mote.twigiRenderUrl?.takeIf { it.isNotBlank() }
-                        ?: mote.avatarUrl?.takeIf { it.isNotBlank() }
-                        ?: mote.profileEmojiUrl?.takeIf { it.isNotBlank() }
-                        ?: if (isSelf) sunEmojiUrl else com.aman.gigi.ui.components.TELEGRAM_EMOJIS.first()
+                    val moteAvatar = if (mote.avatarMode == "TWIGI" && !mote.twigiRenderUrl.isNullOrBlank()) {
+                        mote.twigiRenderUrl
+                    } else {
+                        mote.profileEmojiUrl?.takeIf { it.isNotBlank() }
+                            ?: mote.avatarUrl?.takeIf { it.isNotBlank() }
+                            ?: if (isSelf) sunEmojiUrl else com.aman.gigi.ui.components.TELEGRAM_EMOJIS.first()
+                    }
 
                     Box(
                         modifier = Modifier
                             .offset { IntOffset(mx.roundToInt() - moteRad.roundToInt(), my.roundToInt() - moteRad.roundToInt()) }
                             .size(moteSizeDp)
-                            .clip(CircleShape)
-                            .clickable { selectedMote = mote }
                     ) {
                         // Glowing Halo
                         val haloColors = when {
-                            isSelf -> listOf(Color(0xFFFBBF24).copy(alpha = 0.7f * moteAlpha), Color(0xFFC084FC).copy(alpha = 0.35f * moteAlpha), Color.Transparent)
-                            isSent -> listOf(Color(0xFFC084FC).copy(alpha = 0.55f * moteAlpha), Color.Transparent)
-                            else -> listOf(Color(0xFFEC4899).copy(alpha = 0.55f * moteAlpha), Color.Transparent)
+                            isDraggingThis -> listOf(Color(0xFFF472B6).copy(alpha = 0.9f), Color(0xFFC084FC).copy(alpha = 0.6f), Color.Transparent)
+                            isSelf -> listOf(Color(0xFFFBBF24).copy(alpha = 0.75f * moteAlpha), Color(0xFFC084FC).copy(alpha = 0.35f * moteAlpha), Color.Transparent)
+                            isSent -> listOf(Color(0xFFC084FC).copy(alpha = 0.6f * moteAlpha), Color.Transparent)
+                            else -> listOf(Color(0xFFEC4899).copy(alpha = 0.6f * moteAlpha), Color.Transparent)
                         }
                         Box(
                             modifier = Modifier
@@ -1725,21 +1762,11 @@ fun GalaxyView(
                                 .fillMaxSize()
                                 .padding(4.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF1E1035).copy(alpha = 0.8f * moteAlpha))
+                                .background(Color(0xFF1E1035).copy(alpha = 0.85f * moteAlpha))
                         )
 
-                        // Active / Self Indicator
-                        if (isSelf) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(Color(0xFFFBBF24))
-                                    .padding(horizontal = 4.dp, vertical = 1.dp)
-                            ) {
-                                Text("✨", fontSize = 8.sp)
-                            }
-                        } else if (mote.isRecentlyActive) {
+                        // Active Indicator for others
+                        if (!isSelf && mote.isRecentlyActive) {
                             val dotSize = (moteSizeDp * 0.16f).coerceIn(7.dp, 11.dp)
                             Box(
                                 modifier = Modifier

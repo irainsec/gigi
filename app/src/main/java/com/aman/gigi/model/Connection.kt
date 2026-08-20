@@ -125,6 +125,7 @@ data class NebulaMember(
     val avatarUrl: String? = null,
     val twigiRenderUrl: String? = null,
     val profileEmojiUrl: String? = null,
+    val avatarMode: String = "EMOJI",
     val bio: String? = null,
     val nebulaSeed: Int = 42,
     val isRecentlyActive: Boolean = false,
