@@ -1995,7 +1995,11 @@ app.post('/api/profile/discoverability', async (req, res) => {
                 }
                 normalizedHandle = rawHandle;
             } else if (discoverable) {
-                return res.status(400).json({ error: 'A valid handle is required to become discoverable in the Nebula.' });
+                const base = (member.displayName || member.googleDisplayName || 'star')
+                    .toLowerCase()
+                    .replace(/[^a-z0-9_]/g, '')
+                    .slice(0, 14);
+                normalizedHandle = (base.length >= 3 ? base : 'star') + '_' + Math.random().toString(36).substring(2, 6);
             } else {
                 normalizedHandle = null;
             }

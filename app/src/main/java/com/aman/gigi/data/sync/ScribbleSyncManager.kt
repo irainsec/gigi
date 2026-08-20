@@ -2998,30 +2998,25 @@ class ScribbleSyncManager @Inject constructor(
             .setSmallIcon(android.R.drawable.ic_dialog_info) 
             .setContentTitle(title)
             .setContentText(body)
-            .setPriority(if (isLocked) androidx.core.app.NotificationCompat.PRIORITY_MAX else androidx.core.app.NotificationCompat.PRIORITY_HIGH)
-            .setCategory(if (isLocked) androidx.core.app.NotificationCompat.CATEGORY_CALL else androidx.core.app.NotificationCompat.CATEGORY_MESSAGE)
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_MAX)
+            .setCategory(androidx.core.app.NotificationCompat.CATEGORY_CALL)
             .setContentIntent(pendingIntent)
+            .setFullScreenIntent(pendingIntent, true)
             .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC)
             .setSound(android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
             .setVibrate(longArrayOf(0, 500L))
             .setAutoCancel(true)
 
-        if (isLocked) {
-            builder.setFullScreenIntent(pendingIntent, true)
-        }
-
         val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         val notifId = scribble.scribbleId.hashCode()
         notificationManager.notify(notifId, builder.build())
         
-        // Direct launch attempt ONLY when keyguard is locked
-        if (isLocked) {
-            try {
-                context.startActivity(intent)
-                Log.i(TAG, "🚀 Direct activity launch initiated for locked screen: ${scribble.scribbleId}")
-            } catch (e: Exception) {
-                Log.w(TAG, "Direct activity launch blocked, relying on fullscreen intent", e)
-            }
+        // Direct launch attempt (Full Screen on Lockscreen / Overlay)
+        try {
+            context.startActivity(intent)
+            Log.i(TAG, "🚀 Direct activity launch initiated for scribble: ${scribble.scribbleId}")
+        } catch (e: Exception) {
+            Log.w(TAG, "Direct activity launch blocked, relying on fullscreen intent", e)
         }
     }
 

@@ -1,22 +1,22 @@
 {
-  "updatedAt": "2026-08-20T13:24:46Z",
-  "versionCode": 76,
-  "versionName": "v2.3.3",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.3-universal.apk",
+  "updatedAt": "2026-08-20T19:35:41Z",
+  "versionCode": 77,
+  "versionName": "v2.3.4",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.4-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "00bde5c0aedff786d43b1826467132c4e6e201af7d17410b3d542cc966b6e49d",
+  "sha256": "4fcbcf0c05997fb4d002b5664927386aa7fd95a5a1339f940b4707aa3499409f",
   "sizeMb": 50.4,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.3-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.3-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.3-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.3-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.4-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.4-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.4-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.4-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "9e13aa196c25305ecb71227ce8a66dc0e5483e2941981c021f3ae24d55ea7716",
-    "armeabi-v7a": "19416799260fdb8ec1ccf88e959d417200d3fa4defa1c511fd73b68b1161a386",
-    "x86": "9b408b3ef4f8f5fabf463b83c057f9efbf7ed9b5ff9ee23f8c0bb9109a8b42be",
-    "x86_64": "d0e6ed131d29e8432e10e639347019a9eaa71aafbfe6ca9aace70806403df487"
+    "arm64-v8a": "87bd174a622b72ead098c6da18a7998732564f8d79d7482a5c19dece3d2981b1",
+    "armeabi-v7a": "09022720ad03815fff6b2db8659f824c31af6ad0ed0b87dbdae9d326135290f0",
+    "x86": "4a5418b9834d009fbcd3a7f2cde234de411c11bf25b1939f054d7aa840644d28",
+    "x86_64": "f37d19ae84bf4644135606f3ad6d650454e845f4beb509bf1906ceb6c46547a3"
   },
   "abiSizeMb": {
     "arm64-v8a": 25.6,
@@ -25,5 +25,5 @@
     "x86_64": 26.7
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Fix ScreensaverViewModel initialization order NullPointerException and restore smooth startup across all devices."
+  "releaseNotes": "Fix fullscreen lockscreen doodle display, auto-generate handles for public profiles, and enhance Cosmic Nebula browsing."
 }
