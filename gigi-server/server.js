@@ -2003,7 +2003,11 @@ app.post('/api/profile/discoverability', async (req, res) => {
 
         const isDiscoverable = Boolean(discoverable);
         if (isDiscoverable && !normalizedHandle) {
-            return res.status(400).json({ error: 'You must set a handle before making your profile public.' });
+            const base = (member.displayName || member.googleDisplayName || 'star')
+                .toLowerCase()
+                .replace(/[^a-z0-9_]/g, '')
+                .slice(0, 14);
+            normalizedHandle = (base.length >= 3 ? base : 'star') + '_' + Math.random().toString(36).substring(2, 6);
         }
 
         const cleanBio = bio !== undefined ? (sanitizeText(bio, 80) || null) : member.bio;

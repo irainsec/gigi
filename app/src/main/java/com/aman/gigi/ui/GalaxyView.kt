@@ -979,8 +979,8 @@ fun GalaxyView(
                 // Hit-test Nebula public motes
                 var hitMote: com.aman.gigi.model.NebulaMember? = null
                 var hitMoteD = Float.MAX_VALUE
-                val isDiscoverable = identity?.discoverable == true
-                if (!hitSun && hit == null && isDiscoverable && nebulaMotes.isNotEmpty()) {
+                val isNebulaEnabled = !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula
+                if (!hitSun && hit == null && isNebulaEnabled && nebulaMotes.isNotEmpty()) {
                     val nebulaCenterY = pcy + 1800f * zoom
                     nebulaMotes.forEach { m ->
                         val angleA = (m.nebulaSeed * 0.137f) + (frame / 10_000_000_000f) * 0.18f
@@ -1119,8 +1119,8 @@ fun GalaxyView(
         }
 
         // ── COSMIC NEBULA REGION (GPU Procedural Multi-Octave FBM Cloud & Starfield) ──
-        val isDiscoverable = identity?.discoverable == true && !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula
-        if (isDiscoverable) {
+        val isNebulaEnabled = !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula
+        if (isNebulaEnabled) {
             val nebulaScreenX = pcx
             val nebulaScreenY = pcy + 1800f * zoom + 150f * zoom
 
@@ -1637,7 +1637,7 @@ fun GalaxyView(
             }
 
             // ── Overlay Public Motes in the Cosmic Nebula ──
-            val isDiscoverable = identity?.discoverable == true && !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula
+            val isNebulaOverlayEnabled = !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula
             val allNebulaMotes = remember(nebulaMotes, identity) {
                 if (identity?.discoverable == true) {
                     val myId = identity.memberId
@@ -1664,7 +1664,7 @@ fun GalaxyView(
                 }
             }
 
-            if (isDiscoverable && allNebulaMotes.isNotEmpty()) {
+            if (isNebulaOverlayEnabled && allNebulaMotes.isNotEmpty()) {
                 val nebulaCenterY = pcy + 1800f * zoom + 150f * zoom
                 allNebulaMotes.forEach { mote ->
                     val isSelf = (mote.memberId == identity?.memberId)
@@ -1822,8 +1822,8 @@ fun GalaxyView(
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (identity?.discoverable == true && !com.aman.gigi.utils.AppConfig.settings.killCosmicNebula) {
-                // Public Mode: Segmented Realm Switcher [ 🏠 My Galaxy | 🌌 Nebula ]
+            if (!com.aman.gigi.utils.AppConfig.settings.killCosmicNebula) {
+                // Segmented Realm Switcher [ 🏠 My Galaxy | 🌌 Nebula ]
                 Surface(
                     shape = RoundedCornerShape(999.dp),
                     color = Color(0xFF1E1035).copy(alpha = 0.92f),

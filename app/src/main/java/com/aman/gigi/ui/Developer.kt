@@ -194,12 +194,10 @@ fun Developer(
     val nebulaSearchQuery by viewModel.nebulaSearchQuery.collectAsState()
     val pendingGhostInvites by viewModel.pendingGhostInvites.collectAsState()
 
-    LaunchedEffect(memberIdentity?.discoverable) {
-        if (memberIdentity?.discoverable == true) {
-            while (true) {
-                viewModel.loadNebulaMotes()
-                kotlinx.coroutines.delay(25_000L)
-            }
+    LaunchedEffect(Unit) {
+        while (true) {
+            viewModel.loadNebulaMotes()
+            kotlinx.coroutines.delay(20_000L)
         }
     }
     val creatorConnections = activeConnections.filter { it.role.equals("CREATOR", ignoreCase = true) }

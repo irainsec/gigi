@@ -1,22 +1,22 @@
 {
-  "updatedAt": "2026-08-19T22:54:29Z",
-  "versionCode": 72,
-  "versionName": "v2.2.9",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.2.9-universal.apk",
+  "updatedAt": "2026-08-20T12:45:16Z",
+  "versionCode": 73,
+  "versionName": "v2.3.0",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.0-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "670dfedecb0fe845c4cba332b3eb67c591592aa5c2587e56261e38a4ea63d28e",
+  "sha256": "6fa56b8bfbb19d71c1b81fdefd16010d89288a48fe789035066f1342f46c1b44",
   "sizeMb": 50.2,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.2.9-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.2.9-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.2.9-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.2.9-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.0-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.0-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.0-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.0-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "4d9c4f12b2b5bdb67fcd083fc80d62bbdf1187c9fe1194fc186a8100653fec84",
-    "armeabi-v7a": "5d7be9828a909220e910eed62119e5647f4bfa3c37902b31eb4b8a82f12e2145",
-    "x86": "8366781a4ff0c256954d1be0042e04ed378c9dd6ff5609edd3859b8adc5c5ecb",
-    "x86_64": "8f57689ae90b1945e5f3af93388e68c704053e0db943ab77d42f18929711016c"
+    "arm64-v8a": "f85e1737cadf24c7301998419cd48a4bcd4ac29f031540b4026f2e6b8a8dffd3",
+    "armeabi-v7a": "00168b81c67f912892e1c6316b5647dfa977eb4595eede3d90f31ea41329bd65",
+    "x86": "815dc888f619f62c1c8da843162dc036b9aefcfe2b8d26e3162ae6aadeba00fb",
+    "x86_64": "5df7f176800ac9bf9ec206dd22d07380d6676b770540fdc3d53c9580d83a4d01"
   },
   "abiSizeMb": {
     "arm64-v8a": 25.5,
@@ -25,5 +25,5 @@
     "x86_64": 26.6
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Our Nest 2.5D RPG Overhaul: Authentic Agent Town / Gather Town pixel-art room architecture, dual-monitor workstations, cozy canopy beds, bookshelves, sofas, wall AC & bulletin boards, smooth continuous drag-to-walk with 4-directional facing, and natural depth sorting."
+  "releaseNotes": "Fix Cosmic Nebula public account discovery, fresh session tokens for Nebula browse/search, instant auto-save toggle for Cosmic Discovery, and always-accessible Realm Switcher."
 }

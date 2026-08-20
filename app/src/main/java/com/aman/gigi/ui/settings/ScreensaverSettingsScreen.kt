@@ -495,6 +495,39 @@ fun ScreensaverSettingsScreen(
                         onCheckedChange = { checked ->
                             isDiscoverableLocal = checked
                             discoveryError = null
+                            if (!checked) {
+                                isSavingDiscovery = true
+                                viewModel.toggleDiscoverability(
+                                    discoverable = false,
+                                    handle = handleInput.ifBlank { memberIdentity?.handle },
+                                    bio = bioInput
+                                ) {
+                                    isSavingDiscovery = false
+                                }
+                            } else {
+                                val targetHandle = if (handleInput.isNotBlank()) {
+                                    handleInput
+                                } else {
+                                    val base = (memberIdentity?.displayName ?: "star")
+                                        .lowercase()
+                                        .filter { it.isLetterOrDigit() || it == '_' }
+                                        .take(14)
+                                    val auto = if (base.length >= 3) base else "star_${System.currentTimeMillis() % 10000}"
+                                    handleInput = auto
+                                    auto
+                                }
+                                isSavingDiscovery = true
+                                viewModel.toggleDiscoverability(
+                                    discoverable = true,
+                                    handle = targetHandle,
+                                    bio = bioInput
+                                ) { res ->
+                                    isSavingDiscovery = false
+                                    if (res.isFailure) {
+                                        discoveryError = res.exceptionOrNull()?.message ?: "Failed to save"
+                                    }
+                                }
+                            }
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
@@ -573,26 +606,6 @@ fun ScreensaverSettingsScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                    }
-                } else if (memberIdentity?.discoverable == true) {
-                    val currentId = memberIdentity
-                    Button(
-                        onClick = {
-                            isSavingDiscovery = true
-                            viewModel.toggleDiscoverability(
-                                discoverable = false,
-                                handle = currentId?.handle,
-                                bio = currentId?.bio
-                            ) {
-                                isSavingDiscovery = false
-                            }
-                        },
-                        enabled = !isSavingDiscovery,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Switch to Private Mode", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
 

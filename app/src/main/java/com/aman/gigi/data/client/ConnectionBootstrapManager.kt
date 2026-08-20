@@ -1447,11 +1447,13 @@ class ConnectionBootstrapManager @Inject constructor(
     ): Result<MemberIdentity> = withContext(Dispatchers.IO) {
         try {
             val identity = _memberIdentity.value ?: return@withContext Result.failure(IllegalStateException("Not authenticated"))
+            val token = com.aman.gigi.data.auth.SessionTokenProvider.current(identity.authToken) ?: identity.authToken
             val response = requestJson(
                 path = "/api/profile/discoverability",
                 method = "POST",
+                headers = mapOf("x-session-token" to token),
                 body = JSONObject().apply {
-                    put("sessionToken", identity.authToken)
+                    put("sessionToken", token)
                     put("discoverable", discoverable)
                     if (handle != null) put("handle", handle)
                     if (bio != null) put("bio", bio)
@@ -1479,10 +1481,11 @@ class ConnectionBootstrapManager @Inject constructor(
     suspend fun fetchNebulaMotes(): List<com.aman.gigi.model.NebulaMember> = withContext(Dispatchers.IO) {
         try {
             val identity = _memberIdentity.value ?: return@withContext emptyList()
+            val token = com.aman.gigi.data.auth.SessionTokenProvider.current(identity.authToken) ?: identity.authToken
             val response = requestJson(
                 path = "/api/nebula/browse",
                 method = "GET",
-                headers = mapOf("x-session-token" to identity.authToken)
+                headers = mapOf("x-session-token" to token)
             )
             if (response.code in 200..299 && response.json != null) {
                 val json = response.json
@@ -1517,11 +1520,12 @@ class ConnectionBootstrapManager @Inject constructor(
         if (query.isBlank()) return@withContext emptyList()
         try {
             val identity = _memberIdentity.value ?: return@withContext emptyList()
+            val token = com.aman.gigi.data.auth.SessionTokenProvider.current(identity.authToken) ?: identity.authToken
             val encodedQ = java.net.URLEncoder.encode(query.trim(), "UTF-8")
             val response = requestJson(
                 path = "/api/nebula/search?q=$encodedQ",
                 method = "GET",
-                headers = mapOf("x-session-token" to identity.authToken)
+                headers = mapOf("x-session-token" to token)
             )
             if (response.code in 200..299 && response.json != null) {
                 val json = response.json

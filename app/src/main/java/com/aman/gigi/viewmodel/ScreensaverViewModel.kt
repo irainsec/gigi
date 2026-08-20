@@ -388,6 +388,13 @@ class ScreensaverViewModel @Inject constructor(
         }
         // Observe sync events
         viewModelScope.launch {
+            memberIdentity.collect { identity ->
+                if (identity != null) {
+                    loadNebulaMotes()
+                }
+            }
+        }
+        viewModelScope.launch {
             syncManager.events.collect { event: com.aman.gigi.data.sync.SyncEvent ->
                 when (event) {
                     is com.aman.gigi.data.sync.SyncEvent.SharedAlbumReceived -> {
@@ -1860,6 +1867,7 @@ class ScreensaverViewModel @Inject constructor(
         viewModelScope.launch {
             val res = bootstrapManager.updateDiscoverability(discoverable, handle, bio)
             if (res.isSuccess) {
+                loadNebulaMotes()
                 onResult(Result.success(Unit))
             } else {
                 onResult(Result.failure(res.exceptionOrNull() ?: Exception("Unknown error")))
