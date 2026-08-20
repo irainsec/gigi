@@ -23,12 +23,10 @@ import javax.inject.Singleton
 class NestRepository @Inject constructor(
     private val bootstrapManager: ConnectionBootstrapManager
 ) {
-    private val httpBaseUrl = run {
-        val wsUri = URI(BuildConfig.SERVER_URL)
-        val scheme = if (wsUri.scheme.equals("wss", ignoreCase = true)) "https" else "http"
-        URI(scheme, wsUri.userInfo, wsUri.host, if (wsUri.port == -1) -1 else wsUri.port, null, null, null)
-            .toString().trimEnd('/')
-    }
+    private val httpBaseUrl = BuildConfig.SERVER_URL
+        .replaceFirst("wss://", "https://")
+        .replaceFirst("ws://", "http://")
+        .trimEnd('/')
 
     private suspend fun token(force: Boolean = false): String? =
         SessionTokenProvider.current(bootstrapManager.memberIdentity.value?.authToken, force)

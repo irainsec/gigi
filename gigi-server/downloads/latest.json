@@ -1,29 +1,29 @@
 {
-  "updatedAt": "2026-08-20T12:45:16Z",
-  "versionCode": 73,
-  "versionName": "v2.3.0",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.0-universal.apk",
+  "updatedAt": "2026-08-20T12:56:07Z",
+  "versionCode": 74,
+  "versionName": "v2.3.1",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.3.1-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "6fa56b8bfbb19d71c1b81fdefd16010d89288a48fe789035066f1342f46c1b44",
-  "sizeMb": 50.2,
+  "sha256": "febb2864d732b29345ba1513567bb47c21693b03b0d8935cbc69f4e5507e67cd",
+  "sizeMb": 50.4,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.0-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.0-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.0-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.0-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.3.1-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.3.1-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.3.1-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.3.1-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "f85e1737cadf24c7301998419cd48a4bcd4ac29f031540b4026f2e6b8a8dffd3",
-    "armeabi-v7a": "00168b81c67f912892e1c6316b5647dfa977eb4595eede3d90f31ea41329bd65",
-    "x86": "815dc888f619f62c1c8da843162dc036b9aefcfe2b8d26e3162ae6aadeba00fb",
-    "x86_64": "5df7f176800ac9bf9ec206dd22d07380d6676b770540fdc3d53c9580d83a4d01"
+    "arm64-v8a": "08fa0be94eb4c7d669a76f04508babf2ac4293d47d457f113a59b2fa2237edcf",
+    "armeabi-v7a": "3170ac8af470088a79b2b5a5e9d3e06203ea26c3fd67bc5cc2de6480e56970c6",
+    "x86": "fd823044e83200c5820504e4bc0cf245096d9d1064e832a8bc0840e07c4fddf1",
+    "x86_64": "4370a347e93293bdb27ee43e53e44d4cf83289de4b5ae89598def739044be15e"
   },
   "abiSizeMb": {
-    "arm64-v8a": 25.5,
-    "armeabi-v7a": 22.3,
-    "x86": 26.5,
-    "x86_64": 26.6
+    "arm64-v8a": 25.6,
+    "armeabi-v7a": 22.5,
+    "x86": 26.7,
+    "x86_64": 26.7
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Fix Cosmic Nebula public account discovery, fresh session tokens for Nebula browse/search, instant auto-save toggle for Cosmic Discovery, and always-accessible Realm Switcher."
+  "releaseNotes": "Fix package installer parse errors with full v1/v2/v3/v4 multi-scheme signing, harden background startup collectors, and resolve Cosmic Nebula discovery."
 }
