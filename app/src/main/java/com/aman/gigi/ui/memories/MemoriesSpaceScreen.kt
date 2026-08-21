@@ -121,8 +121,8 @@ fun MemoriesSpaceScreen(
     BackHandler {
         if (lightbox != null) {
             lightbox = null
-        } else if (isVaultOpen) {
-            onSelectConnection(selectedConnection!!.copy(connectionId = ""))
+        } else if (isVaultOpen && selectedConnection != null) {
+            onSelectConnection(selectedConnection.copy(connectionId = ""))
         } else {
             onBack()
         }
@@ -170,27 +170,27 @@ fun MemoriesSpaceScreen(
                 .navigationBarsPadding()
         ) {
             MemoriesTopBar(
-                title = if (isVaultOpen) {
-                    selectedConnection!!.partnerName.takeIf { it.isNotBlank() } ?: "Partner"
+                title = if (isVaultOpen && selectedConnection != null) {
+                    selectedConnection.partnerName.takeIf { it.isNotBlank() } ?: "Partner"
                 } else {
                     "Memories"
                 },
-                subtitle = if (isVaultOpen) {
+                subtitle = if (isVaultOpen && selectedConnection != null) {
                     "${sparkles.size} ${if (sparkles.size == 1) "memory" else "memories"} together"
                 } else {
                     "Everything you've shared"
                 },
                 isNested = isVaultOpen,
                 onNavigate = {
-                    if (isVaultOpen) onSelectConnection(selectedConnection!!.copy(connectionId = ""))
+                    if (isVaultOpen && selectedConnection != null) onSelectConnection(selectedConnection.copy(connectionId = ""))
                     else onBack()
                 }
             )
 
             AnimatedContent(
-                targetState = isVaultOpen,
+                targetState = selectedConnection,
                 transitionSpec = {
-                    if (targetState) {
+                    if (targetState?.connectionId?.isNotBlank() == true) {
                         (slideInHorizontally(tween(280)) { it / 6 } + fadeIn(tween(220))) togetherWith
                             (slideOutHorizontally(tween(220)) { -it / 8 } + fadeOut(tween(160)))
                     } else {
@@ -200,8 +200,8 @@ fun MemoriesSpaceScreen(
                 },
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 label = "memoriesStage"
-            ) { vaultOpen ->
-                if (!vaultOpen) {
+            ) { activeConn ->
+                if (activeConn == null || activeConn.connectionId.isBlank()) {
                     MemoriesHub(
                         connections = connections,
                         userAvatarUrl = userAvatarUrl,
@@ -213,15 +213,14 @@ fun MemoriesSpaceScreen(
                         }
                     )
                 } else {
-                    val vaultPartner = selectedConnection!!
                     MemoryVault(
-                        partner = vaultPartner,
+                        partner = activeConn,
                         userAvatarUrl = userAvatarUrl,
                         sparkles = sparkles,
                         imageLoader = imageLoader,
                         onReplayScribble = onReplayScribble,
                         onOpenLightbox = { list, index -> lightbox = list to index },
-                        onSendSparkle = { onSendSparkle(vaultPartner) }
+                        onSendSparkle = { onSendSparkle(activeConn) }
                     )
                 }
             }

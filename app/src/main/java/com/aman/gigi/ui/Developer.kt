@@ -218,7 +218,7 @@ fun Developer(
     // Back returns to the constellation hub when a connection is open.
     val isMemoriesSpaceOpen by viewModel.isMemoriesSpaceOpen.collectAsState()
     val selectedMemoriesConnection by viewModel.selectedMemoriesConnection.collectAsState()
-    val isMemoriesVaultOpen = isMemoriesSpaceOpen && selectedMemoriesConnection != null && selectedMemoriesConnection!!.connectionId.isNotBlank()
+    val isMemoriesVaultOpen = isMemoriesSpaceOpen && selectedMemoriesConnection?.connectionId?.isNotBlank() == true
 
     BackHandler(enabled = isMemoriesVaultOpen) {
         viewModel.openMemoriesSpace(null)

@@ -460,7 +460,7 @@ fun Screensaver(
         val memoryCounts by viewModel.memoryCountsByConnection.collectAsState()
 
         androidx.compose.animation.AnimatedVisibility(
-            visible = isMemoriesSpaceOpen,
+            visible = isMemoriesSpaceOpen && currentScreen == ScreensaverViewModel.ScreensaverScreen.LIST,
             enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) + androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(300), initialScale = 0.95f),
             exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)) + androidx.compose.animation.scaleOut(androidx.compose.animation.core.tween(200), targetScale = 0.95f),
             modifier = Modifier.fillMaxSize().zIndex(20f)
