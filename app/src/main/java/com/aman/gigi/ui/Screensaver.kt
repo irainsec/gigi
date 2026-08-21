@@ -459,6 +459,7 @@ fun Screensaver(
         // ── Cosmic Memories Space Overlay ──
         val selectedMemoriesConnection by viewModel.selectedMemoriesConnection.collectAsState()
         val sharedSparkles by viewModel.sharedSparkles.collectAsState()
+        val memoryCounts by viewModel.memoryCountsByConnection.collectAsState()
 
         androidx.compose.animation.AnimatedVisibility(
             visible = isMemoriesSpaceOpen,
@@ -471,6 +472,7 @@ fun Screensaver(
                 connections = activeConnections,
                 selectedConnection = selectedMemoriesConnection,
                 sparkles = sharedSparkles,
+                memoryCounts = memoryCounts,
                 onSelectConnection = { conn ->
                     if (conn.connectionId.isBlank()) {
                         viewModel.openMemoriesSpace(null)

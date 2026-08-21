@@ -260,6 +260,15 @@ fun Home(
                 screensaverViewModel.openChat(connectionId)
             }
             intent.action = null
+        } else if (action == "ACTION_OPEN_MEMORIES") {
+            // "Memories" from a sparkle reveal → open that partner's memories directly.
+            val connectionId = intent.getStringExtra("connection_id")
+            selectedNavIndex = SWEET_CORNER_TAB_INDEX
+            val conn = connectionId?.let { id ->
+                screensaverViewModel.activeConnections.value.find { it.connectionId == id }
+            }
+            screensaverViewModel.openMemoriesSpace(conn)
+            intent.action = null
         } else if (action == "ACTION_REPLY_SPARKLE" || action == "ACTION_REPLY_SCRIBBLE") {
             val connectionId = intent.getStringExtra("connection_id")
             if (connectionId != null) {

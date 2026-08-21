@@ -2701,6 +2701,9 @@ class ScribbleSyncManager @Inject constructor(
                          if (!actionId.isNullOrBlank()) {
                              outboundActionRepository.updateRemoteAssetUrl(actionId, remotePath)
                          }
+                         // Keep the local history row pointing at the uploaded asset too —
+                         // otherwise my own sparkles only ever exist as an inline blob.
+                         runCatching { scribbleRepository.updateMediaUrl(scribble.scribbleId, remotePath) }
                          Log.i(TAG, "Γ£à [UPLOAD] Success! Remote path: $remotePath. Swapped out Base64.")
                          tempFile.delete()
                      } else {

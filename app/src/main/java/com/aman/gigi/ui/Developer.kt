@@ -805,6 +805,7 @@ fun Developer(
         val isMemoriesSpaceOpen by viewModel.isMemoriesSpaceOpen.collectAsState()
         val selectedMemoriesConnection by viewModel.selectedMemoriesConnection.collectAsState()
         val sharedSparkles by viewModel.sharedSparkles.collectAsState()
+        val memoryCounts by viewModel.memoryCountsByConnection.collectAsState()
 
         androidx.compose.animation.AnimatedVisibility(
             visible = isMemoriesSpaceOpen,
@@ -817,6 +818,7 @@ fun Developer(
                 connections = activeConnections,
                 selectedConnection = selectedMemoriesConnection,
                 sparkles = sharedSparkles,
+                memoryCounts = memoryCounts,
                 onSelectConnection = { conn ->
                     if (conn.connectionId.isBlank()) {
                         viewModel.openMemoriesSpace(null)

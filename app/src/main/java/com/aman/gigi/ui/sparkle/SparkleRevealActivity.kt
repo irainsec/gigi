@@ -6,43 +6,52 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Reply
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Brush
-import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.asAndroidPath
-import androidx.compose.ui.graphics.nativeCanvas
 import com.aman.gigi.model.Scribble
+import com.aman.gigi.model.ScribbleSummary
 import com.aman.gigi.ui.theme.RemindMeTheme
+import com.aman.gigi.utils.SparkleMedia
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -54,42 +63,80 @@ class SparkleRevealActivity : ComponentActivity() {
     @Inject
     lateinit var syncManager: com.aman.gigi.data.sync.ScribbleSyncManager
 
+    /**
+     * The activity is `singleInstance`, so a second sparkle arriving while it is open is
+     * delivered through onNewIntent rather than a fresh onCreate. Routing the arguments
+     * through state means the new sparkle actually replaces the stale one on screen.
+     */
+    private val arrivedScribbleId = MutableStateFlow<String?>(null)
+    private val connectionId = MutableStateFlow<String?>(null)
+    private val partnerName = MutableStateFlow("Partner")
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD)
         }
-        
+
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
             hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
-        
-        val scribbleId = intent.getStringExtra("scribble_id")
-        val partnerName = intent.getStringExtra("partner_name") ?: "Partner"
+
+        readIntent(intent)
 
         setContent {
             RemindMeTheme {
-                var scribble by remember { mutableStateOf<Scribble?>(null) }
-                
-                LaunchedEffect(scribbleId) {
-                    if (scribbleId != null) {
-                        scribble = scribbleRepository.getScribbleById(scribbleId)
+                val arrivedId by arrivedScribbleId.collectAsState()
+                val connId by connectionId.collectAsState()
+                val partner by partnerName.collectAsState()
+
+                // Every photo memory shared with this connection, newest first.
+                // Summaries only — the full payload is fetched one at a time so browsing
+                // a long history never drags every base64 blob into memory at once.
+                val history by produceState(initialValue = emptyList<ScribbleSummary>(), connId, arrivedId) {
+                    val id = connId
+                    value = if (id.isNullOrBlank()) {
+                        emptyList()
+                    } else {
+                        scribbleRepository.getSparkleSummaries(id)
                     }
                 }
 
+                // Which sparkle we're looking at. Starts on the one that just arrived and
+                // moves back through the history as the user taps "previous".
+                var cursor by remember(arrivedId, history.size) {
+                    mutableStateOf(history.indexOfFirst { it.scribbleId == arrivedId }.coerceAtLeast(0))
+                }
+
+                val currentId = history.getOrNull(cursor)?.scribbleId ?: arrivedId
+                val isArrival = currentId != null && currentId == arrivedId
+
+                val scribble by produceState<Scribble?>(initialValue = null, currentId) {
+                    val id = currentId
+                    value = if (id.isNullOrBlank()) null else scribbleRepository.getScribbleById(id)
+                }
+
                 Surface(modifier = Modifier.fillMaxSize(), color = Color.Black) {
-                    if (scribble != null) {
+                    val loaded = scribble
+                    if (loaded != null) {
                         SparkleRevealContent(
-                            scribble = scribble!!,
-                            partnerName = partnerName,
-                            onClose = { 
-                                scribbleId?.let { syncManager.cancelNotification(it) }
-                                finish() 
+                            scribble = loaded,
+                            partnerName = partner,
+                            position = if (history.isEmpty()) 0 else cursor,
+                            total = history.size,
+                            // Only the sparkle that just landed is worth locking behind a
+                            // scratch/tap reveal — revisiting an older one shows it straight away.
+                            locked = isArrival,
+                            onPrevious = { if (cursor < history.lastIndex) cursor++ },
+                            onNext = { if (cursor > 0) cursor-- },
+                            onClose = {
+                                arrivedId?.let { syncManager.cancelNotification(it) }
+                                finish()
                             }
                         )
                     } else {
@@ -101,45 +148,56 @@ class SparkleRevealActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        readIntent(intent)
+    }
+
+    private fun readIntent(source: Intent?) {
+        arrivedScribbleId.value = source?.getStringExtra("scribble_id")
+        connectionId.value = source?.getStringExtra("connection_id")
+        partnerName.value = source?.getStringExtra("partner_name") ?: "Partner"
+    }
 }
 
-@OptIn(ExperimentalComposeUiApi::class, androidx.camera.core.ExperimentalGetImage::class)
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SparkleRevealContent(
     scribble: Scribble,
     partnerName: String,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    position: Int = 0,
+    total: Int = 0,
+    locked: Boolean = true,
+    onPrevious: () -> Unit = {},
+    onNext: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
-    var bitmap by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
-    
-    LaunchedEffect(scribble.mediaBase64, scribble.mediaUrl) {
-        val mediaStr = scribble.mediaBase64?.takeIf { it.isNotBlank() }
-            ?: scribble.mediaUrl?.takeIf { it.isNotBlank() }
+    var bitmap by remember(scribble.scribbleId) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
 
-        if (mediaStr != null) {
+    LaunchedEffect(scribble.scribbleId) {
+        val model = SparkleMedia.resolve(scribble)
+        if (model != null) {
             val decoded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 try {
-                    if (mediaStr.startsWith("http://", ignoreCase = true) ||
-                        mediaStr.startsWith("https://", ignoreCase = true)) {
-                        java.net.URL(mediaStr).openStream().use {
-                            android.graphics.BitmapFactory.decodeStream(it)?.asImageBitmap()
-                        }
-                    } else if (mediaStr.startsWith("file://", ignoreCase = true) ||
-                        ((mediaStr.startsWith("/data/") || mediaStr.startsWith("/storage/") || mediaStr.startsWith("/sdcard/")) && java.io.File(mediaStr).exists())) {
-                        val filePath = mediaStr.removePrefix("file://")
-                        java.io.FileInputStream(java.io.File(filePath)).use {
-                            android.graphics.BitmapFactory.decodeStream(it)?.asImageBitmap()
-                        }
-                    } else {
-                        val cleanBase64 = if (mediaStr.contains(",")) mediaStr.substringAfter(",") else mediaStr
-                        val bytes = android.util.Base64.decode(cleanBase64.replace("\n", "").replace("\r", "").trim(), android.util.Base64.DEFAULT)
-                        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                    when (model) {
+                        is ByteArray ->
+                            android.graphics.BitmapFactory.decodeByteArray(model, 0, model.size)?.asImageBitmap()
+                        is java.io.File ->
+                            java.io.FileInputStream(model).use {
+                                android.graphics.BitmapFactory.decodeStream(it)?.asImageBitmap()
+                            }
+                        is String ->
+                            java.net.URL(model).openStream().use {
+                                android.graphics.BitmapFactory.decodeStream(it)?.asImageBitmap()
+                            }
+                        else -> null
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e("SparkleReveal", "Error decoding bitmap", e)
+                    android.util.Log.e("SparkleReveal", "Error decoding sparkle media", e)
                     null
                 }
             }
@@ -147,8 +205,9 @@ fun SparkleRevealContent(
         }
     }
 
-    var isRevealed by remember { mutableStateOf(false) }
-    
+    var isRevealed by remember(scribble.scribbleId) { mutableStateOf(!locked) }
+    val stamp = remember { SimpleDateFormat("MMM d · h:mm a", Locale.getDefault()) }
+
     Box(modifier = Modifier.fillMaxSize()) {
         val currentBitmap = bitmap
         if (currentBitmap != null) {
@@ -160,123 +219,218 @@ fun SparkleRevealContent(
             )
         }
 
-        when (scribble.revealType) {
-            "SCRATCH" -> {
-                ScratchOffOverlay(
-                    onRevealComplete = { 
-                        if (!isRevealed) {
-                            isRevealed = true
-                        }
-                    }
-                )
-            }
-            "SECRET" -> {
-                SecretRevealOverlay(
+        if (locked) {
+            when (scribble.revealType) {
+                "SCRATCH" -> ScratchOffOverlay(onRevealComplete = { if (!isRevealed) isRevealed = true })
+                "SECRET" -> SecretRevealOverlay(
                     message = scribble.secretMessage ?: "I love you!",
-                    onRevealed = {
-                         if (!isRevealed) {
-                            isRevealed = true
-                        }
-                    }
+                    onRevealed = { if (!isRevealed) isRevealed = true }
                 )
-            }
-            else -> {
-                LaunchedEffect(Unit) { isRevealed = true }
+                else -> LaunchedEffect(scribble.scribbleId) { isRevealed = true }
             }
         }
 
-        // Reply & Dismiss Buttons
+        // Who + when, so an older sparkle you scrolled back to still has context.
         if (isRevealed) {
-            Row(
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = Color.Black.copy(alpha = 0.55f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 12.dp)
+            ) {
+                Text(
+                    text = "${if (scribble.isSent) "You" else partnerName} · ${stamp.format(Date(scribble.createdAt))}",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                )
+            }
+
+            Surface(
+                shape = CircleShape,
+                color = Color.Black.copy(alpha = 0.55f),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 10.dp, end = 14.dp)
+                    .size(38.dp)
+                    .clickable { onClose() }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+
+        // Caption for a secret note once it has been opened
+        if (isRevealed && !scribble.secretMessage.isNullOrBlank() && scribble.revealType != "SECRET") {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.Black.copy(alpha = 0.6f),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 28.dp)
+            ) {
+                Text(
+                    text = "💌 ${scribble.secretMessage}",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+
+        if (isRevealed) {
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 64.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(bottom = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Dismiss Button
-                Button(
-                    onClick = onClose,
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.5f))
-                ) {
-                    Text("Dismiss", color = Color.Black)
-                }
-                
-                // Reply Button
-                val context = androidx.compose.ui.platform.LocalContext.current
-                var showReplyPicker by remember { mutableStateOf(false) }
-
-                Button(
-                    onClick = { showReplyPicker = true },
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.8f))
-                ) {
-                    Icon(androidx.compose.material.icons.Icons.Default.Reply, contentDescription = null, tint = Color.White)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Reply", color = Color.White)
-                }
-
-                if (showReplyPicker) {
-                    androidx.compose.ui.window.Dialog(onDismissRequest = { showReplyPicker = false }) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.9f)
-                                .clip(RoundedCornerShape(32.dp))
-                                .background(Color.White.copy(alpha = 0.9f))
-                                .padding(24.dp)
+                // ── Browse earlier sparkles ──
+                if (total > 1) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color.Black.copy(alpha = 0.55f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    "Reply to $partnerName",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = Color.Black
+                            val hasNewer = position > 0
+                            val hasOlder = position < total - 1
+
+                            IconButton(onClick = onNext, enabled = hasNewer, modifier = Modifier.size(36.dp)) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Newer sparkle",
+                                    tint = if (hasNewer) Color.White else Color.White.copy(alpha = 0.25f),
+                                    modifier = Modifier.size(18.dp)
                                 )
-                                Spacer(Modifier.height(24.dp))
-                                
-                                // Scribble Reply
-                                Button(
-                                    onClick = {
-                                        val intent = android.content.Intent(context, com.aman.gigi.ui.MainActivity::class.java).apply {
-                                            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                            action = "ACTION_REPLY_SCRIBBLE"
-                                            putExtra("connection_id", scribble.connectionId)
-                                        }
-                                        context.startActivity(intent)
-                                        showReplyPicker = false
-                                        onClose()
-                                    },
-                                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B5CF6))
-                                ) {
-                                    Icon(androidx.compose.material.icons.Icons.Default.Brush, contentDescription = null)
-                                    Spacer(Modifier.width(12.dp))
-                                    Text("Scribble Reply", fontSize = 16.sp)
-                                }
-                                
-                                Spacer(Modifier.height(16.dp))
-                                
-                                // Sparkle Reply
-                                Button(
-                                    onClick = {
-                                        val intent = android.content.Intent(context, com.aman.gigi.ui.MainActivity::class.java).apply {
-                                            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                            action = "ACTION_REPLY_SPARKLE"
-                                            putExtra("connection_id", scribble.connectionId)
-                                        }
-                                        context.startActivity(intent)
-                                        showReplyPicker = false
-                                        onClose()
-                                    },
-                                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4081))
-                                ) {
-                                    Icon(androidx.compose.material.icons.Icons.Default.PhotoCamera, contentDescription = null)
-                                    Spacer(Modifier.width(12.dp))
-                                    Text("Sparkle Reply", fontSize = 16.sp)
+                            }
+                            Text(
+                                text = "${position + 1} of $total",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(onClick = onPrevious, enabled = hasOlder, modifier = Modifier.size(36.dp)) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Earlier sparkle",
+                                    tint = if (hasOlder) Color.White else Color.White.copy(alpha = 0.25f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // All memories
+                    Button(
+                        onClick = {
+                            val intent = Intent(context, com.aman.gigi.ui.MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                action = "ACTION_OPEN_MEMORIES"
+                                putExtra("connection_id", scribble.connectionId)
+                            }
+                            context.startActivity(intent)
+                            onClose()
+                        },
+                        shape = RoundedCornerShape(999.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.18f)),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Memories", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    var showReplyPicker by remember { mutableStateOf(false) }
+
+                    Button(
+                        onClick = { showReplyPicker = true },
+                        shape = RoundedCornerShape(999.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEC4899)),
+                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Reply", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    if (showReplyPicker) {
+                        androidx.compose.ui.window.Dialog(onDismissRequest = { showReplyPicker = false }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.9f)
+                                    .clip(RoundedCornerShape(32.dp))
+                                    .background(Color.White.copy(alpha = 0.94f))
+                                    .padding(24.dp)
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        "Reply to $partnerName",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = Color.Black
+                                    )
+                                    Spacer(Modifier.height(24.dp))
+
+                                    Button(
+                                        onClick = {
+                                            val intent = Intent(context, com.aman.gigi.ui.MainActivity::class.java).apply {
+                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                                action = "ACTION_REPLY_SCRIBBLE"
+                                                putExtra("connection_id", scribble.connectionId)
+                                            }
+                                            context.startActivity(intent)
+                                            showReplyPicker = false
+                                            onClose()
+                                        },
+                                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B5CF6))
+                                    ) {
+                                        Icon(Icons.Default.Brush, contentDescription = null)
+                                        Spacer(Modifier.width(12.dp))
+                                        Text("Scribble Reply", fontSize = 16.sp)
+                                    }
+
+                                    Spacer(Modifier.height(16.dp))
+
+                                    Button(
+                                        onClick = {
+                                            val intent = Intent(context, com.aman.gigi.ui.MainActivity::class.java).apply {
+                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                                action = "ACTION_REPLY_SPARKLE"
+                                                putExtra("connection_id", scribble.connectionId)
+                                            }
+                                            context.startActivity(intent)
+                                            showReplyPicker = false
+                                            onClose()
+                                        },
+                                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4081))
+                                    ) {
+                                        Icon(Icons.Default.PhotoCamera, contentDescription = null)
+                                        Spacer(Modifier.width(12.dp))
+                                        Text("Sparkle Reply", fontSize = 16.sp)
+                                    }
                                 }
                             }
                         }
@@ -292,14 +446,8 @@ fun SparkleRevealContent(
 fun ScratchOffOverlay(onRevealComplete: () -> Unit) {
     val paths = remember { mutableStateListOf<Path>() }
     var currentPath by remember { mutableStateOf<Path?>(null) }
-    
-    val foilColor = Color(0xFFC0C0C0) 
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Transparent Overlay with Foil? No, foil on top.
-        // For real scratch off, we need PorterDuff on Native Canvas.
-        // Let's use a simpler "tap to reveal" for now if MVP, or use Native Canvas.
-        
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -312,12 +460,12 @@ fun ScratchOffOverlay(onRevealComplete: () -> Unit) {
                             currentPath?.lineTo(event.x, event.y)
                             // Hack to trigger refresh
                             paths.add(Path())
-                            paths.removeAt(paths.size-1)
+                            paths.removeAt(paths.size - 1)
                         }
                         MotionEvent.ACTION_UP -> {
                             currentPath?.let { paths.add(it) }
                             currentPath = null
-                            if (paths.size > 5) onRevealComplete() 
+                            if (paths.size > 5) onRevealComplete()
                         }
                     }
                     true
@@ -325,12 +473,12 @@ fun ScratchOffOverlay(onRevealComplete: () -> Unit) {
         ) {
             // Foil (Native Canvas for Eraser)
             drawContext.canvas.nativeCanvas.saveLayer(null, null)
-            
+
             val paint = android.graphics.Paint().apply {
                 color = android.graphics.Color.parseColor("#C0C0C0")
             }
             drawContext.canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, paint)
-            
+
             // Eraser paint
             val clearPaint = android.graphics.Paint().apply {
                 xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR)
@@ -347,10 +495,10 @@ fun ScratchOffOverlay(onRevealComplete: () -> Unit) {
             currentPath?.let {
                 drawContext.canvas.nativeCanvas.drawPath(it.asAndroidPath(), clearPaint)
             }
-            
+
             drawContext.canvas.nativeCanvas.restore()
         }
-        
+
         Text(
             text = "Scratch to Reveal! ✨",
             color = Color.DarkGray,
@@ -364,13 +512,13 @@ fun ScratchOffOverlay(onRevealComplete: () -> Unit) {
 @Composable
 fun SecretRevealOverlay(message: String, onRevealed: () -> Unit) {
     var revealed by remember { mutableStateOf(false) }
-    val alpha by animateFloatAsState(targetValue = if (revealed) 1f else 0f, animationSpec = tween(1000))
+    val alpha by animateFloatAsState(targetValue = if (revealed) 1f else 0f, animationSpec = tween(1000), label = "secretAlpha")
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(if (revealed) Color.Black.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.9f))
-            .clickable { 
+            .clickable {
                 revealed = true
                 onRevealed()
             },
@@ -398,4 +546,3 @@ fun SecretRevealOverlay(message: String, onRevealed: () -> Unit) {
         }
     }
 }
-

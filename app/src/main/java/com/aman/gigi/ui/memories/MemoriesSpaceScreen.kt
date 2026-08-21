@@ -4,37 +4,49 @@ import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -46,14 +58,43 @@ import com.aman.gigi.model.MemberIdentity
 import com.aman.gigi.model.Scribble
 import com.aman.gigi.ui.components.TELEGRAM_EMOJIS
 import com.aman.gigi.utils.ImageUtils
+import com.aman.gigi.utils.SparkleMedia
 import java.text.SimpleDateFormat
-import java.util.*
-import kotlin.math.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.min
+
+// ── Palette ───────────────────────────────────────────────────────────────────
+private val NightTop = Color(0xFF17092F)
+private val NightMid = Color(0xFF0E0620)
+private val NightBottom = Color(0xFF07030F)
+private val Card = Color(0xFF1A1033)
+private val CardSoft = Color(0xFF150C2B)
+private val Hairline = Color(0x1FFFFFFF)
+private val Violet = Color(0xFFC084FC)
+private val Mine = Color(0xFFFBBF24)
+private val Theirs = Color(0xFFF472B6)
+private val TextPrimary = Color(0xFFF5F3FF)
+private val TextSecondary = Color(0xFFA79FC4)
+
+private enum class MemoryFilter(val label: String, val emoji: String) {
+    ALL("All", "✨"),
+    PHOTOS("Photos", "📸"),
+    DOODLES("Doodles", "🎨"),
+    NOTES("Notes", "💌")
+}
+
+private enum class VaultLayout { GRID, TIMELINE }
 
 /**
- * Cosmic Memories Space:
- * Full-screen in-tree overlay with instant zero-lag notch insets, rich celestial sanctuary,
- * magnetic drag-to-partner interaction, and living animated starlight timeline.
+ * Memories — the shared archive behind Sweet Corner.
+ *
+ * Two surfaces:
+ *  1. the hub, one shelf per person, showing how much you've collected together
+ *  2. the vault, everything shared with one person, as a photo grid or a conversation
+ *     timeline, with a swipeable lightbox on top.
  */
 @Composable
 fun MemoriesSpaceScreen(
@@ -65,15 +106,17 @@ fun MemoriesSpaceScreen(
     onBack: () -> Unit,
     onReplayScribble: (String) -> Unit = {},
     onSendSparkle: (Connection) -> Unit = {},
+    memoryCounts: Map<String, Int> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
-    // In-tree back handling
+    val isVaultOpen = selectedConnection != null && selectedConnection.connectionId.isNotBlank()
+
     BackHandler {
-        if (selectedConnection != null && selectedConnection.connectionId.isNotBlank()) {
-            onSelectConnection(selectedConnection.copy(connectionId = ""))
+        if (isVaultOpen) {
+            onSelectConnection(selectedConnection!!.copy(connectionId = ""))
         } else {
             onBack()
         }
@@ -86,7 +129,7 @@ fun MemoriesSpaceScreen(
         }.build()
     }
 
-    // Reactively track emoji_self directly from SharedPreferences (exact same as GalaxyView)
+    // Reactively track emoji_self directly from SharedPreferences (same source as GalaxyView)
     val prefs = remember { context.getSharedPreferences("galaxy_orbits", Context.MODE_PRIVATE) }
     var emojiSelfPref by remember { mutableStateOf(prefs.getString("emoji_self", null)) }
     DisposableEffect(Unit) {
@@ -106,42 +149,16 @@ fun MemoriesSpaceScreen(
             ?: "file:///android_asset/galaxy/emoji/jack_o_lantern.png"
     }
 
-    // Detail modal for viewing full-screen media lightbox
-    var selectedMediaScribble by remember { mutableStateOf<Scribble?>(null) }
+    // Lightbox: the filtered list it opened from, plus which item to start on.
+    var lightbox by remember { mutableStateOf<Pair<List<Scribble>, Int>?>(null) }
+    LaunchedEffect(selectedConnection?.connectionId) { lightbox = null }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.radialGradient(
-                    listOf(
-                        Color(0xFF1F0F3D),
-                        Color(0xFF120726),
-                        Color(0xFF070210)
-                    )
-                )
-            )
+            .background(Brush.verticalGradient(listOf(NightTop, NightMid, NightBottom)))
     ) {
-        // Ambient Cosmic Glowing Dust & Auroras
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-
-            drawCircle(
-                brush = Brush.radialGradient(
-                    listOf(Color(0xFFEC4899).copy(alpha = 0.22f), Color.Transparent),
-                    center = Offset(w * 0.25f, h * 0.28f),
-                    radius = w * 0.70f
-                )
-            )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    listOf(Color(0xFF8B5CF6).copy(alpha = 0.25f), Color.Transparent),
-                    center = Offset(w * 0.75f, h * 0.68f),
-                    radius = w * 0.75f
-                )
-            )
-        }
+        NightSky()
 
         Column(
             modifier = Modifier
@@ -150,583 +167,289 @@ fun MemoriesSpaceScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            // Top Header Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFF281845).copy(alpha = 0.94f),
-                    border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.45f)),
-                    shadowElevation = 8.dp,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clickable {
-                            if (selectedConnection != null && selectedConnection.connectionId.isNotBlank()) {
-                                onSelectConnection(selectedConnection.copy(connectionId = ""))
-                            } else {
-                                onBack()
-                            }
-                        }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = if (selectedConnection != null && selectedConnection.connectionId.isNotBlank()) {
-                                Icons.AutoMirrored.Filled.ArrowBack
-                            } else {
-                                Icons.Default.Close
-                            },
-                            contentDescription = "Back",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                // Title Pill
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = Color(0xFF1E1035).copy(alpha = 0.94f),
-                    border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.45f)),
-                    shadowElevation = 8.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text("🌌", fontSize = 14.sp)
-                        Text(
-                            text = if (selectedConnection != null && selectedConnection.connectionId.isNotBlank()) {
-                                "${selectedConnection.partnerName}'s Memories"
-                            } else {
-                                "Memories Space"
-                            },
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text("✨", fontSize = 14.sp)
-                    }
-                }
-
-                // Total count badge or balance spacer
-                if (selectedConnection != null && selectedConnection.connectionId.isNotBlank()) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFFEC4899),
-                        shadowElevation = 6.dp,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = "${sparkles.size}",
-                                color = Color.White,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                    }
+            MemoriesTopBar(
+                title = if (isVaultOpen) {
+                    selectedConnection!!.partnerName.takeIf { it.isNotBlank() } ?: "Partner"
                 } else {
-                    Spacer(Modifier.size(40.dp))
+                    "Memories"
+                },
+                subtitle = if (isVaultOpen) {
+                    "${sparkles.size} ${if (sparkles.size == 1) "memory" else "memories"} together"
+                } else {
+                    "Everything you've shared"
+                },
+                isNested = isVaultOpen,
+                onNavigate = {
+                    if (isVaultOpen) onSelectConnection(selectedConnection!!.copy(connectionId = ""))
+                    else onBack()
                 }
-            }
+            )
 
-            // Main Stage: Sanctuary Drag & Drop OR Animated Timeline View
             AnimatedContent(
-                targetState = selectedConnection,
+                targetState = isVaultOpen,
                 transitionSpec = {
-                    fadeIn(tween(350)) + scaleIn(tween(350, easing = EaseOutBack), initialScale = 0.92f) togetherWith
-                            fadeOut(tween(250)) + scaleOut(tween(250), targetScale = 1.05f)
+                    if (targetState) {
+                        (slideInHorizontally(tween(280)) { it / 6 } + fadeIn(tween(220))) togetherWith
+                            (slideOutHorizontally(tween(220)) { -it / 8 } + fadeOut(tween(160)))
+                    } else {
+                        (slideInHorizontally(tween(280)) { -it / 6 } + fadeIn(tween(220))) togetherWith
+                            (slideOutHorizontally(tween(220)) { it / 8 } + fadeOut(tween(160)))
+                    }
                 },
                 modifier = Modifier.weight(1f).fillMaxWidth(),
-                label = "memoriesStageTransition"
-            ) { conn ->
-                if (conn == null || conn.connectionId.isBlank()) {
-                    // Stage 1: Rich Celestial Sanctuary Stage
-                    MemoriesSanctuaryStage(
+                label = "memoriesStage"
+            ) { vaultOpen ->
+                if (!vaultOpen) {
+                    MemoriesHub(
                         connections = connections,
                         userAvatarUrl = userAvatarUrl,
+                        memoryCounts = memoryCounts,
                         imageLoader = imageLoader,
-                        onConnect = { targetConn ->
+                        onOpen = { conn ->
                             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            onSelectConnection(targetConn)
+                            onSelectConnection(conn)
                         }
                     )
                 } else {
-                    // Stage 2: Living Animated Starlight Timeline
-                    AnimatedMemoriesTimeline(
-                        partner = conn,
+                    val vaultPartner = selectedConnection!!
+                    MemoryVault(
+                        partner = vaultPartner,
                         userAvatarUrl = userAvatarUrl,
                         sparkles = sparkles,
                         imageLoader = imageLoader,
                         onReplayScribble = onReplayScribble,
-                        onOpenMedia = { selectedMediaScribble = it },
-                        onSendSparkle = { onSendSparkle(conn) }
+                        onOpenLightbox = { list, index -> lightbox = list to index },
+                        onSendSparkle = { onSendSparkle(vaultPartner) }
                     )
                 }
             }
         }
 
-        // Lightbox Modal for Photo/Video Sparkle
-        if (selectedMediaScribble != null) {
-            val sc = selectedMediaScribble!!
-            Dialog(
-                onDismissRequest = { selectedMediaScribble = null },
-                properties = DialogProperties(usePlatformDefaultWidth = false)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.95f))
-                        .clickable { selectedMediaScribble = null },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        val resolvedMedia = sc.mediaUrl?.takeIf { it.isNotBlank() } ?: sc.mediaBase64
-                        if (!resolvedMedia.isNullOrBlank()) {
-                            val parsed = ImageUtils.parseEmojiModel(resolvedMedia)
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                border = BorderStroke(2.dp, Color(0xFFEC4899).copy(alpha = 0.75f)),
-                                shadowElevation = 24.dp
-                            ) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context).data(parsed).crossfade(true).build(),
-                                    imageLoader = imageLoader,
-                                    contentDescription = "Sparkle",
-                                    contentScale = ContentScale.Fit,
-                                    modifier = Modifier
-                                        .fillMaxWidth(0.92f)
-                                        .aspectRatio(0.80f)
-                                        .clip(RoundedCornerShape(20.dp))
-                                )
-                            }
-                        }
-
-                        if (!sc.secretMessage.isNullOrBlank()) {
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = Color(0xFF1E1035).copy(alpha = 0.92f),
-                                border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.45f)),
-                                modifier = Modifier.fillMaxWidth(0.92f)
-                            ) {
-                                Text(
-                                    text = "💌 ${sc.secretMessage}",
-                                    color = Color.White,
-                                    fontSize = 14.sp,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.padding(14.dp)
-                                )
-                            }
-                        }
-
-                        Text(
-                            text = "Tap anywhere to close",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            }
+        lightbox?.let { (items, startIndex) ->
+            MemoryLightbox(
+                memories = items,
+                startIndex = startIndex,
+                partnerName = selectedConnection?.partnerName?.takeIf { it.isNotBlank() } ?: "Partner",
+                imageLoader = imageLoader,
+                onReplay = onReplayScribble,
+                onDismiss = { lightbox = null }
+            )
         }
     }
 }
 
-/**
- * Rich, vibrant, adorable celestial sanctuary:
- * Uses Alignment.TopStart on BoxWithConstraints so that Canvas and Composables match coordinates.
- */
+// ── Chrome ────────────────────────────────────────────────────────────────────
+
+/** A still, deterministic star field. Cheap: drawn once per size, never animated per-frame. */
 @Composable
-private fun MemoriesSanctuaryStage(
+private fun NightSky() {
+    val stars = remember {
+        val rnd = java.util.Random(20260821L)
+        List(56) { Triple(rnd.nextFloat(), rnd.nextFloat(), 0.6f + rnd.nextFloat() * 1.6f) }
+    }
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        drawCircle(
+            brush = Brush.radialGradient(
+                listOf(Theirs.copy(alpha = 0.16f), Color.Transparent),
+                center = Offset(size.width * 0.18f, size.height * 0.16f),
+                radius = size.width * 0.85f
+            )
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                listOf(Violet.copy(alpha = 0.18f), Color.Transparent),
+                center = Offset(size.width * 0.86f, size.height * 0.74f),
+                radius = size.width * 0.9f
+            )
+        )
+        stars.forEach { (fx, fy, r) ->
+            drawCircle(
+                color = Color.White.copy(alpha = 0.10f + (r / 2.2f) * 0.22f),
+                radius = r,
+                center = Offset(fx * size.width, fy * size.height)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MemoriesTopBar(
+    title: String,
+    subtitle: String,
+    isNested: Boolean,
+    onNavigate: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 14.dp, end = 18.dp, top = 10.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = Card.copy(alpha = 0.9f),
+            border = BorderStroke(1.dp, Hairline),
+            modifier = Modifier.size(40.dp).clickable { onNavigate() }
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = if (isNested) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close,
+                    contentDescription = if (isNested) "Back" else "Close",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(19.dp)
+                )
+            }
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = TextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = subtitle,
+                color = TextSecondary,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+// ── Hub: one shelf per person ─────────────────────────────────────────────────
+
+@Composable
+private fun MemoriesHub(
     connections: List<Connection>,
     userAvatarUrl: String,
+    memoryCounts: Map<String, Int>,
     imageLoader: coil.ImageLoader,
-    onConnect: (Connection) -> Unit
+    onOpen: (Connection) -> Unit
 ) {
-    val density = LocalDensity.current
-    val context = LocalContext.current
+    if (connections.isEmpty()) {
+        EmptyState(
+            emoji = "🌱",
+            title = "No shelves yet",
+            body = "Connect with someone in your galaxy — every doodle, photo and note you trade lands here.",
+            modifier = Modifier.fillMaxSize()
+        )
+        return
+    }
 
-    var userDragOffset by remember { mutableStateOf(Offset.Zero) }
-    var isDragging by remember { mutableStateOf(false) }
+    val total = connections.sumOf { memoryCounts[it.connectionId] ?: 0 }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "sanctuaryPulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.96f,
-        targetValue = 1.04f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
-    )
-
-    val portalRotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(26000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "portalRotation"
-    )
-
-    BoxWithConstraints(
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.TopStart
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        val stageWidthPx = with(density) { maxWidth.toPx() }
-        val stageHeightPx = with(density) { maxHeight.toPx() }
-
-        // Center orbit hub in the upper 42% of the screen
-        val centerX = stageWidthPx / 2f
-        val centerY = stageHeightPx * 0.42f
-        val orbitRadius = min(stageWidthPx, stageHeightPx) * 0.32f
-
-        // Resting position for User's Avatar Cradle (bottom center)
-        val userRestXPx = centerX
-        val userRestYPx = stageHeightPx * 0.74f
-
-        val currentUserXPx = userRestXPx + userDragOffset.x
-        val currentUserYPx = userRestYPx + userDragOffset.y
-
-        // 1. Constellation Connection Canvas (Orbit paths, nexus glow, starlight links)
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            // Central Memory Nexus Halo
-            drawCircle(
-                brush = Brush.radialGradient(
-                    listOf(Color(0xFFC084FC).copy(alpha = 0.28f), Color(0xFF8B5CF6).copy(alpha = 0.09f), Color.Transparent),
-                    center = Offset(centerX, centerY),
-                    radius = orbitRadius * 1.35f
-                ),
-                center = Offset(centerX, centerY),
-                radius = orbitRadius * 1.35f
-            )
-
-            // Dotted Celestial Orbit Path
-            drawCircle(
-                color = Color(0xFFC084FC).copy(alpha = 0.35f),
-                center = Offset(centerX, centerY),
-                radius = orbitRadius,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                    width = 2.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 14f), 0f)
-                )
-            )
-
-            // Connecting starlight thread from user star to partner nodes
-            connections.forEachIndexed { i, _ ->
-                val angle = if (connections.size == 1) {
-                    -PI.toFloat() / 2f // Top center if 1 partner
-                } else {
-                    -PI.toFloat() * 0.85f + (i * (PI.toFloat() * 0.70f / max(1, connections.size - 1)))
-                }
-                val nodeXPx = centerX + orbitRadius * cos(angle)
-                val nodeYPx = centerY + orbitRadius * sin(angle)
-
-                drawLine(
-                    brush = Brush.linearGradient(
-                        listOf(Color(0xFFFDE68A).copy(alpha = if (isDragging) 0.7f else 0.3f), Color(0xFFEC4899).copy(alpha = if (isDragging) 0.7f else 0.3f)),
-                        start = Offset(currentUserXPx, currentUserYPx),
-                        end = Offset(nodeXPx, nodeYPx)
-                    ),
-                    start = Offset(currentUserXPx, currentUserYPx),
-                    end = Offset(nodeXPx, nodeYPx),
-                    strokeWidth = if (isDragging) 3.dp.toPx() else 1.5.dp.toPx()
-                )
-            }
-        }
-
-        // 2. Center Celestial Nexus Core (Rotating Emblem & Status Message)
-        val nexusSizeDp = 86.dp
-        val nexusSizePx = with(density) { nexusSizeDp.toPx() }
-        Box(
-            modifier = Modifier
-                .offset {
-                    IntOffset(
-                        (centerX - nexusSizePx / 2).roundToInt(),
-                        (centerY - nexusSizePx / 2).roundToInt()
-                    )
-                }
-                .size(nexusSizeDp),
-            contentAlignment = Alignment.Center
-        ) {
+        item(key = "hub-hero") {
             Surface(
-                shape = CircleShape,
-                color = Color(0xFF1E1035).copy(alpha = 0.88f),
-                border = BorderStroke(1.5.dp, Color(0xFFC084FC).copy(alpha = 0.40f)),
-                shadowElevation = 12.dp,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { rotationZ = portalRotation }
+                shape = RoundedCornerShape(22.dp),
+                color = Card.copy(alpha = 0.86f),
+                border = BorderStroke(1.dp, Hairline),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("💫", fontSize = 28.sp)
-                }
-            }
-        }
-
-        // Status text below the center nexus
-        Column(
-            modifier = Modifier
-                .offset {
-                    IntOffset(
-                        (centerX - with(density) { 140.dp.toPx() }).roundToInt(),
-                        (centerY + nexusSizePx / 2 + with(density) { 12.dp.toPx() }).roundToInt()
-                    )
-                }
-                .width(280.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Surface(
-                shape = RoundedCornerShape(999.dp),
-                color = Color(0xFF180B2E).copy(alpha = 0.92f),
-                border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.35f))
-            ) {
-                Text(
-                    text = if (connections.size == 1) {
-                        "✨ ${connections.first().partnerName}'s Constellation 💖"
-                    } else if (connections.size > 1) {
-                        "✨ Constellation of ${connections.size} Connections 💖"
-                    } else {
-                        "✨ Connect with a partner to unlock memories ✨"
-                    },
-                    color = Color(0xFFF9A8D4),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-
-        // 3. Partner Celestial Spheres
-        connections.forEachIndexed { i, conn ->
-            val angle = if (connections.size == 1) {
-                -PI.toFloat() / 2f
-            } else {
-                -PI.toFloat() * 0.85f + (i * (PI.toFloat() * 0.70f / max(1, connections.size - 1)))
-            }
-            val nodeXPx = centerX + orbitRadius * cos(angle)
-            val nodeYPx = centerY + orbitRadius * sin(angle)
-
-            val partnerAvatar = conn.partnerTwigiUrl?.takeIf { it.isNotBlank() }
-                ?: conn.partnerEmojiUrl?.takeIf { it.isNotBlank() }
-                ?: conn.partnerAvatarUrl?.takeIf { it.isNotBlank() }
-                ?: TELEGRAM_EMOJIS.first()
-
-            val dist = hypot(currentUserXPx - nodeXPx, currentUserYPx - nodeYPx)
-            val isTargeted = isDragging && dist < with(density) { 72.dp.toPx() }
-
-            val nodeScale by animateFloatAsState(
-                targetValue = if (isTargeted) 1.28f else 1.0f,
-                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                label = "nodeScale"
-            )
-
-            val nodeSizeDp = 76.dp
-            val nodeSizePx = with(density) { nodeSizeDp.toPx() }
-
-            Box(
-                modifier = Modifier
-                    .offset {
-                        IntOffset(
-                            (nodeXPx - nodeSizePx / 2).roundToInt(),
-                            (nodeYPx - nodeSizePx / 2).roundToInt()
-                        )
-                    }
-                    .scale(nodeScale)
-                    .clickable { onConnect(conn) },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(nodeSizeDp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(
-                                        if (isTargeted) Color(0xFFF43F5E) else Color(0xFFEC4899).copy(alpha = 0.90f),
-                                        Color(0xFF8B5CF6).copy(alpha = 0.6f),
-                                        Color.Transparent
-                                    )
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val parsed = ImageUtils.parseEmojiModel(partnerAvatar)
-                        AsyncImage(
-                            model = ImageRequest.Builder(context).data(parsed).crossfade(true).build(),
-                            imageLoader = imageLoader,
-                            contentDescription = conn.partnerName,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(8.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF160D2E))
-                        )
-                    }
-
-                    // Partner Name Pill
-                    Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = Color(0xFF1E1035).copy(alpha = 0.94f),
-                        border = BorderStroke(1.dp, if (isTargeted) Color(0xFFF43F5E) else Color(0xFFC084FC).copy(alpha = 0.45f)),
-                        shadowElevation = 8.dp
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = conn.partnerName.takeIf { it.isNotBlank() } ?: "Partner",
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text("💖", fontSize = 10.sp)
-                        }
-                    }
-                }
-            }
-        }
-
-        // 4. User Draggable Star & Starlight Cradle
-        val userStarSizeDp = 82.dp
-        val userStarSizePx = with(density) { userStarSizeDp.toPx() }
-
-        // Pedestal halo at rest position
-        Box(
-            modifier = Modifier
-                .offset {
-                    IntOffset(
-                        (userRestXPx - userStarSizePx / 2).roundToInt(),
-                        (userRestYPx - userStarSizePx / 2).roundToInt()
-                    )
-                }
-                .size(userStarSizeDp),
-            contentAlignment = Alignment.Center
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = Color(0xFF281845).copy(alpha = 0.45f),
-                border = BorderStroke(1.5.dp, Color(0xFFFDE68A).copy(alpha = 0.35f)),
-                modifier = Modifier.fillMaxSize()
-            ) {}
-        }
-
-        // Draggable Star
-        Box(
-            modifier = Modifier
-                .offset {
-                    IntOffset(
-                        (currentUserXPx - userStarSizePx / 2).roundToInt(),
-                        (currentUserYPx - userStarSizePx / 2).roundToInt()
-                    )
-                }
-                .scale(if (isDragging) 1.18f else pulseScale)
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragStart = { isDragging = true },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            userDragOffset += dragAmount
-                        },
-                        onDragEnd = {
-                            isDragging = false
-                            // Check collision with any partner node
-                            var matched: Connection? = null
-                            connections.forEachIndexed { i, conn ->
-                                val angle = if (connections.size == 1) {
-                                    -PI.toFloat() / 2f
-                                } else {
-                                    -PI.toFloat() * 0.85f + (i * (PI.toFloat() * 0.70f / max(1, connections.size - 1)))
-                                }
-                                val nodeXPx = centerX + orbitRadius * cos(angle)
-                                val nodeYPx = centerY + orbitRadius * sin(angle)
-                                val dist = hypot(currentUserXPx - nodeXPx, currentUserYPx - nodeYPx)
-                                if (dist < with(density) { 76.dp.toPx() }) {
-                                    matched = conn
-                                }
-                            }
-                            if (matched != null) {
-                                onConnect(matched!!)
-                            }
-                            userDragOffset = Offset.Zero
-                        },
-                        onDragCancel = {
-                            isDragging = false
-                            userDragOffset = Offset.Zero
-                        }
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(userStarSizeDp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                listOf(
-                                    Color(0xFFFDE68A).copy(alpha = 0.95f),
-                                    Color(0xFFF59E0B).copy(alpha = 0.75f),
-                                    Color.Transparent
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val parsed = ImageUtils.parseEmojiModel(userAvatarUrl)
-                    AsyncImage(
-                        model = ImageRequest.Builder(context).data(parsed).crossfade(true).build(),
+                    AvatarBubble(
+                        model = userAvatarUrl,
                         imageLoader = imageLoader,
-                        contentDescription = "You",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF1E1436))
+                        size = 48.dp,
+                        ring = Mine
                     )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (total > 0) "$total ${if (total == 1) "memory" else "memories"} kept" else "Your archive is waiting",
+                            color = TextPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Open a shelf to look back through everything.",
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp
+                        )
+                    }
                 }
+            }
+        }
 
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = Color(0xFFF59E0B),
-                    shadowElevation = 10.dp
-                ) {
-                    Text(
-                        text = if (isDragging) {
-                            "Drop on partner! ✨"
-                        } else {
-                            val partnerFirst = connections.firstOrNull()?.partnerName?.takeIf { it.isNotBlank() } ?: "partner"
-                            "Drag to $partnerFirst ✨"
-                        },
-                        color = Color.Black,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+        items(connections, key = { it.connectionId }) { conn ->
+            PartnerShelf(
+                connection = conn,
+                count = memoryCounts[conn.connectionId] ?: 0,
+                imageLoader = imageLoader,
+                onOpen = { onOpen(conn) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun PartnerShelf(
+    connection: Connection,
+    count: Int,
+    imageLoader: coil.ImageLoader,
+    onOpen: () -> Unit
+) {
+    val avatar = connection.partnerTwigiUrl?.takeIf { it.isNotBlank() }
+        ?: connection.partnerEmojiUrl?.takeIf { it.isNotBlank() }
+        ?: connection.partnerAvatarUrl?.takeIf { it.isNotBlank() }
+        ?: TELEGRAM_EMOJIS.first()
+
+    Surface(
+        onClick = onOpen,
+        shape = RoundedCornerShape(22.dp),
+        color = Card.copy(alpha = 0.86f),
+        border = BorderStroke(1.dp, Hairline),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            AvatarBubble(model = avatar, imageLoader = imageLoader, size = 54.dp, ring = Theirs)
+
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = connection.partnerName.takeIf { it.isNotBlank() } ?: "Partner",
+                    color = TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = when {
+                        count == 0 -> "Nothing shared yet"
+                        count == 1 -> "1 memory"
+                        else -> "$count memories"
+                    },
+                    color = if (count == 0) TextSecondary else Theirs,
+                    fontSize = 12.sp,
+                    fontWeight = if (count == 0) FontWeight.Normal else FontWeight.SemiBold
+                )
+            }
+
+            Surface(shape = CircleShape, color = CardSoft, modifier = Modifier.size(32.dp)) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Open",
+                        tint = Violet,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
@@ -734,224 +457,652 @@ private fun MemoriesSanctuaryStage(
     }
 }
 
-/**
- * Living Animated Starlight Timeline View:
- * Vertical timeline thread with milestone date headers, alternating memory cards,
- * interactive stroke drawing replay, and high-res lightbox previews.
- */
+// ── Vault: one person's archive ───────────────────────────────────────────────
+
 @Composable
-private fun AnimatedMemoriesTimeline(
+private fun MemoryVault(
     partner: Connection,
     userAvatarUrl: String,
     sparkles: List<Scribble>,
     imageLoader: coil.ImageLoader,
     onReplayScribble: (String) -> Unit,
-    onOpenMedia: (Scribble) -> Unit,
+    onOpenLightbox: (List<Scribble>, Int) -> Unit,
     onSendSparkle: () -> Unit
 ) {
-    val context = LocalContext.current
-    var selectedFilter by remember { mutableStateOf("ALL") }
+    var filter by remember(partner.connectionId) { mutableStateOf(MemoryFilter.ALL) }
+    var layout by remember(partner.connectionId) { mutableStateOf(VaultLayout.GRID) }
 
     val partnerAvatar = partner.partnerTwigiUrl?.takeIf { it.isNotBlank() }
         ?: partner.partnerEmojiUrl?.takeIf { it.isNotBlank() }
         ?: partner.partnerAvatarUrl?.takeIf { it.isNotBlank() }
         ?: TELEGRAM_EMOJIS.first()
 
-    val filteredSparkles = remember(sparkles, selectedFilter) {
-        when (selectedFilter) {
-            "PHOTOS" -> sparkles.filter { !it.mediaUrl.isNullOrBlank() || !it.mediaBase64.isNullOrBlank() }
-            "DOODLES" -> sparkles.filter { it.strokes.isNotEmpty() }
-            "NOTES" -> sparkles.filter { !it.secretMessage.isNullOrBlank() }
-            else -> sparkles
-        }
+    val photoCount = remember(sparkles) { sparkles.count { SparkleMedia.hasMedia(it) } }
+    val doodleCount = remember(sparkles) { sparkles.count { SparkleMedia.isDoodle(it) } }
+    val noteCount = remember(sparkles) { sparkles.count { SparkleMedia.hasNote(it) } }
+
+    val visible = remember(sparkles, filter) {
+        when (filter) {
+            MemoryFilter.ALL -> sparkles
+            MemoryFilter.PHOTOS -> sparkles.filter { SparkleMedia.hasMedia(it) }
+            MemoryFilter.DOODLES -> sparkles.filter { SparkleMedia.isDoodle(it) }
+            MemoryFilter.NOTES -> sparkles.filter { SparkleMedia.hasNote(it) }
+        }.sortedByDescending { it.createdAt }
     }
 
-    val dateFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
-    val dayFormat = remember { SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()) }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Bridge card: the two of you + what's inside
+        Surface(
+            shape = RoundedCornerShape(22.dp),
+            color = Card.copy(alpha = 0.86f),
+            border = BorderStroke(1.dp, Hairline),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
         ) {
-            // Hero Bridge Banner
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = Color(0xFF1E1238).copy(alpha = 0.92f),
-                border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.35f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Starlight Bridge Avatars
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(42.dp).clip(CircleShape).background(Color(0xFFF59E0B).copy(alpha = 0.35f))) {
-                            val parsed = ImageUtils.parseEmojiModel(userAvatarUrl)
-                            AsyncImage(
-                                model = ImageRequest.Builder(context).data(parsed).crossfade(true).build(),
-                                imageLoader = imageLoader,
-                                contentDescription = "You",
-                                modifier = Modifier.fillMaxSize().padding(3.dp).clip(CircleShape)
-                            )
-                        }
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    AvatarBubble(model = userAvatarUrl, imageLoader = imageLoader, size = 40.dp, ring = Mine)
+                    Text("💫", fontSize = 13.sp)
+                    AvatarBubble(model = partnerAvatar, imageLoader = imageLoader, size = 40.dp, ring = Theirs)
 
-                        Text(" 💫💖💫 ", fontSize = 12.sp)
+                    Spacer(Modifier.weight(1f))
 
-                        Box(modifier = Modifier.size(42.dp).clip(CircleShape).background(Color(0xFFEC4899).copy(alpha = 0.35f))) {
-                            val parsed = ImageUtils.parseEmojiModel(partnerAvatar)
-                            AsyncImage(
-                                model = ImageRequest.Builder(context).data(parsed).crossfade(true).build(),
-                                imageLoader = imageLoader,
-                                contentDescription = partner.partnerName,
-                                modifier = Modifier.fillMaxSize().padding(3.dp).clip(CircleShape)
-                            )
-                        }
-                    }
-
-                    // Send Sparkle CTA
                     Button(
                         onClick = onSendSparkle,
                         shape = RoundedCornerShape(999.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEC4899)),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        colors = ButtonDefaults.buttonColors(containerColor = Theirs),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text("✨", fontSize = 12.sp)
-                            Text("New Sparkle", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
+                        Text("✨", fontSize = 12.sp)
+                        Spacer(Modifier.width(6.dp))
+                        Text("New sparkle", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-            }
 
-            // Filter Pills
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatChip("📸", photoCount, "photos")
+                    StatChip("🎨", doodleCount, "doodles")
+                    StatChip("💌", noteCount, "notes")
+                }
+            }
+        }
+
+        // Filters + layout switch
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                listOf(
-                    "ALL" to "✨ All (${sparkles.size})",
-                    "PHOTOS" to "📸 Photos",
-                    "DOODLES" to "🎨 Doodles",
-                    "NOTES" to "💌 Notes"
-                ).forEach { (code, label) ->
-                    val isSelected = selectedFilter == code
-                    Surface(
-                        onClick = { selectedFilter = code },
-                        shape = RoundedCornerShape(999.dp),
-                        color = if (isSelected) Color(0xFFEC4899) else Color(0xFF1E1436).copy(alpha = 0.85f),
-                        border = BorderStroke(1.dp, if (isSelected) Color(0xFFF472B6) else Color(0xFFC084FC).copy(alpha = 0.35f))
-                    ) {
-                        Text(
-                            text = label,
-                            color = if (isSelected) Color.White else Color(0xFFCBD5E1),
-                            fontSize = 11.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                        )
+                MemoryFilter.entries.forEach { option ->
+                    val count = when (option) {
+                        MemoryFilter.ALL -> sparkles.size
+                        MemoryFilter.PHOTOS -> photoCount
+                        MemoryFilter.DOODLES -> doodleCount
+                        MemoryFilter.NOTES -> noteCount
                     }
+                    FilterPill(
+                        label = "${option.emoji} ${option.label}",
+                        count = count,
+                        selected = filter == option,
+                        onClick = { filter = option }
+                    )
                 }
             }
 
-            // Timeline Feed
-            if (filteredSparkles.isEmpty()) {
-                Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = CardSoft,
+                border = BorderStroke(1.dp, Hairline)
+            ) {
+                Row(modifier = Modifier.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    LayoutToggle(
+                        selected = layout == VaultLayout.GRID,
+                        icon = Icons.Default.GridView,
+                        description = "Grid",
+                        onClick = { layout = VaultLayout.GRID }
+                    )
+                    LayoutToggle(
+                        selected = layout == VaultLayout.TIMELINE,
+                        icon = Icons.Default.ViewAgenda,
+                        description = "Timeline",
+                        onClick = { layout = VaultLayout.TIMELINE }
+                    )
+                }
+            }
+        }
+
+        if (visible.isEmpty()) {
+            EmptyState(
+                emoji = if (sparkles.isEmpty()) "🌌" else filter.emoji,
+                title = if (sparkles.isEmpty()) "Nothing here yet" else "No ${filter.label.lowercase()} yet",
+                body = if (sparkles.isEmpty()) {
+                    "Send ${partner.partnerName.ifBlank { "them" }} a sparkle, a doodle or a secret note — it will live here forever."
+                } else {
+                    "Switch filters to see the rest of your archive."
+                },
+                modifier = Modifier.weight(1f)
+            )
+        } else {
+            when (layout) {
+                VaultLayout.GRID -> MemoryGrid(
+                    memories = visible,
+                    imageLoader = imageLoader,
+                    onOpen = { index -> onOpenLightbox(visible, index) },
+                    onReplay = onReplayScribble,
+                    modifier = Modifier.weight(1f)
+                )
+                VaultLayout.TIMELINE -> MemoryTimeline(
+                    memories = visible,
+                    partnerName = partner.partnerName.ifBlank { "Partner" },
+                    imageLoader = imageLoader,
+                    onOpen = { index -> onOpenLightbox(visible, index) },
+                    onReplay = onReplayScribble,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatChip(emoji: String, count: Int, label: String) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = CardSoft,
+        border = BorderStroke(1.dp, Hairline)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Text(emoji, fontSize = 11.sp)
+            Text("$count", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = TextSecondary, fontSize = 11.sp)
+        }
+    }
+}
+
+@Composable
+private fun FilterPill(label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(999.dp),
+        color = if (selected) Theirs else CardSoft,
+        border = BorderStroke(1.dp, if (selected) Theirs else Hairline)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Text(
+                text = label,
+                color = if (selected) Color.White else TextSecondary,
+                fontSize = 11.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                maxLines = 1
+            )
+            if (count > 0) {
+                Text(
+                    text = "$count",
+                    color = if (selected) Color.White.copy(alpha = 0.85f) else Violet,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LayoutToggle(
+    selected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(999.dp),
+        color = if (selected) Violet.copy(alpha = 0.22f) else Color.Transparent,
+        modifier = Modifier.size(32.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = description,
+                tint = if (selected) Violet else TextSecondary,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+// ── Grid layout ───────────────────────────────────────────────────────────────
+
+private sealed interface GridEntry {
+    val key: String
+
+    data class Header(val label: String) : GridEntry {
+        override val key: String get() = "h:$label"
+    }
+
+    data class Cell(val memory: Scribble, val index: Int) : GridEntry {
+        override val key: String get() = "c:${memory.scribbleId}"
+    }
+}
+
+@Composable
+private fun MemoryGrid(
+    memories: List<Scribble>,
+    imageLoader: coil.ImageLoader,
+    onOpen: (Int) -> Unit,
+    onReplay: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val entries = remember(memories) {
+        buildList {
+            var lastDay: String? = null
+            memories.forEachIndexed { index, memory ->
+                val day = dayKey(memory.createdAt)
+                if (day != lastDay) {
+                    add(GridEntry.Header(dayLabel(memory.createdAt)))
+                    lastDay = day
+                }
+                add(GridEntry.Cell(memory, index))
+            }
+        }
+    }
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 36.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        gridItems(
+            items = entries,
+            key = { it.key },
+            span = { entry -> if (entry is GridEntry.Header) GridItemSpan(maxLineSpan) else GridItemSpan(1) }
+        ) { entry ->
+            when (entry) {
+                is GridEntry.Header -> DayHeader(entry.label, modifier = Modifier.padding(top = 6.dp))
+                is GridEntry.Cell -> MemoryTile(
+                    memory = entry.memory,
+                    imageLoader = imageLoader,
+                    onClick = {
+                        if (SparkleMedia.hasMedia(entry.memory)) onOpen(entry.index)
+                        else if (SparkleMedia.isDoodle(entry.memory)) onReplay(entry.memory.scribbleId)
+                        else onOpen(entry.index)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemoryTile(
+    memory: Scribble,
+    imageLoader: coil.ImageLoader,
+    onClick: () -> Unit
+) {
+    val accent = if (memory.isSent) Mine else Theirs
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(18.dp),
+        color = CardSoft,
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.30f)),
+        modifier = Modifier.aspectRatio(0.82f)
+    ) {
+        Box {
+            when {
+                SparkleMedia.hasMedia(memory) -> MemoryImage(
+                    memory = memory,
+                    imageLoader = imageLoader,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                SparkleMedia.isDoodle(memory) -> Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Brush.verticalGradient(listOf(Color(0xFF221241), Color(0xFF120A24))))
+                ) {
+                    DoodleCanvas(memory, modifier = Modifier.fillMaxSize().padding(10.dp))
+                }
+
+                else -> Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Brush.verticalGradient(listOf(Color(0xFF2A1440), Color(0xFF160C2A))))
+                        .padding(12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text("🌌 ✨", fontSize = 42.sp)
-                        Text(
-                            text = "No sparkles in this category yet!",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Share photos, drawings, and notes with ${partner.partnerName} to build your living galaxy timeline ✨",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 12.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 32.dp)
-                        )
+                    Text(
+                        text = memory.secretMessage.orEmpty(),
+                        color = TextPrimary,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                        textAlign = TextAlign.Center,
+                        maxLines = 6,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // Bottom scrim carrying the sender + time so tiles stay readable over any photo
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f))))
+                    .padding(horizontal = 9.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(accent))
+                Text(
+                    text = timeLabel(memory.createdAt),
+                    color = Color.White.copy(alpha = 0.92f),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
+                )
+                Spacer(Modifier.weight(1f))
+                if (SparkleMedia.isDoodle(memory)) Text("🎨", fontSize = 10.sp)
+                if (SparkleMedia.hasNote(memory) && SparkleMedia.hasMedia(memory)) Text("💌", fontSize = 10.sp)
+            }
+        }
+    }
+}
+
+// ── Timeline layout ───────────────────────────────────────────────────────────
+
+@Composable
+private fun MemoryTimeline(
+    memories: List<Scribble>,
+    partnerName: String,
+    imageLoader: coil.ImageLoader,
+    onOpen: (Int) -> Unit,
+    onReplay: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 36.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(count = memories.size, key = { memories[it].scribbleId }) { index ->
+            val memory = memories[index]
+            val isFirstOfDay = index == 0 ||
+                dayKey(memories[index - 1].createdAt) != dayKey(memory.createdAt)
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (isFirstOfDay) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        DayHeader(dayLabel(memory.createdAt), modifier = Modifier.padding(top = 6.dp))
                     }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 40.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (memory.isSent) Arrangement.End else Arrangement.Start
                 ) {
-                    itemsIndexed(filteredSparkles, key = { _, sc -> sc.scribbleId }) { idx, sc ->
-                        val isFirstOfDay = idx == 0 ||
-                                dayFormat.format(Date(sc.createdAt)) != dayFormat.format(Date(filteredSparkles[idx - 1].createdAt))
+                    MemoryBubble(
+                        memory = memory,
+                        senderLabel = if (memory.isSent) "You" else partnerName,
+                        imageLoader = imageLoader,
+                        onOpen = { onOpen(index) },
+                        onReplay = { onReplay(memory.scribbleId) },
+                        modifier = Modifier.fillMaxWidth(0.86f)
+                    )
+                }
+            }
+        }
+    }
+}
 
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (isFirstOfDay) {
-                                // Milestone Date Header
-                                Surface(
-                                    shape = RoundedCornerShape(999.dp),
-                                    color = Color(0xFF281845).copy(alpha = 0.9f),
-                                    border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.35f)),
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                                    ) {
-                                        Text("📅", fontSize = 11.sp)
-                                        Text(
-                                            text = dayFormat.format(Date(sc.createdAt)),
-                                            color = Color(0xFFFDE68A),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
+@Composable
+private fun MemoryBubble(
+    memory: Scribble,
+    senderLabel: String,
+    imageLoader: coil.ImageLoader,
+    onOpen: () -> Unit,
+    onReplay: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val accent = if (memory.isSent) Mine else Theirs
 
-                            // Timeline Entry Card with Branch Line
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                // Timeline Node Starlight Gem
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(top = 12.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(14.dp)
-                                            .clip(CircleShape)
-                                            .background(if (sc.isSent) Color(0xFFF59E0B) else Color(0xFFEC4899))
-                                            .border(2.dp, Color.White, CircleShape)
-                                    )
-                                }
+    Surface(
+        shape = RoundedCornerShape(
+            topStart = 20.dp,
+            topEnd = 20.dp,
+            bottomStart = if (memory.isSent) 20.dp else 6.dp,
+            bottomEnd = if (memory.isSent) 6.dp else 20.dp
+        ),
+        color = Card.copy(alpha = 0.9f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.32f)),
+        modifier = modifier
+    ) {
+        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(accent))
+                Text(senderLabel, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Spacer(Modifier.weight(1f))
+                Text(timeLabel(memory.createdAt), color = TextSecondary, fontSize = 11.sp)
+            }
 
-                                // Card Content
-                                TimelineCard(
-                                    scribble = sc,
-                                    timeStr = dateFormat.format(Date(sc.createdAt)),
-                                    imageLoader = imageLoader,
-                                    onReplay = { onReplayScribble(sc.scribbleId) },
-                                    onOpen = { onOpenMedia(sc) },
-                                    modifier = Modifier.weight(1f)
-                                )
+            if (SparkleMedia.hasMedia(memory)) {
+                MemoryImage(
+                    memory = memory,
+                    imageLoader = imageLoader,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(210.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable { onOpen() }
+                )
+            }
+
+            if (SparkleMedia.isDoodle(memory)) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFF160C2A),
+                    border = BorderStroke(1.dp, Hairline),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column {
+                        DoodleCanvas(
+                            memory,
+                            modifier = Modifier.fillMaxWidth().height(140.dp).padding(10.dp)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${memory.strokes.size} ${if (memory.strokes.size == 1) "stroke" else "strokes"}",
+                                color = TextSecondary,
+                                fontSize = 11.sp
+                            )
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick = onReplay, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Violet, modifier = Modifier.size(15.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Replay", color = Violet, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
+                    }
+                }
+            }
+
+            if (SparkleMedia.hasNote(memory)) {
+                Text(
+                    text = memory.secretMessage.orEmpty(),
+                    color = TextPrimary,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    modifier = Modifier.padding(horizontal = 2.dp)
+                )
+            }
+        }
+    }
+}
+
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+
+@Composable
+private fun MemoryLightbox(
+    memories: List<Scribble>,
+    startIndex: Int,
+    partnerName: String,
+    imageLoader: coil.ImageLoader,
+    onReplay: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (memories.isEmpty()) return
+    val safeStart = startIndex.coerceIn(0, memories.lastIndex)
+    val pagerState = rememberPagerState(initialPage = safeStart) { memories.size }
+    val stamp = remember { SimpleDateFormat("EEEE, MMM d · h:mm a", Locale.getDefault()) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.97f))) {
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                val memory = memories[page]
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 18.dp)
+                        .statusBarsPadding()
+                        .navigationBarsPadding()
+                        .padding(top = 56.dp, bottom = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    when {
+                        SparkleMedia.hasMedia(memory) -> MemoryImage(
+                            memory = memory,
+                            imageLoader = imageLoader,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
+                                .clip(RoundedCornerShape(20.dp))
+                        )
+
+                        SparkleMedia.isDoodle(memory) -> Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color(0xFF120A24),
+                            modifier = Modifier.fillMaxWidth().aspectRatio(0.9f)
+                        ) {
+                            DoodleCanvas(memory, modifier = Modifier.fillMaxSize().padding(18.dp))
+                        }
+
+                        else -> Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = Card,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = memory.secretMessage.orEmpty(),
+                                color = TextPrimary,
+                                fontSize = 18.sp,
+                                lineHeight = 26.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(24.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    if (SparkleMedia.hasNote(memory) && SparkleMedia.hasMedia(memory)) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = Card.copy(alpha = 0.9f),
+                            border = BorderStroke(1.dp, Hairline),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "💌 ${memory.secretMessage}",
+                                color = TextPrimary,
+                                fontSize = 14.sp,
+                                lineHeight = 20.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(14.dp)
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+
+                    Text(
+                        text = "${if (memory.isSent) "You" else partnerName} · ${stamp.format(Date(memory.createdAt))}",
+                        color = if (memory.isSent) Mine else Theirs,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (SparkleMedia.isDoodle(memory)) {
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = { onReplay(memory.scribbleId); onDismiss() },
+                            shape = RoundedCornerShape(999.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B5CF6)),
+                            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 9.dp)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Watch it drawn", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // Counter + close
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(shape = RoundedCornerShape(999.dp), color = Color.White.copy(alpha = 0.12f)) {
+                    Text(
+                        text = "${pagerState.currentPage + 1} / ${memories.size}",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.12f),
+                    modifier = Modifier.size(38.dp).clickable { onDismiss() }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(19.dp))
                     }
                 }
             }
@@ -959,163 +1110,156 @@ private fun AnimatedMemoriesTimeline(
     }
 }
 
+// ── Shared pieces ─────────────────────────────────────────────────────────────
+
 /**
- * Individual Timeline Card in the Animated Memories Stream.
+ * Renders a sparkle's picture. Goes through [SparkleMedia] so inline base64, absolute
+ * URLs and relative server asset paths all resolve — handing Coil the raw column value
+ * is what left the old gallery full of empty cards.
  */
 @Composable
-private fun TimelineCard(
-    scribble: Scribble,
-    timeStr: String,
+private fun MemoryImage(
+    memory: Scribble,
     imageLoader: coil.ImageLoader,
-    onReplay: () -> Unit,
-    onOpen: () -> Unit,
+    contentScale: ContentScale,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val hasPhoto = !scribble.mediaUrl.isNullOrBlank() || !scribble.mediaBase64.isNullOrBlank()
-    val isDoodle = scribble.strokes.isNotEmpty()
+    val model = remember(memory.scribbleId, memory.mediaUrl, memory.mediaBase64) {
+        SparkleMedia.resolve(memory)
+    }
 
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = Color(0xFF1E1238).copy(alpha = 0.94f),
-        border = BorderStroke(1.dp, if (scribble.isSent) Color(0xFFF59E0B).copy(alpha = 0.45f) else Color(0xFFEC4899).copy(alpha = 0.45f)),
-        shadowElevation = 10.dp,
-        modifier = modifier.clickable {
-            if (hasPhoto) onOpen()
-            else if (isDoodle) onReplay()
+    if (model == null) {
+        Box(modifier = modifier.background(CardSoft), contentAlignment = Alignment.Center) {
+            Text("✨", fontSize = 22.sp)
         }
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // Header Info: Sender Badge & Time
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = if (scribble.isSent) Color(0xFFF59E0B).copy(alpha = 0.22f) else Color(0xFFEC4899).copy(alpha = 0.22f),
-                    border = BorderStroke(1.dp, if (scribble.isSent) Color(0xFFFDE68A).copy(alpha = 0.4f) else Color(0xFFF472B6).copy(alpha = 0.4f))
-                ) {
-                    Text(
-                        text = if (scribble.isSent) "You ✨" else "Partner 💖",
-                        color = if (scribble.isSent) Color(0xFFFDE68A) else Color(0xFFF9A8D4),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
+        return
+    }
 
-                Text(
-                    text = timeStr,
-                    color = Color(0xFF94A3B8),
-                    fontSize = 11.sp
+    AsyncImage(
+        model = ImageRequest.Builder(context)
+            .data(model)
+            // ByteArray payloads have no natural cache key — anchor it to the row id.
+            .memoryCacheKey("sparkle:${memory.scribbleId}")
+            .crossfade(true)
+            .build(),
+        imageLoader = imageLoader,
+        contentDescription = "Memory",
+        contentScale = contentScale,
+        modifier = modifier
+    )
+}
+
+/** Draws a doodle's strokes directly from its normalised points — no bitmap needed. */
+@Composable
+private fun DoodleCanvas(memory: Scribble, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        memory.strokes.forEach { stroke ->
+            if (stroke.points.size < 2) return@forEach
+            val path = Path()
+            stroke.points.forEachIndexed { i, point ->
+                val x = point.x * size.width
+                val y = point.y * size.height
+                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            drawPath(
+                path = path,
+                color = Color(stroke.color).copy(alpha = stroke.opacity.coerceIn(0.15f, 1f)),
+                style = Stroke(
+                    width = (stroke.width * min(size.width, size.height) / 320f).coerceIn(1.5f, 14f),
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round
                 )
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            // Media Preview or Doodle Card
-            if (hasPhoto) {
-                val media = scribble.mediaUrl?.takeIf { it.isNotBlank() } ?: scribble.mediaBase64
-                val parsed = ImageUtils.parseEmojiModel(media)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1.25f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0xFF0C0618)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context).data(parsed).crossfade(true).build(),
-                        imageLoader = imageLoader,
-                        contentDescription = "Sparkle Memory",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.6f),
-                        modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ZoomIn,
-                            contentDescription = "Enlarge",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp).padding(3.dp)
-                        )
-                    }
-                }
-            } else if (isDoodle) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color(0xFF140B26),
-                    border = BorderStroke(1.dp, Color(0xFF8B5CF6).copy(alpha = 0.4f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text("🎨", fontSize = 24.sp)
-                            Column {
-                                Text(
-                                    text = "Handwritten Doodle",
-                                    color = Color.White,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "${scribble.strokes.size} strokes recorded ✨",
-                                    color = Color(0xFFC084FC),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-
-                        Button(
-                            onClick = onReplay,
-                            shape = RoundedCornerShape(999.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B5CF6)),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text("▶", fontSize = 11.sp)
-                                Text("Replay", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Note Text / Message Caption
-            if (!scribble.secretMessage.isNullOrBlank()) {
-                Spacer(Modifier.height(8.dp))
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF140A28).copy(alpha = 0.7f),
-                    border = BorderStroke(1.dp, Color(0xFFC084FC).copy(alpha = 0.25f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "💌 ${scribble.secretMessage}",
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
-                        modifier = Modifier.padding(10.dp)
-                    )
-                }
-            }
+            )
         }
+    }
+}
+
+@Composable
+private fun AvatarBubble(
+    model: String?,
+    imageLoader: coil.ImageLoader,
+    size: Dp,
+    ring: Color
+) {
+    val context = LocalContext.current
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(Brush.radialGradient(listOf(ring.copy(alpha = 0.55f), ring.copy(alpha = 0.12f), Color.Transparent))),
+        contentAlignment = Alignment.Center
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(ImageUtils.parseEmojiModel(model))
+                .crossfade(true)
+                .build(),
+            imageLoader = imageLoader,
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(size * 0.10f)
+                .clip(CircleShape)
+                .background(Color(0xFF160D2E))
+        )
+    }
+}
+
+@Composable
+private fun DayHeader(label: String, modifier: Modifier = Modifier) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = CardSoft,
+        border = BorderStroke(1.dp, Hairline),
+        modifier = modifier
+    ) {
+        Text(
+            text = label,
+            color = Violet,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+        )
+    }
+}
+
+@Composable
+private fun EmptyState(emoji: String, title: String, body: String, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(emoji, fontSize = 44.sp)
+            Text(title, color = TextPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text(body, color = TextSecondary, fontSize = 13.sp, lineHeight = 19.sp, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+// ── Date helpers ──────────────────────────────────────────────────────────────
+
+private val dayKeyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+private val dayFullFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
+private val dayWithYearFormat = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+
+private fun dayKey(millis: Long): String = dayKeyFormat.format(Date(millis))
+
+private fun timeLabel(millis: Long): String = timeFormat.format(Date(millis))
+
+private fun dayLabel(millis: Long): String {
+    val now = Calendar.getInstance()
+    val then = Calendar.getInstance().apply { timeInMillis = millis }
+    val sameYear = now.get(Calendar.YEAR) == then.get(Calendar.YEAR)
+    val dayDiff = if (sameYear) now.get(Calendar.DAY_OF_YEAR) - then.get(Calendar.DAY_OF_YEAR) else Int.MAX_VALUE
+    return when {
+        sameYear && dayDiff == 0 -> "Today"
+        sameYear && dayDiff == 1 -> "Yesterday"
+        sameYear && abs(dayDiff) < 7 -> dayFullFormat.format(Date(millis))
+        sameYear -> dayFullFormat.format(Date(millis))
+        else -> dayWithYearFormat.format(Date(millis))
     }
 }

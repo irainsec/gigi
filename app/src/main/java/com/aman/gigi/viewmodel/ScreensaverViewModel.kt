@@ -372,8 +372,28 @@ class ScreensaverViewModel @Inject constructor(
     private val _selectedMemoriesConnection = MutableStateFlow<Connection?>(null)
     val selectedMemoriesConnection: StateFlow<Connection?> = _selectedMemoriesConnection.asStateFlow()
 
-    private val _sharedSparkles = MutableStateFlow<List<com.aman.gigi.model.Scribble>>(emptyList())
-    val sharedSparkles: StateFlow<List<com.aman.gigi.model.Scribble>> = _sharedSparkles.asStateFlow()
+    /**
+     * Every memory shared with the connection currently open in the Memories space.
+     * Live on purpose: a one-shot read meant a sparkle arriving while the screen was
+     * open never showed up, and re-opening a partner replayed a stale snapshot.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val sharedSparkles: StateFlow<List<com.aman.gigi.model.Scribble>> =
+        _selectedMemoriesConnection.flatMapLatest { conn ->
+            val id = conn?.connectionId?.takeIf { it.isNotBlank() }
+            if (id == null) {
+                flowOf(emptyList())
+            } else {
+                scribbleRepository.getFullScribblesFlowByConnection(id).map { rows ->
+                    rows.filter { com.aman.gigi.utils.SparkleMedia.isMemory(it) }
+                }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** connectionId → memory count, so the Memories hub can label each partner shelf. */
+    val memoryCountsByConnection: StateFlow<Map<String, Int>> =
+        scribbleRepository.getMemoryCountsByConnection()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val isPartnerTyping: StateFlow<Boolean> = _partnerConnectionId.flatMapLatest { id ->
@@ -1088,22 +1108,17 @@ class ScreensaverViewModel @Inject constructor(
             selectMemoriesConnection(connection)
         } else {
             _selectedMemoriesConnection.value = null
-            _sharedSparkles.value = emptyList()
         }
     }
 
+    /** `sharedSparkles` follows this selection, so switching partners is all it takes. */
     fun selectMemoriesConnection(connection: Connection) {
         _selectedMemoriesConnection.value = connection
-        viewModelScope.launch {
-            val list = scribbleRepository.getFullScribblesByConnection(connection.connectionId)
-            _sharedSparkles.value = list
-        }
     }
 
     fun closeMemoriesSpace() {
         _isMemoriesSpaceOpen.value = false
         _selectedMemoriesConnection.value = null
-        _sharedSparkles.value = emptyList()
     }
 
 

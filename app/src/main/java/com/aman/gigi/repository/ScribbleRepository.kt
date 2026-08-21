@@ -4,6 +4,7 @@ import com.aman.gigi.db.ScribbleDao
 import com.aman.gigi.model.Scribble
 import com.aman.gigi.model.ScribbleStatus
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.util.UUID
 import dagger.hilt.android.qualifiers.ApplicationContext
 import android.content.Context
@@ -34,6 +35,13 @@ class ScribbleRepository @Inject constructor(
     suspend fun getFullScribblesByConnection(connectionId: String): List<Scribble> {
         return scribbleDao.getFullScribblesByConnection(connectionId)
     }
+
+    /** connectionId → number of memories, for the Memories hub shelves. */
+    fun getMemoryCountsByConnection(): Flow<Map<String, Int>> {
+        return scribbleDao.getMemoryCountsByConnection().map { rows ->
+            rows.associate { it.connectionId to it.total }
+        }
+    }
     
     /**
      * Get pending scribbles (to be sent)
@@ -58,6 +66,11 @@ class ScribbleRepository @Inject constructor(
      */
     suspend fun getScribbleById(scribbleId: String): Scribble? {
         return scribbleDao.getScribbleById(scribbleId)
+    }
+
+    /** Photo sparkles for a connection, newest first — for paging back through history. */
+    suspend fun getSparkleSummaries(connectionId: String, limit: Int = 60): List<com.aman.gigi.model.ScribbleSummary> {
+        return scribbleDao.getSparkleSummariesByConnection(connectionId, limit)
     }
     
     /**
@@ -126,6 +139,9 @@ class ScribbleRepository @Inject constructor(
      */
     suspend fun saveReceivedScribble(scribble: Scribble) {
         val receivedScribble = scribble.copy(
+            // The sender serialises the whole entity, `isSent = true` included, so an
+            // incoming sparkle used to land in our history claiming we drew it.
+            isSent = false,
             status = ScribbleStatus.RECEIVED,
             receivedAt = System.currentTimeMillis()
         )
@@ -151,6 +167,15 @@ class ScribbleRepository @Inject constructor(
         )
     }
     
+    /**
+     * Remember where an offloaded sparkle was uploaded to.
+     * Without this the local row only ever holds the inline base64 blob, so once that is
+     * pruned the memory has no way back to the picture.
+     */
+    suspend fun updateMediaUrl(scribbleId: String, mediaUrl: String) {
+        scribbleDao.updateMediaUrl(scribbleId, mediaUrl)
+    }
+
     /**
      * Mark scribble as displayed
      */
