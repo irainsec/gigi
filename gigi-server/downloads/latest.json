@@ -25,5 +25,5 @@
     "x86_64": 26.7
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Memories Space and Sparkle media handling enhancements, sync optimizations, and animation refinements."
+  "releaseNotes": "Sparkle media resolution fix (base64/relative/FCM), receiver attribution fix, live reactive DB flow, multi-sparkle reveal history paging, and complete Memories Space Hub & Vault redesign with swipeable lightbox and doodle stroke rendering."
 }
