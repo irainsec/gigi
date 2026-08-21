@@ -1,29 +1,29 @@
 {
-  "updatedAt": "2026-08-21T11:55:06Z",
-  "versionCode": 85,
-  "versionName": "v2.4.2",
-  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.4.2-universal.apk",
+  "updatedAt": "2026-08-21T12:30:14Z",
+  "versionCode": 86,
+  "versionName": "v2.4.3",
+  "downloadUrl": "https://gigi.iamanraj.com/downloads/gigi-2.4.3-universal.apk",
   "websiteUrl": "https://gigi.iamanraj.com/downloads/gigi-latest.apk",
-  "sha256": "e2d340e7de1c1e7db0b2fa37fdad04680ed52750ed884e33c99bf9a1a1fd0da2",
+  "sha256": "d572bbd8615e6e6d195e314f15ba2a5d02a5ca7a5dbe1c307292252fc31842e2",
   "sizeMb": 50.4,
   "abiUrls": {
-    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.4.2-arm64-v8a.apk",
-    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.4.2-armeabi-v7a.apk",
-    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.4.2-x86.apk",
-    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.4.2-x86_64.apk"
+    "arm64-v8a": "https://gigi.iamanraj.com/downloads/gigi-2.4.3-arm64-v8a.apk",
+    "armeabi-v7a": "https://gigi.iamanraj.com/downloads/gigi-2.4.3-armeabi-v7a.apk",
+    "x86": "https://gigi.iamanraj.com/downloads/gigi-2.4.3-x86.apk",
+    "x86_64": "https://gigi.iamanraj.com/downloads/gigi-2.4.3-x86_64.apk"
   },
   "abiSha256": {
-    "arm64-v8a": "d2e823393525d6ebd31e2b3518073a2585c0ad8722d021b664a5d53e6edaedf0",
-    "armeabi-v7a": "22200817964e8b27f28be3a66853248b20c718f9f81a2972e7bb51d8d6d1fc5c",
-    "x86": "065c012ae4d8493973c92b744160ab08bcd2c6eb6b105605f0184f1c4c4abedd",
-    "x86_64": "2ee56213bc415fa535db1840b25390da51cd0b2545e54a74db45196197199d19"
+    "arm64-v8a": "d6e5d3b9ce0db279c6d963c41d549e97614f317dc196b4ddfe99e797b47a9c9f",
+    "armeabi-v7a": "87137c5b723e42431ce9e19e172792d2ea65de946febe39e4433b3f80f6a6a71",
+    "x86": "bbf01e1396c30e5ea94a23e104fc8d35b440f40e3e60e5375b08686e7f75c5b4",
+    "x86_64": "0519884859cb1c7fcb176b4f6ed0f971dbe968f586fa6a9bcb6f8f5ff8689ae0"
   },
   "abiSizeMb": {
     "arm64-v8a": 25.6,
     "armeabi-v7a": 22.5,
     "x86": 26.7,
-    "x86_64": 26.7
+    "x86_64": 26.8
   },
   "iosDownloadUrl": "https://gigi.iamanraj.com/downloads/manifest.plist",
-  "releaseNotes": "Sparkle media resolution fix (base64/relative/FCM), receiver attribution fix, live reactive DB flow, multi-sparkle reveal history paging, and complete Memories Space Hub & Vault redesign with swipeable lightbox and doodle stroke rendering."
+  "releaseNotes": "Memory Reel story player with Ken Burns photos & live stroke doodle animations, seamless Vault to Hub back navigation, and non-blocking sparkle capture flow."
 }

@@ -142,17 +142,17 @@ fun Screensaver(
         if (isTrackingLocation) {
             viewModel.setTrackingLocation(false)
         } else if (isMemoriesSpaceOpen) {
-            viewModel.closeMemoriesSpace()
+            if (viewModel.selectedMemoriesConnection.value != null && viewModel.selectedMemoriesConnection.value!!.connectionId.isNotBlank()) {
+                viewModel.openMemoriesSpace(null)
+            } else {
+                viewModel.closeMemoriesSpace()
+            }
         } else if (isHistoryOpen) {
             viewModel.setHistoryOpen(false)
         } else if (isDrawingMode) {
             viewModel.setDrawingMode(false)
         } else if (currentScreen != ScreensaverViewModel.ScreensaverScreen.LIST) {
-            if (isPartnerOnlyUser && currentScreen == ScreensaverViewModel.ScreensaverScreen.PARTNER_SESSIONS) {
-                (context as? androidx.activity.ComponentActivity)?.finish()
-            } else {
-                viewModel.navigateTo(ScreensaverViewModel.ScreensaverScreen.LIST)
-            }
+            viewModel.navigateTo(ScreensaverViewModel.ScreensaverScreen.LIST)
         }
     }
     
@@ -417,9 +417,7 @@ fun Screensaver(
                 val context = androidx.compose.ui.platform.LocalContext.current
                 com.aman.gigi.ui.sparkle.SparkleCameraScreen(
                     onClose = {
-                        // Always return to the Sweet Corner detail (overlay hides on PARTNER_SESSIONS);
-                        // never fall back to the old connection list.
-                        viewModel.navigateTo(ScreensaverViewModel.ScreensaverScreen.PARTNER_SESSIONS)
+                        viewModel.navigateTo(ScreensaverViewModel.ScreensaverScreen.LIST)
                     },
                     onCapture = {
                         // CAPTURE STUB (Restored per user request)
@@ -488,7 +486,6 @@ fun Screensaver(
                 },
                 onSendSparkle = { conn ->
                     viewModel.selectConnection(conn)
-                    viewModel.closeMemoriesSpace()
                     viewModel.navigateTo(ScreensaverViewModel.ScreensaverScreen.SPARKLE, conn.connectionId)
                 }
             )

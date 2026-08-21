@@ -216,7 +216,17 @@ fun Developer(
         }
     }
     // Back returns to the constellation hub when a connection is open.
-    BackHandler(enabled = openedConnectionId != null) { openedConnectionId = null }
+    val isMemoriesSpaceOpen by viewModel.isMemoriesSpaceOpen.collectAsState()
+    val selectedMemoriesConnection by viewModel.selectedMemoriesConnection.collectAsState()
+    val isMemoriesVaultOpen = isMemoriesSpaceOpen && selectedMemoriesConnection != null && selectedMemoriesConnection!!.connectionId.isNotBlank()
+
+    BackHandler(enabled = isMemoriesVaultOpen) {
+        viewModel.openMemoriesSpace(null)
+    }
+    BackHandler(enabled = isMemoriesSpaceOpen && !isMemoriesVaultOpen) {
+        viewModel.closeMemoriesSpace()
+    }
+    BackHandler(enabled = openedConnectionId != null && !isMemoriesSpaceOpen) { openedConnectionId = null }
     
     val theme = remember(currentPartner?.relationshipType) {
         val typeStr = currentPartner?.relationshipType
@@ -802,8 +812,6 @@ fun Developer(
         }
 
         // ── Cosmic Memories Space Overlay ──
-        val isMemoriesSpaceOpen by viewModel.isMemoriesSpaceOpen.collectAsState()
-        val selectedMemoriesConnection by viewModel.selectedMemoriesConnection.collectAsState()
         val sharedSparkles by viewModel.sharedSparkles.collectAsState()
         val memoryCounts by viewModel.memoryCountsByConnection.collectAsState()
 
@@ -834,7 +842,6 @@ fun Developer(
                 },
                 onSendSparkle = { conn ->
                     viewModel.selectConnection(conn)
-                    viewModel.closeMemoriesSpace()
                     viewModel.navigateTo(ScreensaverViewModel.ScreensaverScreen.SPARKLE, conn.connectionId)
                 }
             )

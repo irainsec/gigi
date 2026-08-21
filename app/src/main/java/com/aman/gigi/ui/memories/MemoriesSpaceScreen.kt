@@ -114,8 +114,14 @@ fun MemoriesSpaceScreen(
 
     val isVaultOpen = selectedConnection != null && selectedConnection.connectionId.isNotBlank()
 
+    // Lightbox: the filtered list it opened from, plus which item to start on.
+    var lightbox by remember { mutableStateOf<Pair<List<Scribble>, Int>?>(null) }
+    LaunchedEffect(selectedConnection?.connectionId) { lightbox = null }
+
     BackHandler {
-        if (isVaultOpen) {
+        if (lightbox != null) {
+            lightbox = null
+        } else if (isVaultOpen) {
             onSelectConnection(selectedConnection!!.copy(connectionId = ""))
         } else {
             onBack()
@@ -148,10 +154,6 @@ fun MemoriesSpaceScreen(
             ?: identity?.avatarUrl?.takeIf { it.isNotBlank() }
             ?: "file:///android_asset/galaxy/emoji/jack_o_lantern.png"
     }
-
-    // Lightbox: the filtered list it opened from, plus which item to start on.
-    var lightbox by remember { mutableStateOf<Pair<List<Scribble>, Int>?>(null) }
-    LaunchedEffect(selectedConnection?.connectionId) { lightbox = null }
 
     Box(
         modifier = modifier
@@ -346,7 +348,7 @@ private fun MemoriesHub(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 32.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 110.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item(key = "hub-hero") {
@@ -481,6 +483,8 @@ private fun MemoryVault(
     val doodleCount = remember(sparkles) { sparkles.count { SparkleMedia.isDoodle(it) } }
     val noteCount = remember(sparkles) { sparkles.count { SparkleMedia.hasNote(it) } }
 
+    var reelOpen by remember(partner.connectionId) { mutableStateOf(false) }
+
     val visible = remember(sparkles, filter) {
         when (filter) {
             MemoryFilter.ALL -> sparkles
@@ -490,6 +494,7 @@ private fun MemoryVault(
         }.sortedByDescending { it.createdAt }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -608,6 +613,29 @@ private fun MemoryVault(
             }
         }
     }
+
+        // Floating story player. Sits clear of the app's floating nav pill.
+        if (visible.isNotEmpty()) {
+            MemoryReelFab(
+                count = visible.size,
+                onClick = { reelOpen = true },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 18.dp, bottom = 92.dp)
+            )
+        }
+    }
+
+    if (reelOpen) {
+        MemoryReel(
+            memories = visible,
+            partnerName = partner.partnerName.ifBlank { "Partner" },
+            userAvatarUrl = userAvatarUrl,
+            partnerAvatarUrl = partnerAvatar,
+            imageLoader = imageLoader,
+            onDismiss = { reelOpen = false }
+        )
+    }
 }
 
 @Composable
@@ -724,7 +752,9 @@ private fun MemoryGrid(
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 36.dp),
+        // Deep bottom inset: the app's floating nav pill and the Play-reel button
+        // both hover over this list.
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 150.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -839,7 +869,7 @@ private fun MemoryTimeline(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 36.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 150.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         items(count = memories.size, key = { memories[it].scribbleId }) { index ->
